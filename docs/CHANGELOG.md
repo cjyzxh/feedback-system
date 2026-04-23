@@ -2,10 +2,20 @@
 
 ## 2026-04-23
 
-### 1. 创建 docs/ 文件夹
+### 6. 初始化 Git 仓库并首次提交
+- **文件**：新建 `.gitignore` 文件
+- **操作**：
+  - 初始化 git 仓库
+  - 创建标准的 Node.js 项目 .gitignore（排除 node_modules、dist、环境变量文件等）
+  - 首次提交 111 个文件到本地仓库
+  - 提交信息："初始化项目 - HIS问题反馈系统"
+
+---
+
+### 5. 创建 docs/ 文件夹
 - 新建 `docs/` 文件夹，用于存放项目文档和修改记录
 
-### 2. 修复反馈列表刷新问题
+### 4. 修复反馈列表刷新问题
 - **文件**：`backend/src/modules/feedback/feedback.service.ts`
 - **修改**：
   - `findAll` 方法改回使用原生 SQL 查询，避免实体列名与数据库不匹配问题
@@ -24,11 +34,11 @@
   - `DELETE /api/feedback/:id` - 删除反馈
   - `POST /api/feedback/batch-delete` - 批量删除
 
-### 4. 更新前端数据加载逻辑
+### 2. 更新前端数据加载逻辑
 - **文件**：`frontend/src/views/feedback/index.vue`
 - **修改**：更新 `loadData` 方法，正确处理新的响应格式
 
-### 5. （之前的修改记录）
+### 1. （之前的修改记录）
 - 优化 dict.service.ts，尽量使用 TypeORM Repository 方法
 - 配置 MSSQL 数据库连接
 - 初始化数据库表结构

@@ -28,7 +28,7 @@ export class SmsService {
    */
   async sendVerificationCode(phone: string, code: string): Promise<boolean> {
     try {
-      const content = `您的验证码是${code}，10分钟内有效，请勿泄露给他人。`;
+      const content = `【北京创佳益软件】您的验证码是${code}，10分钟内有效，请勿泄露给他人。`;
       return await this.sendSms(phone, content);
     } catch (error) {
       this.logger.error(`发送短信失败: ${phone}`, error.stack);
@@ -57,7 +57,9 @@ export class SmsService {
 
       // 生成签名：账号+密码+时间戳，MD5加密，32位小写
       const signStr = this.smsUserid + this.smsPassword + timestamp;
+      this.logger.log(`签名原始字符串: ${signStr}`);
       const sign = crypto.createHash('md5').update(signStr).digest('hex').toLowerCase();
+      this.logger.log(`生成的签名: ${sign}`);
 
       // 构造表单参数
       const params = new URLSearchParams();

@@ -128,18 +128,33 @@ const sendCode = async () => {
   }
   
   try {
-    await axios.post('/api/auth/send-code', { phone: loginForm.phone })
-    ElMessage.success('验证码已发送')
-    countdown.value = 60
-    timer.value = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) {
-        clearInterval(timer.value)
-        timer.value = null
-      }
-    }, 1000)
+    // 直接使用原生 fetch，完全避免 axios 拦截器问题
+    const response = await fetch('/api/auth/send-code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ phone: loginForm.phone })
+    })
+    
+    const result = await response.json()
+    
+    if (result.code === 200) {
+      ElMessage.success('验证码已发送')
+      countdown.value = 60
+      timer.value = setInterval(() => {
+        countdown.value--
+        if (countdown.value <= 0) {
+          clearInterval(timer.value)
+          timer.value = null
+        }
+      }, 1000)
+    } else {
+      ElMessage.error(result.message || '发送验证码失败')
+    }
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '发送验证码失败')
+    console.error('发送验证码失败:', error)
+    ElMessage.error('发送验证码失败')
   }
 }
 
@@ -158,21 +173,34 @@ const handleLogin = async () => {
   
   loading.value = true
   try {
-    let res
+    // 直接使用原生 fetch，完全避免 axios 拦截器问题
+    let url, data
     if (loginType.value === 'account') {
-      res = await axios.post('/api/auth/login', { 
+      url = '/api/auth/login'
+      data = { 
         username: loginForm.username, 
         password: loginForm.password 
-      })
+      }
     } else {
-      res = await axios.post('/api/auth/login-sms', { 
+      url = '/api/auth/login-sms'
+      data = { 
         phone: loginForm.phone, 
         code: loginForm.code 
-      })
+      }
     }
     
-    const token = res.data?.data?.token
-    const user = res.data?.data?.user
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    
+    const res = await response.json()
+    
+    const token = res.data?.token
+    const user = res.data?.user
     
     if (token) {
       localStorage.setItem('token', token)
@@ -186,7 +214,7 @@ const handleLogin = async () => {
     }
   } catch (error) {
     console.error('登录失败:', error)
-    ElMessage.error(error.response?.data?.message || '登录失败')
+    ElMessage.error('登录失败')
   } finally {
     loading.value = false
   }

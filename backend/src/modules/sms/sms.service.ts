@@ -2,11 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
-  private readonly smsUsername: string;
+  private readonly smsUserid: string;
   private readonly smsPassword: string;
   private readonly smsApiUrl: string;
 
@@ -14,9 +15,9 @@ export class SmsService {
     private configService: ConfigService,
     private httpService: HttpService,
   ) {
-    this.smsUsername = this.configService.get<string>('SMS_USERNAME', 'cjy01');
+    this.smsUserid = this.configService.get<string>('SMS_USERID', 'cjy01');
     this.smsPassword = this.configService.get<string>('SMS_PASSWORD', 'Cjysoft#02');
-    this.smsApiUrl = this.configService.get<string>('SMS_API_URL', 'https://api.cjysoft.com/sms/send');
+    this.smsApiUrl = this.configService.get<string>('SMS_API_URL', 'https://web.esoftsms.com/v2sms.aspx');
   }
 
   /**
@@ -45,26 +46,41 @@ export class SmsService {
     try {
       this.logger.log(`准备发送短信: 手机号=${phone}, 内容=${content}`);
 
-      // 企业融合通讯平台接口（根据实际文档调整参数）
-      const requestBody = {
-        username: this.smsUsername,
-        password: this.smsPassword,
-        mobile: phone,
-        content: content,
-        timestamp: new Date().getTime().toString(),
-      };
+      // 生成时间戳，格式为年月日时分秒
+      const now = new Date();
+      const timestamp = now.getFullYear().toString() +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getDate().toString().padStart(2, '0') +
+        now.getHours().toString().padStart(2, '0') +
+        now.getMinutes().toString().padStart(2, '0') +
+        now.getSeconds().toString().padStart(2, '0');
+
+      // 生成签名：账号+密码+时间戳，MD5加密，32位小写
+      const signStr = this.smsUserid + this.smsPassword + timestamp;
+      const sign = crypto.createHash('md5').update(signStr).digest('hex').toLowerCase();
+
+      // 构造表单参数
+      const params = new URLSearchParams();
+      params.append('action', 'send');
+      params.append('userid', this.smsUserid);
+      params.append('timestamp', timestamp);
+      params.append('sign', sign);
+      params.append('mobile', phone);
+      params.append('content', content);
+
+      this.logger.log(`请求参数: action=send, userid=${this.smsUserid}, timestamp=${timestamp}, sign=${sign}, mobile=${phone}`);
 
       // 发送 HTTP 请求
       const response = await firstValueFrom(
-        this.httpService.post(this.smsApiUrl, requestBody, {
+        this.httpService.post(this.smsApiUrl, params, {
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
           timeout: 10000,
         }),
       );
 
-      this.logger.log(`短信发送响应: ${JSON.stringify(response.data)}`);
+      this.logger.log(`短信发送响应: ${response.data}`);
 
       // 根据接口返回状态判断是否成功
       return this.isSuccess(response.data);
@@ -83,12 +99,12 @@ export class SmsService {
 
   /**
    * 判断接口返回是否成功
-   * @param response 接口响应数据
+   * @param response 接口响应数据（XML格式）
    * @returns 是否成功
    */
-  private isSuccess(response: any): boolean {
-    // 根据实际接口文档调整判断逻辑
-    if (response.code === 200 || response.status === 'success' || response.result === 0) {
+  private isSuccess(response: string): boolean {
+    // 简单判断XML中是否包含 Success
+    if (response.includes('returnstatus>Success</returnstatus>')) {
       return true;
     }
     return false;

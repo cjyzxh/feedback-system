@@ -1,5 +1,24 @@
 # 项目修改日志
 
+## 2026-04-24
+
+### 7. 短信认证功能开发
+- **新增文件**：
+  - `backend/src/modules/sms/sms.service.ts` - 短信服务
+  - `backend/src/modules/sms/sms.module.ts` - 短信模块
+  - `backend/.env.example` - 环境变量配置示例
+- **修改文件**：
+  - `backend/src/modules/auth/auth.service.ts` - 集成短信发送功能
+  - `backend/src/modules/auth/auth.module.ts` - 引入短信模块
+  - `backend/package.json` - 添加依赖 (@nestjs/axios, axios)
+- **功能说明**：
+  - 发送短信验证码接口
+  - 短信验证码登录
+  - 开发模式下短信发送失败会模拟成功（便于调试）
+  - 支持环境变量配置短信服务（用户名、密码、API地址）
+
+---
+
 ## 2026-04-23
 
 ### 6. 初始化 Git 仓库并首次提交

@@ -1,17 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
 import { LoginDto, SmsLoginDto, SendCodeDto } from './dto/auth.dto';
+import { SmsService } from '../sms/sms.service';
 
 // 认证服务层
 // 类似于 VB6 的业务类（.cls），负责处理具体的业务逻辑
 // @Injectable() - 表示这个类可以被 NestJS 依赖注入
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
+    private smsService: SmsService,
   ) {}
 
   // 存储验证码的临时容器（实际项目中应该使用 Redis）
@@ -76,10 +80,15 @@ export class AuthService {
     // 4. 存储验证码（实际项目应该用 Redis）
     this.codeStore.set(phone, { code, expireTime });
     
-    // 5. 模拟发送短信（控制台打印）
-    console.log(`向 ${phone} 发送验证码：${code}`);
+    // 5. 调用真实的短信服务发送
+    this.logger.log(`准备向 ${phone} 发送验证码：${code}`);
+    const sendResult = await this.smsService.sendVerificationCode(phone, code);
     
-    // 实际项目中这里应该调用短信服务商的 API
+    if (!sendResult) {
+      throw new UnauthorizedException('短信发送失败，请稍后重试');
+    }
+    
+    this.logger.log(`验证码发送成功: ${phone}`);
   }
 
   // 短信验证码登录

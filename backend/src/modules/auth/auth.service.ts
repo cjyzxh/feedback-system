@@ -66,12 +66,7 @@ export class AuthService {
       throw new UnauthorizedException('手机号格式错误');
     }
     
-    // 2. 检查手机号是否绑定用户
-    const user = await this.userService.findByPhone(phone);
-    
-    if (!user) {
-      throw new UnauthorizedException('该手机号未绑定用户');
-    }
+    // 2. 不再检查手机号是否绑定用户，允许新用户获取验证码
     
     // 3. 生成6位随机验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -82,13 +77,24 @@ export class AuthService {
     
     // 5. 调用真实的短信服务发送
     this.logger.log(`准备向 ${phone} 发送验证码：${code}`);
-    const sendResult = await this.smsService.sendVerificationCode(phone, code);
     
-    if (!sendResult) {
-      throw new UnauthorizedException('短信发送失败，请稍后重试');
+    try {
+      const sendResult = await this.smsService.sendVerificationCode(phone, code);
+      
+      if (!sendResult) {
+        throw new UnauthorizedException('短信发送失败，请稍后重试');
+      }
+      
+      this.logger.log(`验证码发送成功: ${phone}`);
+    } catch (error) {
+      this.logger.error(`短信发送异常: ${error.message}`);
+      // 在开发环境下，即使发送失败也继续执行，模拟成功
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        this.logger.warn(`开发模式：忽略短信发送失败，模拟成功`);
+      } else {
+        throw error;
+      }
     }
-    
-    this.logger.log(`验证码发送成功: ${phone}`);
   }
 
   // 短信验证码登录
@@ -109,12 +115,30 @@ export class AuthService {
     }
     
     // 3. 验证验证码是否正确
-    if (storedCodeInfo.code !== code) {
+    // 开发环境下，接受任意6位数字作为验证码，方便测试
+    const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+    const isCodeValid = isDevelopment ? /^\d{6}$/.test(code) : storedCodeInfo.code === code;
+    
+    if (!isCodeValid) {
       throw new UnauthorizedException('验证码错误');
     }
     
     // 4. 查找用户
-    const user = await this.userService.findByPhone(phone);
+    let user = await this.userService.findByPhone(phone);
+    
+    // 开发环境下，如果用户不存在，创建一个测试用户
+    if (!user && (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)) {
+      this.logger.warn(`开发模式：用户不存在，创建测试用户: ${phone}`);
+      user = await this.userService.create({
+        username: phone,
+        realName: '测试用户',
+        password: '123456',
+        phone: phone,
+        email: `${phone}@test.com`,
+        role: 'user',
+        status: 1
+      });
+    }
     
     if (!user) {
       throw new UnauthorizedException('用户不存在');

@@ -128,34 +128,47 @@ const sendCode = async () => {
   }
   
   try {
-    // 直接使用原生 fetch，完全避免 axios 拦截器问题
-    const response = await fetch('/api/auth/send-code', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ phone: loginForm.phone })
-    })
-    
-    const result = await response.json()
-    
-    if (result.code === 200) {
-      ElMessage.success('验证码已发送')
-      countdown.value = 60
-      timer.value = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(timer.value)
-          timer.value = null
+      // 直接使用原生 fetch，完全避免 axios 拦截器问题
+      const response = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ phone: loginForm.phone })
+      })
+      
+      let result;
+      if (response.ok) {
+        // 如果响应正常，解析JSON
+        result = await response.json();
+        
+        if (result.code === 200) {
+          ElMessage.success('验证码已发送')
+          countdown.value = 60
+          timer.value = setInterval(() => {
+            countdown.value--
+            if (countdown.value <= 0) {
+              clearInterval(timer.value)
+              timer.value = null
+            }
+          }, 1000)
+        } else {
+          ElMessage.error(result.message || '发送验证码失败')
         }
-      }, 1000)
-    } else {
-      ElMessage.error(result.message || '发送验证码失败')
+      } else {
+        // 如果响应错误，尝试解析JSON错误信息
+        try {
+          result = await response.json();
+          ElMessage.error(result.message || `发送验证码失败 (${response.status})`)
+        } catch (jsonError) {
+          // 如果无法解析JSON，显示状态码
+          ElMessage.error(`发送验证码失败 (${response.status})`)
+        }
+      }
+    } catch (error) {
+      console.error('发送验证码失败:', error)
+      ElMessage.error('发送验证码失败，请检查网络连接')
     }
-  } catch (error) {
-    console.error('发送验证码失败:', error)
-    ElMessage.error('发送验证码失败')
-  }
 }
 
 const handleLogin = async () => {

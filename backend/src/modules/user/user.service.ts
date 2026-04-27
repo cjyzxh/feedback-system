@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -7,6 +7,8 @@ import { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+  
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -126,9 +128,27 @@ export class UserService {
 
   // 根据手机号查询用户
   async findByPhone(phone: string): Promise<User | null> {
-    const users = await this.userRepository.find({
+    this.logger.log(`根据手机号查询用户: ${phone}`);
+    
+    // 尝试多种方式查询
+    const users1 = await this.userRepository.find({
       where: { phone },
     });
-    return users.length > 0 ? users[0] : null;
+    this.logger.log(`方式1查询结果: ${JSON.stringify(users1)}`);
+    
+    // 尝试使用ILike进行不区分大小写查询
+    const users2 = await this.userRepository.find({
+      where: { phone: Like(`${phone}`) },
+    });
+    this.logger.log(`方式2查询结果: ${JSON.stringify(users2)}`);
+    
+    // 查看所有用户
+    const allUsers = await this.userRepository.find({
+      select: ['id', 'username', 'phone'],
+    });
+    this.logger.log(`所有用户: ${JSON.stringify(allUsers)}`);
+    
+    return users1.length > 0 ? users1[0] : 
+           users2.length > 0 ? users2[0] : null;
   }
 }

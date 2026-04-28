@@ -115,9 +115,8 @@ export class AuthService {
     }
     
     // 3. 验证验证码是否正确
-    // 开发环境下，接受任意6位数字作为验证码，方便测试
-    const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-    const isCodeValid = isDevelopment ? /^\d{6}$/.test(code) : storedCodeInfo.code === code;
+    // 严格验证验证码，无论开发环境还是生产环境
+    const isCodeValid = storedCodeInfo.code === code;
     
     if (!isCodeValid) {
       throw new UnauthorizedException('验证码错误');

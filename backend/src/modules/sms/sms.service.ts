@@ -7,7 +7,8 @@ import * as crypto from 'crypto';
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
-  private readonly smsUserid: string;
+  private readonly smsUserId: string; // 用户ID，用于签名
+  private readonly smsCompanyId: string; // 企业ID，用于API请求
   private readonly smsPassword: string;
   private readonly smsApiUrl: string;
 
@@ -15,9 +16,10 @@ export class SmsService {
     private configService: ConfigService,
     private httpService: HttpService,
   ) {
-    this.smsUserid = this.configService.get<string>('SMS_USERID', 'cjy01').replace(/^"|"$/g, '');
-    // 硬编码密码以测试签名问题
-    this.smsPassword = 'Cjysoft_2';
+    this.smsUserId = this.configService.get<string>('SMS_USER_ID', 'cjy01').replace(/^"|"$/g, '');
+    this.smsCompanyId = this.configService.get<string>('SMS_COMPANY_ID', '250').replace(/^"|"$/g, '');
+    // 从环境变量获取密码
+    this.smsPassword = this.configService.get<string>('SMS_PASSWORD', 'Cjysoft_2').replace(/^"|"$/g, '');
     this.smsApiUrl = this.configService.get<string>('SMS_API_URL', 'https://web.esoftsms.com/v2sms.aspx').replace(/^"|"$/g, '');
   }
 
@@ -52,9 +54,9 @@ export class SmsService {
       
       // 输出配置信息（隐藏密码的部分内容）
       const maskedPassword = this.smsPassword.substring(0, 3) + '****' + this.smsPassword.substring(this.smsPassword.length - 2);
-      this.logger.log(`配置信息: userid=${this.smsUserid}, password=${maskedPassword}, apiUrl=${this.smsApiUrl}`);
+      this.logger.log(`配置信息: userId=${this.smsUserId}, companyId=${this.smsCompanyId}, password=${maskedPassword}, apiUrl=${this.smsApiUrl}`);
 
-      // 生成时间戳，格式为年月日时分秒
+      // 生成时间戳，格式为年月日时分秒（14位，符合API文档要求）
       const now = new Date();
       const timestamp = now.getFullYear().toString() +
         (now.getMonth() + 1).toString().padStart(2, '0') +
@@ -62,10 +64,11 @@ export class SmsService {
         now.getHours().toString().padStart(2, '0') +
         now.getMinutes().toString().padStart(2, '0') +
         now.getSeconds().toString().padStart(2, '0');
+      this.logger.log(`生成的14位时间戳: ${timestamp}`);
       this.logger.log(`生成的时间戳: ${timestamp}`);
 
-      // 生成签名：账号+密码+时间戳，MD5加密，32位小写（根据文档要求）
-      const signStr = this.smsUserid + this.smsPassword + timestamp;
+      // 生成签名：用户ID+密码+时间戳，MD5加密，32位小写（根据成功测试的配置）
+      const signStr = this.smsUserId + this.smsPassword + timestamp;
       this.logger.log(`签名原始字符串: ${signStr}`);
       const sign = crypto.createHash('md5').update(signStr).digest('hex').toLowerCase();
       this.logger.log(`生成的签名: ${sign}`);
@@ -73,7 +76,7 @@ export class SmsService {
       // 构造表单参数
       const params = new URLSearchParams();
       params.append('action', 'send');
-      params.append('userid', this.smsUserid);
+      params.append('userid', this.smsCompanyId); // API请求中使用企业ID
       params.append('timestamp', timestamp);
       params.append('sign', sign);
       params.append('mobile', phone);
@@ -90,7 +93,7 @@ export class SmsService {
       
       const postData = querystring.stringify({
         action: 'send',
-        userid: this.smsUserid,
+        userid: this.smsCompanyId, // API请求中使用企业ID
         timestamp: timestamp,
         sign: sign,
         mobile: phone,

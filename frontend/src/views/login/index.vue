@@ -77,7 +77,7 @@
         </el-form-item>
         
         <el-form-item>
-          <el-button type="primary" size="large" class="login-button" @click="handleLogin" :loading="loading">
+          <el-button type="primary" size="large" class="login-button" @click="handleLogin" :loading="loading" :disabled="isLoginDisabled">
             {{ loading ? '登录中...' : '登 录' }}
           </el-button>
         </el-form-item>
@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Iphone, Message } from '@element-plus/icons-vue'
@@ -100,11 +100,24 @@ const loading = ref(false)
 const loginType = ref('account')
 const countdown = ref(0)
 const timer = ref(null)
+const hasSentCode = ref(false) // 记录是否已发送过验证码
 const loginForm = reactive({
   username: '',
   password: '',
   phone: '',
   code: ''
+})
+
+// 计算登录按钮是否应该禁用
+const isLoginDisabled = computed(() => {
+  if (loading.value) return true
+  
+  if (loginType.value === 'account') {
+    return !loginForm.username || !loginForm.password
+  } else {
+    // 短信登录：未发送验证码 或 手机号为空 或 验证码不是6位数字
+    return !hasSentCode.value || !loginForm.phone || !/^\d{6}$/.test(loginForm.code)
+  }
 })
 
 const switchLoginType = (type) => {
@@ -113,6 +126,7 @@ const switchLoginType = (type) => {
   loginForm.password = ''
   loginForm.phone = ''
   loginForm.code = ''
+  hasSentCode.value = false // 切换登录类型时重置已发送状态
 }
 
 const sendCode = async () => {
@@ -144,6 +158,7 @@ const sendCode = async () => {
         
         if (result.code === 200) {
           ElMessage.success('验证码已发送')
+          hasSentCode.value = true // 设置为已发送验证码
           countdown.value = 60
           timer.value = setInterval(() => {
             countdown.value--
@@ -210,20 +225,34 @@ const handleLogin = async () => {
       body: JSON.stringify(data)
     })
     
-    const res = await response.json()
-    
-    const token = res.data?.token
-    const user = res.data?.user
-    
-    if (token) {
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user || {}))
-      localStorage.setItem('username', user?.realName || user?.username || '')
-      localStorage.setItem('roleName', user?.roleName || user?.role || '用户')
-      localStorage.setItem('permissions', JSON.stringify(user?.permissions || []))
-      localStorage.setItem('viewOthers', user?.viewOthers || 0)
-      ElMessage.success('登录成功')
-      router.push('/')
+    let res;
+    if (response.ok) {
+      // 如果响应正常，解析JSON
+      res = await response.json();
+      
+      const token = res.data?.token;
+      const user = res.data?.user;
+      
+      if (token) {
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user || {}))
+        localStorage.setItem('username', user?.realName || user?.username || '')
+        localStorage.setItem('roleName', user?.roleName || user?.role || '用户')
+        localStorage.setItem('permissions', JSON.stringify(user?.permissions || []))
+        localStorage.setItem('viewOthers', user?.viewOthers || 0)
+        ElMessage.success('登录成功')
+        router.push('/')
+      }
+    } else {
+      // 如果响应错误，尝试解析JSON错误信息
+      try {
+        res = await response.json();
+        // 显示服务器返回的具体错误信息
+        ElMessage.error(res.message || `登录失败 (${response.status})`)
+      } catch (jsonError) {
+        // 如果无法解析JSON，显示状态码
+        ElMessage.error(`登录失败 (${response.status})`)
+      }
     }
   } catch (error) {
     console.error('登录失败:', error)

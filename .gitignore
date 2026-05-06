@@ -37,6 +37,12 @@ Thumbs.db
 # Documentation (VB6 legacy files)
 docs/
 
+# Development temp scripts
+backend/*.js
+backend/*.json
+!backend/package.json
+!backend/tsconfig.json
+
 # Environment
 .env
 .env.local

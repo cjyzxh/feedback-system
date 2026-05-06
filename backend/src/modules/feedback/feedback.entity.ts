@@ -1,8 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn } from 'typeorm';
 
 @Entity('yw_wentilb')
 export class Feedback {
-  @PrimaryGeneratedColumn()
+  @PrimaryColumn({ name: 'ID' })
   id: number;
 
   @Column({ name: 'lsh', type: 'int', nullable: true })
@@ -20,8 +20,8 @@ export class Feedback {
   @Column({ name: 'mokuai', nullable: true, length: 50 })
   module: string;
 
-  @Column({ name: 'form', nullable: true, length: 50 })
-  form: string;
+  @Column({ name: 'chuangtimc', nullable: true, length: 50 })
+  chuangtimc: string;
 
   @Column({ name: 'wentilx', nullable: true, length: 50 })
   wentilx: string;
@@ -59,14 +59,11 @@ export class Feedback {
   @Column({ name: 'lvrusj', nullable: true })
   lvrusj: Date;
 
+  @Column({ name: 'xgsj', nullable: true })
+  xgsj: Date;
+
   @Column({ name: 'taolunbz', nullable: true, length: 4 })
   taolunbz: string;
-
-  @Column({ name: 'lurusr', nullable: true, length: 50 })
-  lurusr: string;
-
-  @Column({ name: 'lurumid', type: 'int', nullable: true })
-  lurumid: number;
 
   @Column({ name: 'szcsgcs', nullable: true, length: 50 })
   szcsgcs: string;

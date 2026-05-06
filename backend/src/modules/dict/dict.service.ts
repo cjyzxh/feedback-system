@@ -1,32 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Hospital } from './hospital.entity';
-import { Module as AppModule } from './module.entity';
-import { Form } from './form.entity';
-import { Engineer } from './engineer.entity';
+import { Repository, Like } from 'typeorm';
+import { XtConfigServer } from '../entities/xtConfigServer.entity';
+import { ZdMokuai } from '../entities/zdMokuai.entity';
+import { ZdChuangti } from '../entities/zdChuangti.entity';
+import { ZdJishuyuan } from '../entities/zdJishuyuan.entity';
+import pinyin from 'pinyin';
 
 @Injectable()
 export class DictService {
   private readonly logger = new Logger(DictService.name);
 
   constructor(
-    @InjectRepository(Hospital) private hospitalRepository: Repository<Hospital>,
-    @InjectRepository(AppModule) private moduleRepository: Repository<AppModule>,
-    @InjectRepository(Form) private formRepository: Repository<Form>,
-    @InjectRepository(Engineer) private engineerRepository: Repository<Engineer>,
+    @InjectRepository(ZdMokuai) private moduleRepository: Repository<ZdMokuai>,
+    @InjectRepository(ZdChuangti) private formRepository: Repository<ZdChuangti>,
+    @InjectRepository(ZdJishuyuan) private engineerRepository: Repository<ZdJishuyuan>,
+    @InjectRepository(XtConfigServer) private configRepository: Repository<XtConfigServer>,
   ) {}
 
   async getModules() {
     try {
-      const modules = await this.moduleRepository
-        .createQueryBuilder('m')
-        .select(['m.id', 'm.banben', 'm.mokuaimc'])
-        .where('m.mokuaimc IS NOT NULL')
-        .orderBy('m.mokuaimc', 'ASC')
-        .getMany();
+      const modules = await this.moduleRepository.find({
+        where: { mokuaimc: Like('%') },
+        order: { mokuaimc: 'ASC' },
+      });
       
-      return modules.map(m => ({ 
+      return modules.map((m) => ({ 
         id: m.id, 
         banben: m.banben, 
         mokuaimc: m.mokuaimc,
@@ -34,12 +33,24 @@ export class DictService {
         label: m.mokuaimc
       }));
     } catch (e) {
+      console.error('getModules error:', e);
       return [];
     }
   }
 
   async createModule(moduleData: { banben: string; mokuaimc: string }) {
-    const module = this.moduleRepository.create(moduleData);
+    const maxIdResult = await this.moduleRepository.query(
+      'SELECT ISNULL(MAX(ID), 0) + 1 as nextId FROM zd_mokuai'
+    );
+    const nextId = maxIdResult[0]?.nextId || 1;
+    
+    const module = this.moduleRepository.create({
+      id: nextId,
+      banben: moduleData.banben,
+      mokuaimc: moduleData.mokuaimc,
+      mokuaidm: 0,
+    });
+    
     await this.moduleRepository.save(module);
     return { success: true };
   }
@@ -58,16 +69,17 @@ export class DictService {
     this.logger.log('getForms called, moduleName: [' + moduleName + ']');
     
     try {
-      const qb = this.formRepository.createQueryBuilder('f')
-        .select(['f.id', 'f.mokuai', 'f.chuangtimc']);
-      
+      const where: any = {};
       if (moduleName) {
-        qb.where('f.mokuai = :moduleName', { moduleName });
+        where.mokuai = moduleName;
       }
       
-      const forms = await qb.orderBy('f.mokuai', 'ASC').addOrderBy('f.id', 'ASC').getMany();
+      const forms = await this.formRepository.find({
+        where,
+        order: { mokuai: 'ASC', id: 'ASC' },
+      });
       
-      const result = forms.map(f => ({ 
+      const result = forms.map((f) => ({ 
         id: f.id, 
         mokuai: f.mokuai, 
         chuangtimc: f.chuangtimc,
@@ -78,108 +90,122 @@ export class DictService {
       this.logger.log('Result: ' + JSON.stringify(result).substring(0, 200));
       return result;
     } catch (e) {
+      console.error('getForms error:', e);
       return [];
     }
   }
 
   async getEngineers() {
     try {
-      const engineers = await this.engineerRepository
-        .createQueryBuilder('e')
-        .select(['e.xingming'])
-        .where('e.zhuangtai = 1')
-        .orderBy('e.xingming', 'ASC')
-        .take(20)
-        .getMany();
+      const engineers = await this.engineerRepository.find({
+        where: { zhuangtai: '1' },
+        order: { xingming: 'ASC' },
+      });
       
-      return engineers.map(e => ({ value: e.xingming, label: e.xingming }));
+      const uniqueNames = [...new Set(engineers.map((e) => e.xingming))];
+      return uniqueNames.map((name) => ({ value: name, label: name }));
     } catch (e) {
+      console.error('getEngineers error:', e);
       return [];
     }
   }
 
   async getShishi() {
-    try {
-      const engineers = await this.engineerRepository
-        .createQueryBuilder('e')
-        .select(['e.xingming'])
-        .where('e.zhuangtai = 1')
-        .orderBy('e.xingming', 'ASC')
-        .take(20)
-        .getMany();
-      
-      return engineers.map(e => ({ value: e.xingming, label: e.xingming }));
-    } catch (e) {
-      return [];
-    }
+    return this.getEngineers();
   }
 
   async getYanfa() {
-    try {
-      const engineers = await this.engineerRepository
-        .createQueryBuilder('e')
-        .select(['e.xingming'])
-        .where('e.zhuangtai = 1')
-        .orderBy('e.xingming', 'ASC')
-        .take(20)
-        .getMany();
-      
-      return engineers.map(e => ({ value: e.xingming, label: e.xingming }));
-    } catch (e) {
-      return [];
-    }
+    return this.getEngineers();
   }
 
   async getVersions() {
     try {
-      const result = await this.hospitalRepository
-        .createQueryBuilder('h')
-        .select('h.banben')
-        .distinct(true)
-        .getRawMany();
+      const result = await this.moduleRepository.query(
+        'SELECT DISTINCT banben FROM zd_mokuai'
+      );
       
-      return result.map(r => ({ label: r.h_banben }));
+      return result.map((r) => ({ label: r.banben }));
     } catch (e) {
+      console.error('getVersions error:', e);
       return [];
+    }
+  }
+
+  // 生成拼音码函数
+  private generatePinyin(text: string): string {
+    if (!text) return '';
+    try {
+      const pinyinArray = pinyin(text, {
+        style: pinyin.STYLE_FIRST_LETTER,
+        heteronym: false
+      });
+      return pinyinArray.map(item => item[0]).join('').toUpperCase();
+    } catch (error) {
+      return '';
     }
   }
 
   async getHospitals(keyword?: string) {
     try {
-      const qb = this.hospitalRepository
-        .createQueryBuilder('h')
-        .select(['h.YHMC as label', 'h.YHMC as value', 'h.PYM as pinyin'])
-        .distinct(true);
+      const results = await this.configRepository.query(
+        "SELECT DISTINCT YHMC as name, SYQ as syq FROM xt_ConfigServer WHERE ZuoFeiBZ = '否' AND QY <> '内部' ORDER BY YHMC"
+      );
+      
+      let hospitals = results.map((r) => ({
+        label: r.name,
+        value: r.name,
+        syq: r.syq,
+        pinyin: this.generatePinyin(r.name)
+      }));
       
       if (keyword) {
-        qb.where('h.YHMC LIKE :keyword', { keyword: `%${keyword}%` })
-          .orWhere('h.PYM LIKE :keyword', { keyword: `%${keyword}%` });
+        const lowerKeyword = keyword.toLowerCase();
+        hospitals = hospitals.filter(h => 
+          h.label.toLowerCase().includes(lowerKeyword) || 
+          h.pinyin.toLowerCase().includes(lowerKeyword)
+        );
       }
       
-      const result = await qb.orderBy('h.YHMC', 'ASC').take(keyword ? 20 : 50).getRawMany();
-      return result.map(r => ({ label: r.label, value: r.value, pinyin: r.pinyin }));
+      return keyword ? hospitals.slice(0, 20) : hospitals.slice(0, 50);
     } catch (e) {
+      console.error('getHospitals error:', e);
       return [];
     }
   }
 
   async getTemplates() {
     try {
-      const result = await this.hospitalRepository
-        .createQueryBuilder('h')
-        .select(['h.id', 'h.mokuai as module', 'h.banben as version', 'h.mokuai as label'])
-        .orderBy('h.mokuai', 'ASC')
-        .addOrderBy('h.banben', 'ASC')
-        .getRawMany();
+      const result = await this.moduleRepository.find({
+        select: ['id', 'mokuaimc', 'banben'],
+        order: { mokuaimc: 'ASC', banben: 'ASC' },
+      });
       
-      return result;
+      return result.map((r) => ({
+        id: r.id,
+        module: r.mokuaimc,
+        version: r.banben,
+        label: r.mokuaimc
+      }));
     } catch (e) {
+      console.error('getTemplates error:', e);
       return [];
     }
   }
 
   async createForm(formData: { mokuai: string; chuangtimc: string }) {
-    const form = this.formRepository.create(formData);
+    const maxIdResult = await this.formRepository.query(
+      'SELECT ISNULL(MAX(ID), 0) + 1 as nextId FROM zd_chuangti'
+    );
+    const nextId = maxIdResult[0]?.nextId || 1;
+    
+    const form = this.formRepository.create({
+      id: nextId,
+      banbenh: '',
+      mokuai: formData.mokuai,
+      chuangtidm: 0,
+      chuangtimc: formData.chuangtimc,
+    });
+    
     await this.formRepository.save(form);
     return { success: true };
   }

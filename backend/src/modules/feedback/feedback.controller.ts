@@ -15,69 +15,58 @@ export class FeedbackController {
   // 获取下一个流水号
   // GET /api/feedback/getLsh
   @Get('getLsh')
-  getLsh() {
-    return this.feedbackService.getNextLsh();
+  async getLsh() {
+    const data = await this.feedbackService.getNextLsh();
+    return { code: 200, message: '查询成功', data };
   }
 
   // 上传图片
   // POST /api/feedback/upload
-  // @UseInterceptors(FileInterceptor) - 文件上传拦截器，类似于 VB6 的 FileUpload 控件
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads',  // 上传文件保存目录
+      destination: './uploads',
       filename: (req, file, cb) => {
-        cb(null, file.originalname);  // 使用原文件名
+        cb(null, file.originalname);
       },
     }),
   }))
-  upload(@UploadedFile() file: any, @Body() body: any) {
-    const feedbackId = body?.feedbackId || 'temp';
+  async upload(@UploadedFile() file: any, @Body() body: any) {
+    const lsh = parseInt(body?.lsh) || 0;
+    const tpnum = parseInt(body?.tpnum) || 1;
+    
     const ext = extname(file.originalname);
-    const newFilename = `${feedbackId}${ext}`;
+    const filename = `${lsh}-${tpnum}${ext}`;
     const oldPath = file.path;
-    const newPath = `./uploads/${newFilename}`;
+    const newPath = `./uploads/${filename}`;
+    
     if (fs.existsSync(oldPath)) {
       fs.renameSync(oldPath, newPath);
     }
-    return { url: `/feedback/uploads/${newFilename}`, filename: newFilename };
+    
+    return { url: `/feedback/uploads/${filename}`, filename: filename };
   }
 
-  // 获取问题反馈的所有图片
-  // GET /api/feedback/images/:feedbackId
-  @Get('images/:feedbackId')
-  getImages(@Param('feedbackId') feedbackId: string) {
-    const images: string[] = [];
-    const files = fs.readdirSync('./uploads');
-    for (const file of files) {
-      if (file.startsWith(feedbackId + '-')) {
-        images.push(file);
-      }
-    }
-    return images.sort();
+  // 获取问题反馈的所有图片 - 从目录中检索
+  // GET /api/feedback/images/:lsh
+  @Get('images/:lsh')
+  async getImages(@Param('lsh') lsh: string) {
+    const images = await this.feedbackService.getImagesByLsh(parseInt(lsh));
+    return images;
   }
 
   // 删除问题反馈的所有图片
-  // DELETE /api/feedback/images/:feedbackId
-  @Delete('images/:feedbackId')
-  deleteImages(@Param('feedbackId') feedbackId: string) {
-    try {
-      const files = fs.readdirSync('./uploads');
-      for (const file of files) {
-        if (file.startsWith(feedbackId + '-')) {
-          fs.unlinkSync('./uploads/' + file);
-        }
-      }
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err };
-    }
+  // DELETE /api/feedback/images/:lsh
+  @Delete('images/:lsh')
+  async deleteImages(@Param('lsh') lsh: string) {
+    await this.feedbackService.deleteImagesByLsh(parseInt(lsh));
+    return { success: true };
   }
 
   // 删除单张图片
   // DELETE /api/feedback/image/:filename
   @Delete('image/:filename')
-  deleteImage(@Param('filename') filename: string) {
+  async deleteImage(@Param('filename') filename: string) {
     try {
       const filePath = './uploads/' + filename;
       if (fs.existsSync(filePath)) {

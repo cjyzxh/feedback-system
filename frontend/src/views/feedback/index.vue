@@ -340,7 +340,7 @@ const onModuleChange = async (moduleName: any) => {
 }
 
 const getLsh = async () => {
-  try { const res = await axios.get('/api/feedback/getLsh'); form.lsh = res?.lsh || Date.now().toString() } 
+  try { const res = await axios.get('/api/feedback/getLsh'); form.lsh = res?.data?.data?.lsh || Date.now().toString() } 
   catch (err) { form.lsh = Date.now().toString() }
 }
 
@@ -359,14 +359,14 @@ const handleEdit = async (row: any) => {
   uploadFileList.value = []
   forms.value = []
   try {
-    const res = await axios.get(`/api/feedback/images/${row.id}`)
+    const res = await axios.get(`/api/feedback/images/${row.lsh}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      uploadFileList.value = imgs.map((name: string) => ({ name, url: `/uploads/${name}`, status: 'success' }))
+      uploadFileList.value = imgs.map((name: string) => ({ name, url: `/api/feedback/uploads/${name}`, status: 'success' }))
     }
   } catch (err) { console.error('加载图片失败:', err) }
   if (form.mokuai) {
-    try { const res = await axios.get(`/dict/forms?module=${encodeURIComponent(form.mokuai)}`); forms.value = res.data.data || [] }
+    try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(form.mokuai)}`); forms.value = res.data.data || [] }
     catch (err) { console.error('加载窗体失败:', err) }
   }
   dialogVisible.value = true
@@ -395,7 +395,7 @@ const handleRemove = async (file: any, fileList: any) => {
     if (file.url && file.name) {
       const filename = file.name || file.url.split('/').pop()
       if (filename) {
-        await axios.delete(`/feedback/image/${filename}`)
+        await axios.delete(`/api/feedback/image/${filename}`)
       }
     }
     // 从列表中移除
@@ -434,10 +434,10 @@ const handlePaste = (event: ClipboardEvent) => {
 // 查看图片
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get(`/api/feedback/images/${row.id}`)
+    const res = await axios.get(`/api/feedback/images/${row.lsh}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewImages.value = imgs.map((name: string) => `/uploads/${name}`)
+      previewImages.value = imgs.map((name: string) => `/api/feedback/uploads/${name}`)
     } else {
       previewImages.value = []
     }
@@ -456,21 +456,42 @@ const handleSubmit = async () => {
     const data = { ...form }
     if (!isEdit.value) data.shouzhongbz = 'Y'
     
-    let savedId = form.id
+    let savedFeedback = null
+    
     if (isEdit.value) {
       await axios.put(`/api/feedback/${form.id}`, data)
-      // 编辑模式下只更新图片，不删除旧的（用户手动删除的图片已在handleRemove中删除）
+      savedFeedback = { lsh: form.lsh }
     } else {
       const res = await axios.post('/api/feedback', data)
-      savedId = res?.id || res?.data?.id || (res && typeof res === 'object' && 'id' in res ? res.id : form.id)
+      savedFeedback = res?.data?.data || res.data || res
+      // 确保使用返回的lsh
+      if (savedFeedback && savedFeedback.lsh) {
+        form.lsh = savedFeedback.lsh
+      }
     }
     
-    // 上传图片
+    // 上传图片 - 使用返回的lsh
+    const lshToUse = savedFeedback?.lsh || form.lsh
     const rawFiles = uploadFileList.value.filter(f => f.raw)
+    const existingFiles = uploadFileList.value.filter(f => !f.raw)
+    let maxTpnum = 0
+    // 找到现有图片的最大编号
+    existingFiles.forEach(f => {
+      if (f.name) {
+        const match = f.name.match(/^\d+-(\d+)\./)
+        if (match) {
+          const num = parseInt(match[1])
+          if (num > maxTpnum) maxTpnum = num
+        }
+      }
+    })
+    // 新增图片从maxTpnum + 1开始编号
     for (let i = 0; i < rawFiles.length; i++) {
       const formData = new FormData()
       formData.append('file', rawFiles[i].raw)
-      formData.append('feedbackId', `${savedId}-${i + 1}`)
+      formData.append('lsh', String(lshToUse))
+      formData.append('yiyuanmc', form.yiyuanmc || '')
+      formData.append('tpnum', String(maxTpnum + i + 1))
       try {
         await axios.post('/api/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       } catch (err) { console.error('上传图片失败:', err) }
@@ -520,4 +541,3 @@ onMounted(() => { loadDicts(); loadData() })
 .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
 .carousel-actions { margin-top: 20px; }
 </style>
-rebuild

@@ -94,7 +94,12 @@
           <el-col :span="16">
             <el-form-item label="医院名称" prop="yiyuanmc">
               <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable :filter-method="filterHospital" class="full-width">
-                <el-option v-for="h in hospitals" :key="h.id" :label="h.label" :value="h.value" />
+                <el-option v-for="h in hospitals" :key="h.value" :value="h.value">
+                  <div class="hospital-option">
+                    <span class="hospital-name">{{ h.label }}</span>
+                    <span v-if="h.syq" class="hospital-syq"> - {{ h.syq }}</span>
+                  </div>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -205,6 +210,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Tickets, Delete } from '@element-plus/icons-vue'
 import api from '@/api'
+import axios from 'axios'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -325,7 +331,7 @@ const onModuleChange = async (module: string) => {
 }
 
 const getLsh = async () => {
-  try { const res = await api.get('/feedback/getLsh'); form.lsh = res?.lsh || res?.data?.lsh || Date.now().toString() } 
+  try { const res = await api.get('/feedback/getLsh'); form.lsh = res?.data?.data?.lsh || Date.now().toString() } 
   catch (err) { form.lsh = Date.now().toString() }
 }
 
@@ -344,14 +350,15 @@ const handleEdit = async (row: any) => {
   uploadFileList.value = []
   forms.value = []
   try {
-    const imgs = await axios.get(`/feedback/images/${row.id}`)
+    const imgsRes = await api.get(`/feedback/images/${row.id}`)
+    const imgs = imgsRes?.data || imgsRes || []
     if (imgs && imgs.length > 0) {
       uploadFileList.value = imgs.map((name: string) => ({ name, url: `/api/feedback/uploads/${name}`, status: 'success' }))
     }
   } catch (err) { console.error('加载图片失败:', err) }
   if (form.mokuai) {
     try { 
-      const res = await axios.get(`/dict/forms?module=${form.mokuai}`)
+      const res = await api.get(`/dict/forms?module=${form.mokuai}`)
       // 处理后端返回的数据结构，确保字段名正确
       forms.value = (res?.data?.data || res?.data || res || []).map((item: any) => ({
         id: item.id,
@@ -424,7 +431,8 @@ const handlePaste = (event: ClipboardEvent) => {
 // 查看图片
 const viewImages = async (row: any) => {
   try {
-    const imgs = await axios.get(`/feedback/images/${row.id}`)
+    const imgsRes = await api.get(`/feedback/images/${row.id}`)
+    const imgs = imgsRes?.data || imgsRes || []
     if (imgs && imgs.length > 0) {
       previewImages.value = imgs.map((name: string) => `/api/feedback/uploads/${name}`)
     } else {
@@ -450,8 +458,8 @@ const handleSubmit = async () => {
       await api.put(`/feedback/${form.id}`, data)
       // 编辑模式下只更新图片，不删除旧的（用户手动删除的图片已在handleRemove中删除）
     } else {
-      const res = await axios.post('/feedback', data)
-      savedId = res?.id || res?.data?.id || (res && typeof res === 'object' && 'id' in res ? res.id : form.id)
+      const res = await api.post('/feedback', data)
+      savedId = res?.data?.data?.id || res?.data?.id || (res && typeof res === 'object' && 'id' in res ? res.id : form.id)
     }
     
     // 上传图片 - 修复：编辑模式下需要计算已有图片数量来确定序号起点
@@ -464,7 +472,7 @@ const handleSubmit = async () => {
       // 序号 = 已有数量 + i + 1
       formData.append('feedbackId', `${savedId}-${existingImageCount + i + 1}`)
       try {
-        await axios.post('/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await api.post('/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       } catch (err) { console.error('上传图片失败:', err) }
     }
     
@@ -511,5 +519,19 @@ onMounted(() => { loadDicts(); loadData() })
 .thumbnail.active { border-color: #409eff; box-shadow: 0 0 8px rgba(64, 158, 255, 0.5); }
 .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
 .carousel-actions { margin-top: 20px; }
+
+/* 医院选项样式 */
+.hospital-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.hospital-name {
+  font-weight: 500;
+}
+.hospital-syq {
+  color: #909399;
+  font-size: 12px;
+  margin-left: 8px;
+}
 </style>
-rebuild

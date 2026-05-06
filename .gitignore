@@ -34,6 +34,9 @@ backend/uploads/
 .DS_Store
 Thumbs.db
 
+# Documentation (VB6 legacy files)
+docs/
+
 # Environment
 .env
 .env.local

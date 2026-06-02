@@ -22,28 +22,43 @@ export class FeedbackService {
       let okRecord = await this.okRepository.findOne({
         where: {}
       });
-      
+
       let nextLsh = 1;
-      
+
       if (okRecord) {
         nextLsh = (okRecord.lsh || 0) + 1;
+        // 立即更新 ok 表，避免并发重复
+        okRecord.lsh = nextLsh;
+        await this.okRepository.save(okRecord);
       } else {
         okRecord = this.okRepository.create({
           lsh: 1
         });
         await this.okRepository.save(okRecord);
       }
-      
+
       return {
         lsh: String(nextLsh),
         now: new Date().toISOString().replace('T', ' ').substring(0, 19)
       };
     } catch (error) {
       console.error('获取流水号失败:', error);
-      return {
-        lsh: '1',
-        now: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      };
+      // 失败时取最大 lsh + 1，避免重复
+      try {
+        const result: any = await this.feedbackRepository.manager.query(
+          'SELECT ISNULL(MAX(lsh), 0) + 1 as nextLsh FROM yw_wentilb'
+        );
+        const next = result[0]?.nextLsh || 1;
+        return {
+          lsh: String(next),
+          now: new Date().toISOString().replace('T', ' ').substring(0, 19)
+        };
+      } catch (e2) {
+        return {
+          lsh: Date.now().toString(),
+          now: new Date().toISOString().replace('T', ' ').substring(0, 19)
+        };
+      }
     }
   }
 
@@ -71,10 +86,10 @@ export class FeedbackService {
   // 创建反馈
   async create(dto: CreateFeedbackDto): Promise<YwWentilb> {
     try {
-      // 直接使用前端传过来的lsh，不再重新获取
-      const lshValue = typeof dto.lsh === 'string' ? parseInt(dto.lsh) : dto.lsh;
-      const lsh = lshValue || 1;
-      console.log('创建反馈，接收到的lsh:', dto.lsh, '解析后:', lsh);
+      // 总是从 ok 表原子地获取新的 lsh，避免重复
+      const nextLshData = await this.getNextLsh();
+      const lsh = parseInt(nextLshData.lsh) || 1;
+      console.log('创建反馈，原子获取的lsh:', lsh);
       
       const feedback = this.feedbackRepository.create({
         lsh: lsh,
@@ -101,9 +116,6 @@ export class FeedbackService {
       
       const savedFeedback = await this.feedbackRepository.save(feedback);
       console.log('保存成功:', savedFeedback);
-      
-      // 保存成功后更新ok表的lsh字段
-      await this.updateOkLsh(lsh);
       
       return savedFeedback;
     } catch (error) {
@@ -176,7 +188,7 @@ export class FeedbackService {
   // 分页查询反馈列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: YwWentilb[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, taolunbz, lsh } = query;
       
       const where: any = {};
       
@@ -201,6 +213,22 @@ export class FeedbackService {
       const eng = xggcs || engineer;
       if (eng) {
         where.xggcs = eng;
+      }
+      
+      if (gongchengsbz !== undefined) {
+        where.gongchengsbz = gongchengsbz;
+      }
+
+      if (csrbz !== undefined) {
+        where.csrbz = csrbz;
+      }
+
+      if (taolunbz !== undefined) {
+        where.taolunbz = taolunbz;
+      }
+      
+      if (lsh) {
+        where.lsh = lsh;
       }
       
       const [list, total] = await this.feedbackRepository.findAndCount({

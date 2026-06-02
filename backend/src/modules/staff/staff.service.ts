@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Staff } from './staff.entity';
-import { CreateStaffDto, UpdateStaffDto, QueryStaffDto } from './dto/staff.dto';
 
 @Injectable()
 export class StaffService {
@@ -11,27 +10,22 @@ export class StaffService {
     private staffRepository: Repository<Staff>,
   ) {}
 
-  async create(dto: CreateStaffDto): Promise<Staff> {
-    const staff = this.staffRepository.create({...dto, birthDate: dto.birthDate || null });
-    return this.staffRepository.save(staff);
-  }
-
-  async findAll(query: QueryStaffDto): Promise<{ list: Staff[]; total: number }> {
-    const qb = this.staffRepository.createQueryBuilder('staff');
+  async findAll(): Promise<{ list: any[]; total: number }> {
+    const [list, total] = await this.staffRepository.findAndCount({
+      order: { id: 'ASC' }
+    });
     
-    if (query.category) {
-      qb.andWhere('staff.category = :category', { category: query.category });
-    }
+    // 转换数据格式，让前端更容易使用 - 直接返回 xingming 作为 name
+    const transformedList = list.map(staff => ({
+      id: staff.id,
+      name: staff.xingming,
+      xingming: staff.xingming,
+      gonghao: staff.gonghao,
+      zhiwu: staff.zhiwu,
+      zhuangtai: staff.zhuangtai
+    }));
     
-    qb.orderBy('staff.id', 'DESC');
-    
-    const total = await qb.getCount();
-    const list = await qb
-      .skip(((query.page || 1) - 1) * (query.pageSize || 100))
-      .take(query.pageSize || 100)
-      .getMany();
-    
-    return { list, total };
+    return { list: transformedList, total };
   }
 
   async findOne(id: number): Promise<Staff> {
@@ -40,16 +34,5 @@ export class StaffService {
       throw new NotFoundException(`Staff ID ${id} not found`);
     }
     return staff;
-  }
-
-  async update(id: number, dto: UpdateStaffDto): Promise<Staff> {
-    const staff = await this.findOne(id);
-    Object.assign(staff, dto);
-    return this.staffRepository.save(staff);
-  }
-
-  async remove(id: number): Promise<void> {
-    const staff = await this.findOne(id);
-    await this.staffRepository.remove(staff);
   }
 }

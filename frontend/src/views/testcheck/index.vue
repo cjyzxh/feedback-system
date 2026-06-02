@@ -159,21 +159,23 @@ const form = reactive({
 const loadList = async () => {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
-  const params: any = { gongchengsbz: 'Y', csrbz: 'N' }
+  const params: any = { gongchengsbz: 'Y' }  // 先去掉 csrbz 过滤，避免找不到字段
   const permsStr = localStorage.getItem('permissions'); const perms = permsStr && permsStr.startsWith('[') ? JSON.parse(permsStr) : []
   const viewOthers = parseInt(localStorage.getItem('viewOthers') || '0')
   const testcheckPerm = perms.find(p => p.page === 'testcheck')
   const canViewAll = viewOthers === 1 || (testcheckPerm && testcheckPerm.view)
-  if (!canViewAll) { params.lurusr = user.realName }
+  // if (!canViewAll) { params.lurusr = user.realName }  // 先去掉 lurusr 过滤
   try {
     const res = await axios.get('/api/feedback', { params })
-    list.value = res?.data?.list || res?.list || []
+    console.log('测试页查询结果:', res.data)
+    list.value = res?.data?.data?.list || res?.data?.list || []
   } catch (err) { console.error('加载列表失败', err) }
 }
 
 const handleRowClick = (row: any) => {
   selected.value = row
-  Object.assign(form, row)
+  const rowCopy = JSON.parse(JSON.stringify(row))
+  Object.assign(form, rowCopy)
 }
 
 const previewVisible = ref(false)
@@ -182,10 +184,10 @@ const currentIndex = ref(0)
 
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get("/api/feedback/images/" + row.id)
+    const res = await axios.get("/api/feedback/images/" + row.lsh)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewImages.value = imgs.map((name: string) => "/uploads/" + name)
+      previewImages.value = imgs.map((name: string) => "/api/feedback/uploads/" + name)
       currentIndex.value = 0
       previewVisible.value = true
     } else { ElMessage.warning("暂无图片") }

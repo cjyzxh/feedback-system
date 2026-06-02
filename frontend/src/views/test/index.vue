@@ -5,13 +5,15 @@
       <template #header>
         <div class="card-header">
           <span><el-icon><Edit /></el-icon> 处理问题</span>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting" :disabled="!selected">
-            <el-icon><Check /></el-icon> 确认处理
-          </el-button>
-          <el-button type="warning"  @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
-          <el-button type="info"  @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
-          <el-button type="info"  @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
-          <el-button type="danger"  @click="handleDelete"><el-icon><Delete /></el-icon> 删除</el-button>
+          <div class="button-group">
+            <el-button type="primary" @click="handleSubmit" :loading="submitting" :disabled="!selected">
+              <el-icon><Check /></el-icon> 确认处理
+            </el-button>
+            <el-button type="warning" @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
+            <el-button type="info" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
+            <el-button type="info" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
+            <el-button type="danger" @click="handleDelete"><el-icon><Delete /></el-icon> 删除</el-button>
+          </div>
         </div>
       </template>
       <div class="form-content">
@@ -123,13 +125,13 @@
         </div>
       </div>
     </el-dialog>
-    <el-dialog v-model="showDevSelect" title="??????" width="320px">
-      <el-select v-model="selectedDev" placeholder="???????" style="width:100%">
-        <el-option v-for="u in userList" :key="u.id" :label="u.xingming" :value="u.xingming" v-if="u.category=='????'" />
+    <el-dialog v-model="showDevSelect" title="分配修改人" width="320px">
+      <el-select v-model="selectedDev" placeholder="请选择修改人" style="width:100%">
+        <el-option v-for="u in userList" :key="u.id" :label="u.xingming" :value="u.xingming" />
       </el-select>
       <template #footer>
-        <el-button @click="showDevSelect=false">??</el-button>
-        <el-button type="primary" @click="confirmAssign">??</el-button>
+        <el-button @click="showDevSelect=false">取消</el-button>
+        <el-button type="primary" @click="confirmAssign">确认</el-button>
       </template>
     </el-dialog>
   </div>
@@ -138,7 +140,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, Delete } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const list = ref<any[]>([])
@@ -165,16 +167,21 @@ const loadList = async () => {
   const viewOthers = parseInt(localStorage.getItem('viewOthers') || '0')
   const testPerm = perms.find(p => p.page === 'test')
   const canViewAll = viewOthers === 1 || (testPerm && testPerm.view)
-  if (!canViewAll) { params.xggcs = user.realName }
+  console.log('问题处理页 - canViewAll:', canViewAll, 'viewOthers:', viewOthers)
+  // 先不添加 xggcs 过滤，测试是否能查询到数据
+  // if (!canViewAll) { params.xggcs = user.realName }
   try {
+    console.log('查询参数:', params)
     const res = await axios.get('/api/feedback', { params })
-    list.value = res?.data?.list || res?.list || []
+    console.log('查询结果:', res.data)
+    list.value = res?.data?.data?.list || res?.data?.list || []
   } catch (err) { console.error('加载列表失败', err) }
 }
 
 const handleRowClick = (row: any) => {
   selected.value = row
-  Object.assign(form, row)
+  const rowCopy = JSON.parse(JSON.stringify(row))
+  Object.assign(form, rowCopy)
 }
 
 const previewVisible = ref(false)
@@ -211,10 +218,10 @@ const currentIndex = ref(0)
 
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get("/api/feedback/images/" + row.id)
+    const res = await axios.get("/api/feedback/images/" + row.lsh)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewImages.value = imgs.map((name: string) => "/uploads/" + name)
+      previewImages.value = imgs.map((name: string) => "/api/feedback/uploads/" + name)
       currentIndex.value = 0
       previewVisible.value = true
     } else { ElMessage.warning("暂无图片") }
@@ -241,8 +248,9 @@ onMounted(() => { loadList() })
 
 <style scoped>
 .handle-page { padding: 16px; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
-.card-header { display: flex; justify-content: flex-start; align-items: center; }
-.card-header span { display: flex; align-items: center; gap: 2px; font-weight: 600; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.button-group { display: flex; gap: 8px; }
 .form-card { flex-shrink: 0; }
 .form-content { display: flex; flex-direction: column; gap: 12px; }
 .basic-info { margin-bottom: 8px; }

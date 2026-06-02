@@ -190,4 +190,10 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   lurusr?: string;
+
+  @IsOptional()
+  csrbz?: string;
+
+  @IsOptional()
+  taolunbz?: string;
 }

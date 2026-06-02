@@ -19,6 +19,14 @@
         <el-form-item label="流水号">
           <el-input v-model="searchForm.lsh" placeholder="输入流水号" clearable @keyup.enter="handleSearch" />
         </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleSearch" style="width:130px">
+            <el-option label="已录入" value="yiluru" />
+            <el-option label="已处理" value="yichuli" />
+            <el-option label="已测试" value="yiceshi" />
+            <el-option label="待讨论" value="daitaolun" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
           <el-button @click="handleResetSearch">重置</el-button>
@@ -251,7 +259,7 @@ const hospitalLoading = ref(false)
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
 
-const searchForm = reactive({ yiyuanmc: '', mokuai: '', lsh: '' })
+const searchForm = reactive({ yiyuanmc: '', mokuai: '', lsh: '', zhuangtai: '' })
 const form = reactive({
   id: 0, lsh: '', banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
 })
@@ -315,6 +323,15 @@ const loadData = async () => {
     mokuai: searchForm.mokuai || undefined, 
     lsh: searchForm.lsh || undefined 
   }
+  if (searchForm.zhuangtai === 'yiluru') {
+    params.gongchengsbz = 'N'
+  } else if (searchForm.zhuangtai === 'yichuli') {
+    params.gongchengsbz = 'Y'
+  } else if (searchForm.zhuangtai === 'yiceshi') {
+    params.csrbz = 'Y'
+  } else if (searchForm.zhuangtai === 'daitaolun') {
+    params.taolunbz = 'Y'
+  }
   // 管理员或有viewOthers权限的查全部，其他查自己的
   if (false) { // ??????
     params.lurumid = user.id
@@ -329,7 +346,7 @@ const loadData = async () => {
 }
 
 const handleSearch = () => { pagination.page = 1; loadData() }
-const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.lsh = ''; handleSearch() }
+const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.lsh = ''; searchForm.zhuangtai = ''; handleSearch() }
 
 const onModuleChange = async (moduleName: any) => {
   form.chuangtimc = ''
@@ -346,7 +363,17 @@ const getLsh = async () => {
 
 const handleAdd = async () => {
   isEdit.value = false
-  Object.assign(form, { id: 0, lsh: '', banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '' })
+  form.id = 0
+  form.lsh = ''
+  form.banben = 'HIS问题'
+  form.yiyuanmc = ''
+  form.shishiry = ''
+  form.mokuai = ''
+  form.chuangtimc = ''
+  form.xggcs = ''
+  form.jingjicd = '一般'
+  form.wentism = ''
+  form.shouzhongcs = ''
   uploadFileList.value = []
   forms.value = []
   await getLsh()
@@ -355,7 +382,8 @@ const handleAdd = async () => {
 
 const handleEdit = async (row: any) => {
   isEdit.value = true
-  Object.assign(form, row)
+  const rowCopy = JSON.parse(JSON.stringify(row))
+  Object.assign(form, rowCopy)
   uploadFileList.value = []
   forms.value = []
   try {

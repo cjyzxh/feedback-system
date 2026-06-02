@@ -90,10 +90,12 @@ export class FeedbackController {
     return res.status(404).send('File not found');
   }
 
-  // 分配开发人员（待实现）
+  // 分配开发人员
   // PUT /api/feedback/:id/assign-dev
   @Put(':id/assign-dev')
-  assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { developer: string }) {
+  async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string }) {
+    const data = await this.feedbackService.update(id, { xggcs: body.xggcs });
+    return { code: 200, message: '分配成功', data };
   }
 
   // ========== CRUD 基础接口 ==========

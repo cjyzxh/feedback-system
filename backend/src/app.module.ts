@@ -30,7 +30,7 @@ import { ConfigModule } from './modules/config/config.module';
       password: process.env.DB_PASSWORD || '1',
       database: process.env.DB_NAME || 'cjy_wtfk',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false, // 关闭自动同步，避免表结构冲突
+      synchronize: false, // 关闭自动建表，手动管理表结构
       logging: process.env.NODE_ENV === 'development',
       // MSSQL 特殊配置
       extra: {

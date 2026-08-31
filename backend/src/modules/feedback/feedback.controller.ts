@@ -12,15 +12,7 @@ import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/fe
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
-  // 获取下一个流水号
-  // GET /api/feedback/getLsh
-  @Get('getLsh')
-  async getLsh() {
-    const data = await this.feedbackService.getNextLsh();
-    return { code: 200, message: '查询成功', data };
-  }
-
-  // 上传图片
+  // 上传图片 - 图片命名格式: {id}-{序号}.{扩展名}
   // POST /api/feedback/upload
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
@@ -32,11 +24,11 @@ export class FeedbackController {
     }),
   }))
   async upload(@UploadedFile() file: any, @Body() body: any) {
-    const lsh = parseInt(body?.lsh) || 0;
+    const id = parseInt(body?.id) || parseInt(body?.feedbackId) || 0;
     const tpnum = parseInt(body?.tpnum) || 1;
     
     const ext = extname(file.originalname);
-    const filename = `${lsh}-${tpnum}${ext}`;
+    const filename = `${id}-${tpnum}${ext}`;
     const oldPath = file.path;
     const newPath = `./uploads/${filename}`;
     
@@ -47,19 +39,19 @@ export class FeedbackController {
     return { url: `/feedback/uploads/${filename}`, filename: filename };
   }
 
-  // 获取问题反馈的所有图片 - 从目录中检索
-  // GET /api/feedback/images/:lsh
-  @Get('images/:lsh')
-  async getImages(@Param('lsh') lsh: string) {
-    const images = await this.feedbackService.getImagesByLsh(parseInt(lsh));
+  // 获取问题的所有图片 - 从目录中检索
+  // GET /api/feedback/images/:id
+  @Get('images/:id')
+  async getImages(@Param('id') id: string) {
+    const images = await this.feedbackService.getImagesById(parseInt(id));
     return images;
   }
 
-  // 删除问题反馈的所有图片
-  // DELETE /api/feedback/images/:lsh
-  @Delete('images/:lsh')
-  async deleteImages(@Param('lsh') lsh: string) {
-    await this.feedbackService.deleteImagesByLsh(parseInt(lsh));
+  // 删除问题的所有图片
+  // DELETE /api/feedback/images/:id
+  @Delete('images/:id')
+  async deleteImages(@Param('id') id: string) {
+    await this.feedbackService.deleteImagesById(parseInt(id));
     return { success: true };
   }
 

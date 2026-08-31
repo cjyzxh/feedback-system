@@ -48,6 +48,11 @@ backend/*.json
 .env.local
 .env.*.local
 
+# Local backup
+.backup/
+backup/
+
+
 # Logs
 logs/
 *.log

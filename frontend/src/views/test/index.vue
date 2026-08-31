@@ -12,50 +12,55 @@
             <el-button type="warning" @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
             <el-button type="info" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
             <el-button type="info" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
-            <el-button type="danger" @click="handleDelete"><el-icon><Delete /></el-icon> 删除</el-button>
           </div>
         </div>
       </template>
       <div class="form-content">
         <!-- 第一行：基础信息（缩小显示） -->
         <el-row :gutter="16" class="basic-info">
-          <el-col :span="3">
+          <el-col :span="2">
             <div class="info-item small">
-              <div class="info-label">流水号</div>
-              <div class="info-value">{{ form.lsh || '-' }}</div>
+              <div class="info-label">问题ID号</div>
+              <div class="info-value">{{ form.id || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="3">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">紧急</div>
               <el-tag :type="getJingjiType(form.jingjicd)" >{{ form.jingjicd || '-' }}</el-tag>
             </div>
           </el-col>
-          <el-col :span="4">
+          <el-col :span="3">
             <div class="info-item small">
               <div class="info-label">版本</div>
               <div class="info-value">{{ form.banben || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="5">
+          <el-col :span="6">
             <div class="info-item small">
               <div class="info-label">医院</div>
               <div class="info-value" :title="form.yiyuanmc">{{ form.yiyuanmc || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="3">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">模块</div>
               <div class="info-value">{{ form.mokuai || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="3">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">窗体</div>
               <div class="info-value">{{ form.chuangtimc || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="3">
+            <div class="info-item small">
+              <div class="info-label">跟进人</div>
+              <div class="info-value">{{ form.shishiry || '-' }}</div>
+            </div>
+          </el-col>
+          <el-col :span="4">
             <div class="info-item small">
               <div class="info-label">工程师</div>
               <div class="info-value">{{ form.xggcs || '-' }}</div>
@@ -85,14 +90,19 @@
       <template #header>
         <div class="card-header">
           <span><el-icon><List /></el-icon> 待处理问题列表（处理标志=否）</span>
-          <el-button type="primary" link @click="loadList"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <div class="header-right">
+            <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待修改问题</el-checkbox>
+            <el-checkbox v-model="viewTaolun" @change="loadList">查询待讨论</el-checkbox>
+            <el-button type="primary" link @click="loadList"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          </div>
         </div>
       </template>
       <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
-        <el-table-column prop="lsh" label="流水号" width="70" align="center" />
-        <el-table-column prop="yiyuanmc" label="医院名称" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="mokuai" label="模块" width="70" />
-        <el-table-column prop="chuangtimc" label="窗体" width="70" />
+        <el-table-column prop="id" label="问题ID号" width="65" align="center" />
+        <el-table-column prop="yiyuanmc" label="医院名称" min-width="100" show-overflow-tooltip />
+        <el-table-column prop="mokuai" label="模块" width="60" />
+        <el-table-column prop="chuangtimc" label="窗体" width="60" />
+        <el-table-column prop="shishiry" label="跟进人" width="70" />
         <el-table-column prop="xggcs" label="工程师" width="70" />
         <el-table-column prop="wentism" label="问题说明" min-width="150" show-overflow-tooltip />
         <el-table-column prop="jingjicd" label="紧急" width="60" align="center">
@@ -126,26 +136,43 @@
       </div>
     </el-dialog>
     <el-dialog v-model="showDevSelect" title="分配修改人" width="320px">
-      <el-select v-model="selectedDev" placeholder="请选择修改人" style="width:100%">
-        <el-option v-for="u in userList" :key="u.id" :label="u.xingming" :value="u.xingming" />
+      <el-select v-model="selectedDev" placeholder="请选择研发人员" style="width:100%">
+        <el-option v-for="u in yanfaList" :key="u.id" :label="u.xingming" :value="u.xingming" />
       </el-select>
       <template #footer>
         <el-button @click="showDevSelect=false">取消</el-button>
         <el-button type="primary" @click="confirmAssign">确认</el-button>
       </template>
     </el-dialog>
+    <!-- 分配跟进人弹窗 -->
+    <el-dialog v-model="showFollowerSelect" title="分配跟进人" width="320px">
+      <el-select v-model="selectedFollower" placeholder="请选择实施人员" style="width:100%">
+        <el-option v-for="u in shishiList" :key="u.id" :label="u.xingming" :value="u.xingming" />
+      </el-select>
+      <template #footer>
+        <el-button @click="showFollowerSelect=false">取消</el-button>
+        <el-button type="primary" @click="confirmAssignFollower">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, Delete } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const list = ref<any[]>([])
 const selected = ref<any>(null)
 const submitting = ref(false)
+const viewAll = ref(false)  // 查询所有待修改问题，默认false（只查自己的）
+const viewTaolun = ref(false)  // 查询待讨论，默认false（查taolunbz=N）
+
+// 判断当前用户是否有"查看非本人数据"权限
+const canViewOthers = computed(() => {
+  return parseInt(localStorage.getItem('viewOthers') || '0') === 1
+})
 
 const getRowClass = ({ row }: { row: any }) => selected.value?.id === row.id ? 'selected-row' : ''
 
@@ -156,22 +183,29 @@ const getJingjiType = (type: string) => {
 }
 
 const form = reactive({
-  id: 0, lsh: '', yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般'
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般'
 })
 
 const loadList = async () => {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
   const params: any = { gongchengsbz: 'N' }
-  const permsStr = localStorage.getItem('permissions'); const perms = permsStr && permsStr.startsWith('[') ? JSON.parse(permsStr) : []
-  const viewOthers = parseInt(localStorage.getItem('viewOthers') || '0')
-  const testPerm = perms.find(p => p.page === 'test')
-  const canViewAll = viewOthers === 1 || (testPerm && testPerm.view)
-  console.log('问题处理页 - canViewAll:', canViewAll, 'viewOthers:', viewOthers)
-  // 先不添加 xggcs 过滤，测试是否能查询到数据
-  // if (!canViewAll) { params.xggcs = user.realName }
+  
+  // 待讨论查询条件：打勾查taolunbz='Y'，否则查taolunbz='N'
+  params.taolunbz = viewTaolun.value ? 'Y' : 'N'
+  
+  // 获取当前登录者名称（多种方式兜底）
+  const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
+  console.log('当前登录者:', user, 'realName:', user?.realName, 'username:', user?.username, 'localStorage username:', localStorage.getItem('username'))
+  
+  // 不打勾：只查询研发人员为当前登录者的数据
+  if (!viewAll.value && currentUserName) {
+    params.xggcs = currentUserName
+    console.log('只查询当前登录者的问题, xggcs:', currentUserName)
+  }
+  
   try {
-    console.log('查询参数:', params)
+    console.log('查询参数:', params, 'viewAll:', viewAll.value, 'viewTaolun:', viewTaolun.value)
     const res = await axios.get('/api/feedback', { params })
     console.log('查询结果:', res.data)
     list.value = res?.data?.data?.list || res?.data?.list || []
@@ -188,19 +222,27 @@ const previewVisible = ref(false)
 
 
 const userList = ref([])
+const yanfaList = ref([])  // 研发人员列表
+const shishiList = ref([])  // 实施人员列表
 const showDevSelect = ref(false)
 const selectedDev = ref('')
+const showFollowerSelect = ref(false)  // 分配跟进人弹窗
+const selectedFollower = ref('')  // 选中的跟进人
 
 const loadUsers = async () => {
   try {
     const res = await axios.get('/api/staff')
     userList.value = res.data?.data?.list || []
+    // category字段: 包含"1"=研发人员, 包含"0"=实施人员
+    yanfaList.value = userList.value.filter((u: any) => String(u.category || '').includes('1'))
+    shishiList.value = userList.value.filter((u: any) => String(u.category || '').includes('0'))
+    console.log('研发人员:', yanfaList.value, '实施人员:', shishiList.value)
   } catch(e) { console.error(e) }
 }
 
 const handleAssign = async () => {
-  if (!selected.value) { alert("请选择一个一个问题"); return; }
-  if (userList.value.length === 0) loadUsers()
+  if (!selected.value) { alert("请选择一个问题"); return; }
+  if (yanfaList.value.length === 0) await loadUsers()
   selectedDev.value = selected.value.xggcs || ''
   showDevSelect.value = true
 }
@@ -212,13 +254,34 @@ const confirmAssign = async () => {
     .catch(() => alert("分配失败"))
 }
 
+// 分配跟进人（完善功能）
+const handleAssignFollower = async () => {
+  if (!selected.value) { ElMessage.warning('请先选择一个问题'); return }
+  if (shishiList.value.length === 0) await loadUsers()
+  selectedFollower.value = selected.value.shishiry || ''
+  showFollowerSelect.value = true
+}
+
+// 确认分配跟进人
+const confirmAssignFollower = async () => {
+  if (!selectedFollower.value) { alert("请选择实施人员"); return; }
+  try {
+    await axios.put("/api/feedback/" + selected.value.id, { shishiry: selectedFollower.value })
+    ElMessage.success('分配跟进人成功')
+    showFollowerSelect.value = false
+    loadList()
+  } catch (err) {
+    ElMessage.error('分配跟进人失败')
+  }
+}
+
 
 const previewImages = ref<string[]>([])
 const currentIndex = ref(0)
 
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get("/api/feedback/images/" + row.lsh)
+    const res = await axios.get("/api/feedback/images/" + row.id)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
       previewImages.value = imgs.map((name: string) => "/api/feedback/uploads/" + name)
@@ -237,10 +300,28 @@ const handleSubmit = async () => {
     form.gongcscs = ''
     selected.value = null
     // 重置表单
-    Object.assign(form, { id: 0, lsh: '', yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般' })
+    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般' })
     loadList()
   } catch (err) { ElMessage.error('处理失败') }
   finally { submitting.value = false }
+}
+
+// 待讨论（确认后修改taolunbz为Y）
+const handleDiscuss = () => {
+  if (!selected.value) { ElMessage.warning('请先选择一个问题'); return }
+  ElMessageBox.confirm('确定要把该问题放入待讨论中吗？', '待讨论确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await axios.put('/api/feedback/' + selected.value.id, { taolunbz: 'Y' })
+      ElMessage.success('已放入待讨论')
+      loadList()
+    } catch (err) {
+      ElMessage.error('操作失败')
+    }
+  }).catch(() => {})
 }
 
 onMounted(() => { loadList() })
@@ -249,6 +330,8 @@ onMounted(() => { loadList() })
 <style scoped>
 .handle-page { padding: 16px; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.button-group { display: flex; gap: 8px; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .button-group { display: flex; gap: 8px; }
 .form-card { flex-shrink: 0; }

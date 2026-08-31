@@ -10,4 +10,7 @@ export class Module {
 
   @Column({ name: 'mokuaimc', length: 100, nullable: true })
   mokuaimc: string;
+
+  @Column({ name: 'mokuaidm', type: 'int', nullable: true })
+  mokuaidm: number;
 }

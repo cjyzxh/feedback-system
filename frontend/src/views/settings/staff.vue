@@ -130,7 +130,8 @@ const loadData = async () => {
   try {
     const catStr = categoryList.value.join(',')
     const res = await axios.get('/api/staff', { params: { category: catStr } })
-    tableData.value = res.data?.list || []
+    console.log('loadData response:', JSON.stringify(res.data))
+    tableData.value = res.data?.data?.list || res.data?.list || []
   } catch (err) { console.error('加载失败', err) }
 }
 
@@ -165,24 +166,37 @@ const handleDelete = async (row: any) => {
 }
 
 const handleSubmit = async () => {
-  await formRef.value.validate()
-  // Convert category array to string
-  const cats = form.category || []
-  let catStr = ''
-  if (cats.includes('0') && cats.includes('1')) catStr = '0,1'
-  else if (cats.includes('0')) catStr = '0'
-  else if (cats.includes('1')) catStr = '1'
-  
-  const data = { ...form, category: catStr }
-  if (isEdit.value) {
-    await axios.put('/api/staff/' + form.id, data)
-    ElMessage.success('更新成功')
-  } else {
-    await axios.post('/api/staff', data)
-    ElMessage.success('创建成功')
+  try {
+    console.log('handleSubmit called, form:', JSON.stringify(form))
+    await formRef.value.validate()
+    console.log('validate passed')
+    // Convert category array to string
+    const cats = form.category || []
+    let catStr = ''
+    if (cats.includes('0') && cats.includes('1')) catStr = '0,1'
+    else if (cats.includes('0')) catStr = '0'
+    else if (cats.includes('1')) catStr = '1'
+    
+    const data = { ...form, category: catStr }
+    console.log('submitting data:', JSON.stringify(data))
+    if (isEdit.value) {
+      await axios.put('/api/staff/' + form.id, data)
+      ElMessage.success('更新成功')
+    } else {
+      await axios.post('/api/staff', data)
+      ElMessage.success('创建成功')
+    }
+    console.log('submit success')
+    dialogVisible.value = false
+    loadData()
+  } catch (err: any) {
+    console.error('handleSubmit error:', err)
+    if (err?.message) {
+      ElMessage.error(err.message)
+    } else {
+      ElMessage.error('提交失败，请查看控制台')
+    }
   }
-  dialogVisible.value = false
-  loadData()
 }
 
 onMounted(() => { loadData() })

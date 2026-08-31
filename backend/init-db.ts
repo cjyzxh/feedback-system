@@ -4,12 +4,10 @@ import { User } from './src/modules/user/user.entity';
 import { Role } from './src/modules/user/role.entity';
 import { Permission } from './src/modules/user/permission.entity';
 import { Feedback } from './src/modules/feedback/feedback.entity';
-import { FeedbackImage } from './src/modules/feedback/feedback-image.entity';
+import { Ok } from './src/modules/feedback/ok.entity';
 import { Hospital } from './src/modules/hospital/hospital.entity';
-import { Hospital as DictHospital } from './src/modules/dict/hospital.entity';
 import { Module } from './src/modules/dict/module.entity';
 import { Form } from './src/modules/dict/form.entity';
-import { Engineer } from './src/modules/dict/engineer.entity';
 import { Staff } from './src/modules/staff/staff.entity';
 import * as path from 'path';
 
@@ -19,7 +17,7 @@ const AppDataSource = new DataSource({
   port: 1433,
   username: 'SA',
   password: '1',
-  database: 'cjy_wtfk',
+  database: 'Cjy_WTFK_New',
   entities: [path.join(__dirname, 'src/**/*.entity{.ts,.js}')],
   synchronize: true,
   options: {

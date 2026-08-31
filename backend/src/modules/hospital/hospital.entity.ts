@@ -1,43 +1,55 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('xt_ConfigServer')
 export class Hospital {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'ID' })
   id: number;
+
+  @Column({ name: 'YHM', type: 'nvarchar', length: 'MAX', nullable: true })
+  yhm: string;
 
   @Column({ name: 'YHMC', length: 200, nullable: true })
   name: string;
 
-  @Column({ name: 'PYM', length: 100, nullable: true })
-  pym: string;
+  @Column({ name: 'SJ', type: 'datetime', nullable: true })
+  sj: Date;
 
-  @Column({ name: 'province', length: 100, nullable: true })
-  province: string;
+  @Column({ name: 'ZZDS', type: 'int', nullable: true })
+  zzds: number;
 
-  @Column({ name: 'city', length: 100, nullable: true })
-  city: string;
-
-  @Column({ name: 'leader', length: 100, nullable: true })
-  leader: string;
-
-  @Column({ name: 'contact', length: 100, nullable: true })
-  contact: string;
-
-  @Column({ name: 'level', length: 20, nullable: true })
-  level: string;
-
-  @Column({ name: 'nature', length: 20, nullable: true })
-  nature: string;
-
-  @Column({ name: 'MK', length: 100, nullable: true })
+  @Column({ name: 'MK', type: 'nvarchar', length: 'MAX', nullable: true })
   mk: string;
 
-  @Column({ name: 'BeiZhu', length: 500, nullable: true })
-  remark: string;
+  @Column({ name: 'ZCM', type: 'nvarchar', length: 'MAX', nullable: true })
+  zcm: string;
+
+  @Column({ name: 'SYQ', type: 'int', nullable: true })
+  syq: number;
+
+  @Column({ name: 'YJLX', length: 50, nullable: true })
+  yjlx: string;
+
+  @Column({ name: 'RQLX', length: 50, nullable: true })
+  rqlx: string;
+
+  @Column({ name: 'YJID', length: 100, nullable: true })
+  yjid: string;
+
+  @Column({ name: 'SJS', length: 100, nullable: true })
+  sjs: string;
+
+  @Column({ name: 'LXR', length: 50, nullable: true })
+  lxr: string;
+
+  @Column({ name: 'DH', length: 100, nullable: true })
+  dh: string;
+
+  @Column({ name: 'QY', length: 50, nullable: true })
+  qy: string;
 
   @Column({ name: 'ZuoFeiBZ', length: 10, nullable: true })
-  disabled: string;
+  zuofeibz: string;
 
-  @CreateDateColumn({ name: 'SYQ' })
-  validDate: Date;
+  @Column({ name: 'pym', length: 100, nullable: true })
+  pym: string;
 }

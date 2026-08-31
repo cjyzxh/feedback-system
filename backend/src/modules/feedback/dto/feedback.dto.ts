@@ -2,9 +2,6 @@ import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
 
 export class CreateFeedbackDto {
   @IsOptional()
-  lsh?: string | number;
-
-  @IsOptional()
   banben?: string;
 
   @IsOptional()
@@ -68,6 +65,9 @@ export class CreateFeedbackDto {
   taolunbz?: string;
 
   @IsOptional()
+  szcsgcs?: string;
+
+  @IsOptional()
   lurusr?: string;
 
   @IsOptional()
@@ -75,9 +75,6 @@ export class CreateFeedbackDto {
 }
 
 export class UpdateFeedbackDto {
-  @IsOptional()
-  lsh?: string | number;
-
   @IsOptional()
   banben?: string;
 
@@ -169,9 +166,6 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   mokuai?: string;
-
-  @IsOptional()
-  lsh?: string | number;
 
   @IsOptional()
   shishiry?: string;

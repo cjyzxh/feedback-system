@@ -3,96 +3,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { YwWentilb } from '../entities/ywWentilb.entity';
-import { Ok } from '../entities/ok.entity';
+import { Feedback } from './feedback.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 
 @Injectable()
 export class FeedbackService {
   constructor(
-    @InjectRepository(YwWentilb)
-    private feedbackRepository: Repository<YwWentilb>,
-    @InjectRepository(Ok)
-    private okRepository: Repository<Ok>,
+    @InjectRepository(Feedback)
+    private feedbackRepository: Repository<Feedback>,
   ) {}
 
-  // 获取下一个流水号 - 从ok表获取
-  async getNextLsh(): Promise<{ lsh: string; now: string }> {
+  // 创建问题反馈 - ID自增，以ID为准
+  async create(dto: CreateFeedbackDto): Promise<Feedback> {
     try {
-      let okRecord = await this.okRepository.findOne({
-        where: {}
-      });
-
-      let nextLsh = 1;
-
-      if (okRecord) {
-        nextLsh = (okRecord.lsh || 0) + 1;
-        // 立即更新 ok 表，避免并发重复
-        okRecord.lsh = nextLsh;
-        await this.okRepository.save(okRecord);
-      } else {
-        okRecord = this.okRepository.create({
-          lsh: 1
-        });
-        await this.okRepository.save(okRecord);
-      }
-
-      return {
-        lsh: String(nextLsh),
-        now: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      };
-    } catch (error) {
-      console.error('获取流水号失败:', error);
-      // 失败时取最大 lsh + 1，避免重复
-      try {
-        const result: any = await this.feedbackRepository.manager.query(
-          'SELECT ISNULL(MAX(lsh), 0) + 1 as nextLsh FROM yw_wentilb'
-        );
-        const next = result[0]?.nextLsh || 1;
-        return {
-          lsh: String(next),
-          now: new Date().toISOString().replace('T', ' ').substring(0, 19)
-        };
-      } catch (e2) {
-        return {
-          lsh: Date.now().toString(),
-          now: new Date().toISOString().replace('T', ' ').substring(0, 19)
-        };
-      }
-    }
-  }
-
-  // 更新ok表的lsh字段
-  private async updateOkLsh(lsh: number): Promise<void> {
-    try {
-      let okRecord = await this.okRepository.findOne({
-        where: {}
-      });
-      
-      if (okRecord) {
-        okRecord.lsh = lsh;
-        await this.okRepository.save(okRecord);
-      } else {
-        okRecord = this.okRepository.create({
-          lsh: lsh
-        });
-        await this.okRepository.save(okRecord);
-      }
-    } catch (error) {
-      console.error('更新ok表lsh失败:', error);
-    }
-  }
-
-  // 创建反馈
-  async create(dto: CreateFeedbackDto): Promise<YwWentilb> {
-    try {
-      // 总是从 ok 表原子地获取新的 lsh，避免重复
-      const nextLshData = await this.getNextLsh();
-      const lsh = parseInt(nextLshData.lsh) || 1;
-      console.log('创建反馈，原子获取的lsh:', lsh);
-      
       const feedback = this.feedbackRepository.create({
-        lsh: lsh,
         banben: dto.banben,
         yiyuanmc: dto.yiyuanmc || dto.hospital,
         shishiry: dto.shishiry,
@@ -111,84 +35,22 @@ export class FeedbackService {
         jingjicd: dto.jingjicd,
         lvrusj: new Date(),
         taolunbz: dto.taolunbz || 'N',
+        szcsgcs: dto.szcsgcs,
       });
-      console.log('创建feedback对象:', feedback);
       
-      const savedFeedback = await this.feedbackRepository.save(feedback);
-      console.log('保存成功:', savedFeedback);
-      
-      return savedFeedback;
+      const saved = await this.feedbackRepository.save(feedback);
+      console.log('创建成功 ID:', saved.id);
+      return saved;
     } catch (error) {
-      console.error('创建反馈失败:', error);
+      console.error('创建失败:', error);
       throw error;
     }
   }
 
-  // 根据lsh获取图片列表 - 从目录检索
-  async getImagesByLsh(lsh: number): Promise<string[]> {
+  // 分页查询问题列表
+  async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const uploadsDir = './uploads';
-      
-      // 检查目录是否存在
-      if (!fs.existsSync(uploadsDir)) {
-        return [];
-      }
-      
-      // 读取目录中的所有文件
-      const files = fs.readdirSync(uploadsDir);
-      
-      // 过滤出以 lsh- 开头的图片文件
-      const imageFiles = files.filter(file => {
-        const prefix = `${lsh}-`;
-        const ext = path.extname(file).toLowerCase();
-        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext);
-        return file.startsWith(prefix) && isImage;
-      });
-      
-      // 按文件名排序
-      imageFiles.sort((a, b) => {
-        const aNum = parseInt(a.split('-')[1]?.split('.')[0] || '0');
-        const bNum = parseInt(b.split('-')[1]?.split('.')[0] || '0');
-        return aNum - bNum;
-      });
-      
-      return imageFiles;
-    } catch (error) {
-      console.error('获取图片列表失败:', error);
-      return [];
-    }
-  }
-
-  // 删除某个lsh的所有图片
-  async deleteImagesByLsh(lsh: number): Promise<void> {
-    try {
-      const uploadsDir = './uploads';
-      
-      // 检查目录是否存在
-      if (!fs.existsSync(uploadsDir)) {
-        return;
-      }
-      
-      // 读取目录中的所有文件
-      const files = fs.readdirSync(uploadsDir);
-      
-      // 删除以 lsh- 开头的所有文件
-      for (const file of files) {
-        if (file.startsWith(`${lsh}-`)) {
-          const filePath = path.join(uploadsDir, file);
-          fs.unlinkSync(filePath);
-          console.log('已删除图片:', file);
-        }
-      }
-    } catch (error) {
-      console.error('删除图片失败:', error);
-    }
-  }
-
-  // 分页查询反馈列表
-  async findAll(query: QueryFeedbackDto): Promise<{ list: YwWentilb[]; total: number }> {
-    try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, taolunbz, lsh } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, csrbz, taolunbz } = query;
       
       const where: any = {};
       
@@ -227,10 +89,6 @@ export class FeedbackService {
         where.taolunbz = taolunbz;
       }
       
-      if (lsh) {
-        where.lsh = lsh;
-      }
-      
       const [list, total] = await this.feedbackRepository.findAndCount({
         where,
         order: { id: 'DESC' },
@@ -240,23 +98,23 @@ export class FeedbackService {
       
       return { list, total };
     } catch (error) {
-      console.error('查询反馈列表失败:', error);
+      console.error('查询列表失败:', error);
       return { list: [], total: 0 };
     }
   }
 
-  // 根据 ID 查询反馈（含图片）
+  // 根据ID查询问题详情（含图片）
   async findById(id: number): Promise<any> {
     const feedback = await this.feedbackRepository.findOne({
       where: { id },
     });
     
     if (!feedback) {
-      throw new NotFoundException(`反馈 ID ${id} 不存在`);
+      throw new NotFoundException(`问题 ID ${id} 不存在`);
     }
     
-    // 从目录获取图片列表
-    const images = await this.getImagesByLsh(feedback.lsh);
+    // 从目录获取图片列表（按ID命名）
+    const images = await this.getImagesById(id);
     
     return {
       ...feedback,
@@ -267,55 +125,119 @@ export class FeedbackService {
     };
   }
 
-  // 更新反馈
-  async update(id: number, dto: UpdateFeedbackDto): Promise<YwWentilb> {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { id },
-    });
-    
-    if (!feedback) {
-      throw new NotFoundException(`反馈 ID ${id} 不存在`);
+  // 更新问题反馈 - 以ID为条件
+  async update(id: number, dto: UpdateFeedbackDto): Promise<Feedback> {
+    try {
+      console.log('更新问题 ID:', id);
+      
+      const feedback = await this.feedbackRepository.findOne({
+        where: { id },
+      });
+      
+      if (!feedback) {
+        throw new NotFoundException(`问题 ID ${id} 不存在`);
+      }
+      
+      // 直接合并字段并保存，避免update方法的类型问题
+      if (dto.banben !== undefined) feedback.banben = dto.banben;
+      if (dto.yiyuanmc || dto.hospital) feedback.yiyuanmc = dto.yiyuanmc || dto.hospital;
+      if (dto.shishiry !== undefined) feedback.shishiry = dto.shishiry;
+      if (dto.mokuai || dto.module) feedback.mokuai = dto.mokuai || dto.module;
+      if (dto.chuangtimc || dto.form) feedback.chuangtimc = dto.chuangtimc || dto.form;
+      if (dto.wentilx !== undefined) feedback.wentilx = dto.wentilx;
+      if (dto.wentism !== undefined) feedback.wentism = dto.wentism;
+      if (dto.shouzhongcs !== undefined) feedback.shouzhongcs = dto.shouzhongcs;
+      if (dto.gongcscs !== undefined) feedback.gongcscs = dto.gongcscs;
+      if (dto.shouhoucs !== undefined) feedback.shouhoucs = dto.shouhoucs;
+      if (dto.shouzhongbz !== undefined) feedback.shouzhongbz = dto.shouzhongbz;
+      if (dto.gongchengsbz !== undefined) feedback.gongchengsbz = dto.gongchengsbz;
+      if (dto.shouhoubz !== undefined) feedback.shouhoubz = dto.shouhoubz;
+      if (dto.xggcs || dto.engineer) feedback.xggcs = dto.xggcs || dto.engineer;
+      if (dto.csgcs !== undefined) feedback.csgcs = dto.csgcs;
+      if (dto.jingjicd !== undefined) feedback.jingjicd = dto.jingjicd;
+      if (dto.taolunbz !== undefined) feedback.taolunbz = dto.taolunbz;
+      
+      feedback.xgsj = new Date();
+      
+      const saved = await this.feedbackRepository.save(feedback);
+      console.log('更新成功 ID:', saved.id);
+      return saved;
+    } catch (error) {
+      console.error('更新失败:', error);
+      throw error;
     }
-    
-    const updateData: any = {
-      xgsj: new Date(),
-    };
-    
-    if (dto.banben !== undefined) updateData.banben = dto.banben;
-    if (dto.yiyuanmc || dto.hospital) updateData.yiyuanmc = dto.yiyuanmc || dto.hospital;
-    if (dto.shishiry !== undefined) updateData.shishiry = dto.shishiry;
-    if (dto.mokuai || dto.module) updateData.mokuai = dto.mokuai || dto.module;
-    if (dto.chuangtimc || dto.form) updateData.chuangtimc = dto.chuangtimc || dto.form;
-    if (dto.wentilx !== undefined) updateData.wentilx = dto.wentilx;
-    if (dto.wentism !== undefined) updateData.wentism = dto.wentism;
-    if (dto.shouzhongcs !== undefined) updateData.shouzhongcs = dto.shouzhongcs;
-    if (dto.gongcscs !== undefined) updateData.gongcscs = dto.gongcscs;
-    if (dto.shouhoucs !== undefined) updateData.shouhoucs = dto.shouhoucs;
-    if (dto.shouzhongbz !== undefined) updateData.shouzhongbz = dto.shouzhongbz;
-    if (dto.gongchengsbz !== undefined) updateData.gongchengsbz = dto.gongchengsbz;
-    if (dto.shouhoubz !== undefined) updateData.shouhoubz = dto.shouhoubz;
-    if (dto.xggcs || dto.engineer) updateData.xggcs = dto.xggcs || dto.engineer;
-    if (dto.csgcs !== undefined) updateData.csgcs = dto.csgcs;
-    if (dto.jingjicd !== undefined) updateData.jingjicd = dto.jingjicd;
-    if (dto.taolunbz !== undefined) updateData.taolunbz = dto.taolunbz;
-    
-    await this.feedbackRepository.update(id, updateData);
-    
-    return this.feedbackRepository.findOne({ where: { id } });
   }
 
+  // 删除问题反馈
   async remove(id: number): Promise<void> {
     const feedback = await this.feedbackRepository.findOne({ where: { id } });
     if (feedback) {
       // 删除对应的图片
-      await this.deleteImagesByLsh(feedback.lsh);
+      await this.deleteImagesById(id);
       await this.feedbackRepository.delete(id);
     }
   }
 
+  // 批量删除
   async batchRemove(ids: number[]): Promise<void> {
     for (const id of ids) {
       await this.remove(id);
+    }
+  }
+
+  // 根据ID获取图片列表 - 图片命名格式: {id}-{序号}.{扩展名}
+  async getImagesById(id: number): Promise<string[]> {
+    try {
+      const uploadsDir = './uploads';
+      
+      if (!fs.existsSync(uploadsDir)) {
+        return [];
+      }
+      
+      const files = fs.readdirSync(uploadsDir);
+      
+      // 过滤出以 id- 开头的图片文件
+      const imageFiles = files.filter(file => {
+        const prefix = `${id}-`;
+        const ext = path.extname(file).toLowerCase();
+        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext);
+        return file.startsWith(prefix) && isImage;
+      });
+      
+      // 按序号排序
+      imageFiles.sort((a, b) => {
+        const aNum = parseInt(a.split('-')[1]?.split('.')[0] || '0');
+        const bNum = parseInt(b.split('-')[1]?.split('.')[0] || '0');
+        return aNum - bNum;
+      });
+      
+      return imageFiles;
+    } catch (error) {
+      console.error('获取图片列表失败:', error);
+      return [];
+    }
+  }
+
+  // 根据ID删除所有图片
+  async deleteImagesById(id: number): Promise<void> {
+    try {
+      const uploadsDir = './uploads';
+      
+      if (!fs.existsSync(uploadsDir)) {
+        return;
+      }
+      
+      const files = fs.readdirSync(uploadsDir);
+      
+      for (const file of files) {
+        if (file.startsWith(`${id}-`)) {
+          const filePath = path.join(uploadsDir, file);
+          fs.unlinkSync(filePath);
+          console.log('已删除图片:', file);
+        }
+      }
+    } catch (error) {
+      console.error('删除图片失败:', error);
     }
   }
 }

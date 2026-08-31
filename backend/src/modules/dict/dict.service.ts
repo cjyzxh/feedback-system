@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
-import { XtConfigServer } from '../entities/xtConfigServer.entity';
-import { ZdMokuai } from '../entities/zdMokuai.entity';
-import { ZdChuangti } from '../entities/zdChuangti.entity';
-import { ZdJishuyuan } from '../entities/zdJishuyuan.entity';
+import { Hospital } from '../hospital/hospital.entity';
+import { Module as ModuleEntity } from './module.entity';
+import { Form } from './form.entity';
+import { Staff } from '../staff/staff.entity';
 import pinyin from 'pinyin';
 
 @Injectable()
@@ -12,10 +12,10 @@ export class DictService {
   private readonly logger = new Logger(DictService.name);
 
   constructor(
-    @InjectRepository(ZdMokuai) private moduleRepository: Repository<ZdMokuai>,
-    @InjectRepository(ZdChuangti) private formRepository: Repository<ZdChuangti>,
-    @InjectRepository(ZdJishuyuan) private engineerRepository: Repository<ZdJishuyuan>,
-    @InjectRepository(XtConfigServer) private configRepository: Repository<XtConfigServer>,
+    @InjectRepository(ModuleEntity) private moduleRepository: Repository<ModuleEntity>,
+    @InjectRepository(Form) private formRepository: Repository<Form>,
+    @InjectRepository(Staff) private engineerRepository: Repository<Staff>,
+    @InjectRepository(Hospital) private configRepository: Repository<Hospital>,
   ) {}
 
   async getModules() {
@@ -98,7 +98,7 @@ export class DictService {
   async getEngineers() {
     try {
       const engineers = await this.engineerRepository.find({
-        where: { zhuangtai: '1' },
+        where: { zhuangtai: 1 },
         order: { xingming: 'ASC' },
       });
       
@@ -111,11 +111,33 @@ export class DictService {
   }
 
   async getShishi() {
-    return this.getEngineers();
+    // 实施人员：category 包含 "0"
+    try {
+      const list = await this.engineerRepository.find({
+        where: { zhuangtai: 1, category: Like('%0%') },
+        order: { xingming: 'ASC' },
+      });
+      const uniqueNames = [...new Set(list.map((e) => e.xingming))];
+      return uniqueNames.map((name) => ({ value: name, label: name }));
+    } catch (e) {
+      console.error('getShishi error:', e);
+      return [];
+    }
   }
 
   async getYanfa() {
-    return this.getEngineers();
+    // 研发人员：category 包含 "1"
+    try {
+      const list = await this.engineerRepository.find({
+        where: { zhuangtai: 1, category: Like('%1%') },
+        order: { xingming: 'ASC' },
+      });
+      const uniqueNames = [...new Set(list.map((e) => e.xingming))];
+      return uniqueNames.map((name) => ({ value: name, label: name }));
+    } catch (e) {
+      console.error('getYanfa error:', e);
+      return [];
+    }
   }
 
   async getVersions() {
@@ -147,26 +169,25 @@ export class DictService {
 
   async getHospitals(keyword?: string) {
     try {
-      const results = await this.configRepository.query(
-        "SELECT DISTINCT YHMC as name, SYQ as syq FROM xt_ConfigServer WHERE ZuoFeiBZ = '否' AND QY <> '内部' ORDER BY YHMC"
-      );
+      // 直接查数据库的 PYM 拼音码字段，导入时已生成
+      let sql = "SELECT DISTINCT YHMC as name, SYQ as syq, PYM as pinyin FROM xt_ConfigServer WHERE ZuoFeiBZ = '否' AND QY <> '内部'";
+      if (keyword) {
+        // 远程搜索：按医院名称或拼音码模糊查询
+        sql += ` AND (YHMC LIKE '%${keyword}%' OR PYM LIKE '%${keyword.toUpperCase()}%')`;
+      }
+      sql += " ORDER BY YHMC";
       
-      let hospitals = results.map((r) => ({
+      const results = await this.configRepository.query(sql);
+      
+      const hospitals = results.map((r) => ({
         label: r.name,
         value: r.name,
         syq: r.syq,
-        pinyin: this.generatePinyin(r.name)
+        pinyin: r.pinyin || this.generatePinyin(r.name)
       }));
       
-      if (keyword) {
-        const lowerKeyword = keyword.toLowerCase();
-        hospitals = hospitals.filter(h => 
-          h.label.toLowerCase().includes(lowerKeyword) || 
-          h.pinyin.toLowerCase().includes(lowerKeyword)
-        );
-      }
-      
-      return keyword ? hospitals.slice(0, 20) : hospitals.slice(0, 50);
+      // 远程搜索时限制20条，无关键词时返回全部（供前端本地过滤）
+      return keyword ? hospitals.slice(0, 20) : hospitals;
     } catch (e) {
       console.error('getHospitals error:', e);
       return [];

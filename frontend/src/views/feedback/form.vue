@@ -16,8 +16,8 @@
         <el-form-item label="模块">
           <el-input v-model="searchForm.mokuai" placeholder="输入模块搜索" clearable @keyup.enter="handleSearch" />
         </el-form-item>
-        <el-form-item label="流水号">
-          <el-input v-model="searchForm.lsh" placeholder="输入流水号" clearable @keyup.enter="handleSearch" />
+        <el-form-item label="问题ID号">
+          <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
@@ -27,7 +27,7 @@
       </el-form>
       
       <el-table :data="tableData" border v-loading="loading" stripe>
-        <el-table-column prop="lsh" label="流水号" width="80" />
+        <el-table-column prop="id" label="问题ID号" width="90" />
         <el-table-column prop="banben" label="软件版本" width="100" />
         <el-table-column prop="yiyuanmc" label="医院名称" width="150" />
         <el-table-column prop="shishiry" label="实施人员" width="90" />
@@ -63,10 +63,10 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑问题' : '新增问题'" width="900px" :close-on-click-modal="false" destroy-on-close>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="流水号">
+          <el-col :span="6" v-if="isEdit">
+            <el-form-item label="问题ID号">
               <div class="lsh-box">
-                <el-input v-model="form.lsh" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
+                <el-input v-model="form.id" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
               </div>
             </el-form-item>
           </el-col>
@@ -123,7 +123,7 @@
           <el-col :span="8">
             <el-form-item label="实施人员" prop="shishiry">
               <el-select v-model="form.shishiry" placeholder="请选择" class="full-width">
-                <el-option v-for="e in engineers" :key="e.id" :label="e.label" :value="e.value" />
+                <el-option v-for="e in shishiList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -133,7 +133,7 @@
           <el-col :span="8">
             <el-form-item label="工程师" prop="xggcs">
               <el-select v-model="form.xggcs" placeholder="请选择" class="full-width">
-                <el-option v-for="e in engineers" :key="e.id" :label="e.xingming" :value="e.xingming" />
+                <el-option v-for="e in yanfaList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -249,14 +249,16 @@ const uploadRef = ref()
 
 const hospitals = ref<any[]>([])
 const engineers = ref<any[]>([])
+const shishiList = ref<any[]>([])
+const yanfaList = ref<any[]>([])
 const modules = ref<any[]>([])
 const forms = ref<any[]>([])
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
 
-const searchForm = reactive({ yiyuanmc: '', mokuai: '', lsh: '' })
+const searchForm = reactive({ yiyuanmc: '', mokuai: '', id: '' })
 const form = reactive({
-  id: 0, lsh: '', banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
+  id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
 })
 
 const rules = {
@@ -275,12 +277,20 @@ const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const loadDicts = async () => {
   try {
     console.log('开始加载字典数据')
-    const [h, e, m] = await Promise.all([api.get('/dict/hospitals'), api.get('/dict/engineers'), api.get('/dict/modules')])
+    const [h, s, y, m] = await Promise.all([
+      api.get('/dict/hospitals'),
+      api.get('/dict/shishi'),
+      api.get('/dict/yanfa'),
+      api.get('/dict/modules')
+    ])
     console.log('医院数据:', h)
-    console.log('工程师数据:', e)
+    console.log('实施人员数据:', s)
+    console.log('研发人员数据:', y)
     console.log('模块数据:', m)
     hospitals.value = h.data?.data || h.data || []
-    engineers.value = e.data?.data || e.data || []
+    shishiList.value = s.data?.data || s.data || []
+    yanfaList.value = y.data?.data || y.data || []
+    engineers.value = yanfaList.value // 兼容旧引用
     // 处理模块数据，确保字段名正确
     modules.value = (m.data?.data || m.data || []).map((item: any) => ({
       id: item.id,
@@ -294,7 +304,7 @@ const loadDicts = async () => {
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await api.get('/feedback', { params: { page: pagination.page, pageSize: pagination.pageSize, yiyuanmc: searchForm.yiyuanmc || undefined, mokuai: searchForm.mokuai || undefined, lsh: searchForm.lsh || undefined } })
+    const res = await api.get('/feedback', { params: { page: pagination.page, pageSize: pagination.pageSize, yiyuanmc: searchForm.yiyuanmc || undefined, mokuai: searchForm.mokuai || undefined, id: searchForm.id || undefined } })
     tableData.value = res?.list || res?.data?.list || []
     pagination.total = res?.total || res?.data?.total || 0
   } catch (err) { console.error('加载列表失败:', err, err?.response?.data); ElMessage.error('加载失败: ' + (err?.message || '未知错误')) }
@@ -302,7 +312,7 @@ const loadData = async () => {
 }
 
 const handleSearch = () => { pagination.page = 1; loadData() }
-const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.lsh = ''; handleSearch() }
+const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.id = ''; handleSearch() }
 
 // 医院搜索方法，支持拼音码检索
 const filterHospital = (query: string, option: any) => {
@@ -330,17 +340,11 @@ const onModuleChange = async (module: string) => {
   } catch (err) { console.error('加载窗体失败:', err) }
 }
 
-const getLsh = async () => {
-  try { const res = await api.get('/feedback/getLsh'); form.lsh = res?.data?.data?.lsh || Date.now().toString() } 
-  catch (err) { form.lsh = Date.now().toString() }
-}
-
 const handleAdd = async () => {
   isEdit.value = false
-  Object.assign(form, { id: 0, lsh: '', banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '' })
+  Object.assign(form, { id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '' })
   uploadFileList.value = []
   forms.value = []
-  await getLsh()
   dialogVisible.value = true
 }
 
@@ -462,15 +466,14 @@ const handleSubmit = async () => {
       savedId = res?.data?.data?.id || res?.data?.id || (res && typeof res === 'object' && 'id' in res ? res.id : form.id)
     }
     
-    // 上传图片 - 修复：编辑模式下需要计算已有图片数量来确定序号起点
+    // 上传图片 - 分开传id和tpnum，后端命名格式: {id}-{序号}.{扩展名}
     const rawFiles = uploadFileList.value.filter(f => f.raw)
-    // 编辑模式下，获取已有图片数量（非raw的，即已上传的）
     const existingImageCount = isEdit.value ? uploadFileList.value.filter(f => !f.raw).length : 0
     for (let i = 0; i < rawFiles.length; i++) {
       const formData = new FormData()
       formData.append('file', rawFiles[i].raw)
-      // 序号 = 已有数量 + i + 1
-      formData.append('feedbackId', `${savedId}-${existingImageCount + i + 1}`)
+      formData.append('id', savedId)
+      formData.append('tpnum', existingImageCount + i + 1)
       try {
         await api.post('/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       } catch (err) { console.error('上传图片失败:', err) }

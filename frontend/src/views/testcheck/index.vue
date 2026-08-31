@@ -15,8 +15,8 @@
         <el-row :gutter="16" class="basic-info">
           <el-col :span="3">
             <div class="info-item small">
-              <div class="info-label">流水号</div>
-              <div class="info-value">{{ form.lsh || '-' }}</div>
+              <div class="info-label">问题ID号</div>
+              <div class="info-value">{{ form.id || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="3">
@@ -73,11 +73,11 @@
           <el-col :span="8">
             <div class="info-item large">
               <div class="info-label big required">测试结果</div>
-              <el-radio-group v-model="form.csrscs" class="test-radio">
+              <el-radio-group v-model="form.testResult" class="test-radio">
                 <el-radio value="通过"><el-tag type="success" size="small">通过</el-tag></el-radio>
                 <el-radio value="未通过"><el-tag type="danger" size="small">未通过</el-tag></el-radio>
               </el-radio-group>
-              <el-input v-if="form.csrscs === '未通过'" class="opinion-input" v-model="form.csryj" type="textarea" :rows="2" placeholder="请说明未通过原因..." />
+              <el-input v-if="form.testResult === '未通过'" class="opinion-input" v-model="form.shouhoucs" type="textarea" :rows="2" placeholder="请说明未通过原因..." />
             </div>
           </el-col>
         </el-row>
@@ -89,11 +89,14 @@
       <template #header>
         <div class="card-header">
           <span><el-icon><List /></el-icon> 待测试问题列表（处理=是，测试=否）</span>
-          <el-button type="primary" link @click="loadList"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <div class="header-right">
+            <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待测试问题</el-checkbox>
+            <el-button type="primary" link @click="loadList"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          </div>
         </div>
       </template>
       <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
-        <el-table-column prop="lsh" label="流水号" width="70" align="center" />
+        <el-table-column prop="id" label="问题ID号" width="80" align="center" />
         <el-table-column prop="yiyuanmc" label="医院名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="mokuai" label="模块" width="70" />
         <el-table-column prop="chuangtimc" label="窗体" width="70" />
@@ -134,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -142,6 +145,12 @@ import axios from 'axios'
 const list = ref<any[]>([])
 const selected = ref<any>(null)
 const submitting = ref(false)
+const viewAll = ref(false)  // 查询所有待测试问题，默认false（只查自己的）
+
+// 判断当前用户是否有"查看非本人数据"权限
+const canViewOthers = computed(() => {
+  return parseInt(localStorage.getItem('viewOthers') || '0') === 1
+})
 
 const getRowClass = ({ row }: { row: any }) => selected.value?.id === row.id ? 'selected-row' : ''
 const canAssign = ref(true)  // ?????????????
@@ -153,19 +162,25 @@ const getJingjiType = (type: string) => {
 }
 
 const form = reactive({
-  id: 0, lsh: '', yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', csrscs: '', csryj: '', xggcs: '', shishiry: '', jingjicd: '一般'
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', testResult: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般'
 })
 
 const loadList = async () => {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
-  const params: any = { gongchengsbz: 'Y' }  // 先去掉 csrbz 过滤，避免找不到字段
-  const permsStr = localStorage.getItem('permissions'); const perms = permsStr && permsStr.startsWith('[') ? JSON.parse(permsStr) : []
-  const viewOthers = parseInt(localStorage.getItem('viewOthers') || '0')
-  const testcheckPerm = perms.find(p => p.page === 'testcheck')
-  const canViewAll = viewOthers === 1 || (testcheckPerm && testcheckPerm.view)
-  // if (!canViewAll) { params.lurusr = user.realName }  // 先去掉 lurusr 过滤
+  const params: any = { gongchengsbz: 'Y', shouhoubz: 'N' }  // 处理=是，售后=否（待测试）
+  
+  // 获取当前登录者名称
+  const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
+  
+  // 不打勾：只查询跟进人员为当前登录者的待测试数据
+  if (!viewAll.value && currentUserName) {
+    params.shishiry = currentUserName
+    console.log('只查询当前登录者的待测试问题, shishiry:', currentUserName)
+  }
+  
   try {
+    console.log('测试页查询参数:', params, 'viewAll:', viewAll.value)
     const res = await axios.get('/api/feedback', { params })
     console.log('测试页查询结果:', res.data)
     list.value = res?.data?.data?.list || res?.data?.list || []
@@ -184,7 +199,7 @@ const currentIndex = ref(0)
 
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get("/api/feedback/images/" + row.lsh)
+    const res = await axios.get("/api/feedback/images/" + row.id)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
       previewImages.value = imgs.map((name: string) => "/api/feedback/uploads/" + name)
@@ -196,21 +211,24 @@ const viewImages = async (row: any) => {
 
 const handleSubmit = async () => {
   if (!form.id) { ElMessage.warning('请先从下方列表选择一条记录'); return }
-  if (!form.csrscs) { ElMessage.warning('请选择测试结果'); return }
-  if (form.csrscs === '未通过' && !form.csryj) { ElMessage.warning('请填写未通过原因'); return }
+  if (!form.testResult) { ElMessage.warning('请选择测试结果'); return }
+  if (form.testResult === '未通过' && !form.shouhoucs) { ElMessage.warning('请填写未通过原因'); return }
   submitting.value = true
   try {
-    await axios.put('/api/feedback/' + form.id, { 
-      csrscs: form.csrscs, 
-      csryj: form.csryj,
-      csrbz: 'Y'
-    })
+    // 根据测试结果更新不同字段
+    const updateData: any = { shouhoucs: form.shouhoucs || '' }
+    if (form.testResult === '通过') {
+      updateData.shouhoubz = 'Y'  // 测试通过，进入售后/完成阶段
+    } else {
+      updateData.gongchengsbz = 'N'  // 测试未通过，退回工程师重新处理
+    }
+    await axios.put('/api/feedback/' + form.id, updateData)
     ElMessage.success('提交成功')
-    form.csrscs = ''
-    form.csryj = ''
+    form.testResult = ''
+    form.shouhoucs = ''
     selected.value = null
     // 重置表单
-    Object.assign(form, { id: 0, lsh: '', yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', csrscs: '', csryj: '', xggcs: '', shishiry: '', jingjicd: '一般' })
+    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', testResult: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般' })
     loadList()
   } catch (err) { ElMessage.error('提交失败') }
   finally { submitting.value = false }
@@ -222,6 +240,7 @@ onMounted(() => { loadList() })
 <style scoped>
 .check-page { padding: 16px; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.header-right { display: flex; align-items: center; gap: 16px; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .form-card { flex-shrink: 0; }
 .form-content { display: flex; flex-direction: column; gap: 12px; }

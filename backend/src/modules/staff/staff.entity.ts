@@ -1,19 +1,34 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('zd_jishuyuan')
 export class Staff {
-  @PrimaryColumn({ name: 'ID' })
+  @PrimaryGeneratedColumn({ name: 'ID' })
   id: number;
 
-  @Column({ name: 'gonghao' })
+  @Column({ name: 'gonghao', type: 'int', nullable: true })
   gonghao: number;
 
-  @Column({ name: 'xingming', length: 10, type: 'varchar' })
+  @Column({ name: 'xingming', length: 50, type: 'varchar', nullable: true })
   xingming: string;
 
-  @Column({ name: 'zhiwu', length: 8, type: 'varchar' })
+  @Column({ name: 'gender', length: 10, type: 'varchar', nullable: true })
+  gender: string;
+
+  @Column({ name: 'birthDate', type: 'date', nullable: true })
+  birthDate: string;
+
+  @Column({ name: 'phone', length: 20, type: 'varchar', nullable: true })
+  phone: string;
+
+  @Column({ name: 'email', length: 100, type: 'varchar', nullable: true })
+  email: string;
+
+  @Column({ name: 'zhiwu', length: 50, type: 'varchar', nullable: true })
   zhiwu: string;
 
-  @Column({ name: 'zhuangtai', length: 50, nullable: true, type: 'varchar' })
-  zhuangtai?: string | null;
+  @Column({ name: 'zhuangtai', type: 'int', nullable: true, default: 1 })
+  zhuangtai: number;
+
+  @Column({ name: 'category', length: 20, type: 'varchar', nullable: true })
+  category: string;
 }

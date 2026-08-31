@@ -16,8 +16,8 @@
         <el-form-item label="模块">
           <el-input v-model="searchForm.mokuai" placeholder="输入模块搜索" clearable @keyup.enter="handleSearch" />
         </el-form-item>
-        <el-form-item label="流水号">
-          <el-input v-model="searchForm.lsh" placeholder="输入流水号" clearable @keyup.enter="handleSearch" />
+        <el-form-item label="问题ID号">
+          <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleSearch" style="width:130px">
@@ -35,7 +35,7 @@
       </el-form>
       
       <el-table :data="tableData" border v-loading="loading" stripe>
-        <el-table-column prop="lsh" label="流水号" width="80" />
+        <el-table-column prop="id" label="问题ID号" width="90" />
         <el-table-column prop="banben" label="软件版本" width="100" />
         <el-table-column prop="yiyuanmc" label="医院名称" width="150" />
         <el-table-column prop="shishiry" label="实施人员" width="90" />
@@ -71,10 +71,10 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑问题' : '新增问题'" width="900px" :close-on-click-modal="false" destroy-on-close>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="流水号">
+          <el-col :span="6" v-if="isEdit">
+            <el-form-item label="问题ID号">
               <div class="lsh-box">
-                <el-input v-model="form.lsh" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
+                <el-input v-model="form.id" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
               </div>
             </el-form-item>
           </el-col>
@@ -124,7 +124,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="实施人员" prop="shishiry">
+            <el-form-item label="跟进人员" prop="shishiry">
               <el-select v-model="form.shishiry" placeholder="请选择" class="full-width">
                 <el-option v-for="e in shishiList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
@@ -259,9 +259,9 @@ const hospitalLoading = ref(false)
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
 
-const searchForm = reactive({ yiyuanmc: '', mokuai: '', lsh: '', zhuangtai: '' })
+const searchForm = reactive({ yiyuanmc: '', mokuai: '', id: '', zhuangtai: '' })
 const form = reactive({
-  id: 0, lsh: '', banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
+  id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
 })
 
 const rules = {
@@ -321,7 +321,7 @@ const loadData = async () => {
     pageSize: pagination.pageSize, 
     yiyuanmc: searchForm.yiyuanmc || undefined, 
     mokuai: searchForm.mokuai || undefined, 
-    lsh: searchForm.lsh || undefined 
+    id: searchForm.id || undefined 
   }
   if (searchForm.zhuangtai === 'yiluru') {
     params.gongchengsbz = 'N'
@@ -339,14 +339,20 @@ const loadData = async () => {
   try {
     const res = await axios.get('/api/feedback', { params })
     const data = res.data?.data || res.data || res
-    tableData.value = data?.list || []
+    // 字段名转换：后端实体属性名 → 前端字段名
+    tableData.value = (data?.list || []).map((item: any) => ({
+      ...item,
+      yiyuanmc: item.yiyuanmc || item.hospital,
+      mokuai: item.mokuai || item.module,
+      xggcs: item.xggcs || item.engineer
+    }))
     pagination.total = data?.total || 0
   } catch (err) { console.error('加载列表失败:', err) }
   finally { loading.value = false }
 }
 
 const handleSearch = () => { pagination.page = 1; loadData() }
-const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.lsh = ''; searchForm.zhuangtai = ''; handleSearch() }
+const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.id = ''; searchForm.zhuangtai = ''; handleSearch() }
 
 const onModuleChange = async (moduleName: any) => {
   form.chuangtimc = ''
@@ -356,15 +362,9 @@ const onModuleChange = async (moduleName: any) => {
   catch (err) { console.error('加载窗体失败:', err) }
 }
 
-const getLsh = async () => {
-  try { const res = await axios.get('/api/feedback/getLsh'); form.lsh = res?.data?.data?.lsh || Date.now().toString() } 
-  catch (err) { form.lsh = Date.now().toString() }
-}
-
 const handleAdd = async () => {
   isEdit.value = false
   form.id = 0
-  form.lsh = ''
   form.banben = 'HIS问题'
   form.yiyuanmc = ''
   form.shishiry = ''
@@ -376,18 +376,21 @@ const handleAdd = async () => {
   form.shouzhongcs = ''
   uploadFileList.value = []
   forms.value = []
-  await getLsh()
   dialogVisible.value = true
 }
 
 const handleEdit = async (row: any) => {
   isEdit.value = true
   const rowCopy = JSON.parse(JSON.stringify(row))
+  // 字段名转换：后端实体属性名 → 前端form字段名
+  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
+  rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
+  rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
   Object.assign(form, rowCopy)
   uploadFileList.value = []
   forms.value = []
   try {
-    const res = await axios.get(`/api/feedback/images/${row.lsh}`)
+    const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
       uploadFileList.value = imgs.map((name: string) => ({ name, url: `/api/feedback/uploads/${name}`, status: 'success' }))
@@ -462,7 +465,7 @@ const handlePaste = (event: ClipboardEvent) => {
 // 查看图片
 const viewImages = async (row: any) => {
   try {
-    const res = await axios.get(`/api/feedback/images/${row.lsh}`)
+    const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
       previewImages.value = imgs.map((name: string) => `/api/feedback/uploads/${name}`)
@@ -482,24 +485,27 @@ const handleSubmit = async () => {
     submitting.value = true
     
     const data = { ...form }
-    if (!isEdit.value) data.shouzhongbz = 'Y'
+    if (!isEdit.value) {
+      data.shouzhongbz = 'Y'
+      data.gongchengsbz = 'N'  // 新增问题时，工程师处理标志默认为'N'（待处理）
+      // 新增问题时，szcsgcs（实施工程师）写入当前登录者名称
+      const userStr = localStorage.getItem('user')
+      const user = userStr ? JSON.parse(userStr) : null
+      data.szcsgcs = user?.realName || user?.username || localStorage.getItem('username') || ''
+    }
     
     let savedFeedback = null
     
     if (isEdit.value) {
       await axios.put(`/api/feedback/${form.id}`, data)
-      savedFeedback = { lsh: form.lsh }
+      savedFeedback = { id: form.id }
     } else {
       const res = await axios.post('/api/feedback', data)
       savedFeedback = res?.data?.data || res.data || res
-      // 确保使用返回的lsh
-      if (savedFeedback && savedFeedback.lsh) {
-        form.lsh = savedFeedback.lsh
-      }
     }
     
-    // 上传图片 - 使用返回的lsh
-    const lshToUse = savedFeedback?.lsh || form.lsh
+    // 上传图片 - 使用ID命名，格式: {id}-{序号}.{扩展名}
+    const idToUse = savedFeedback?.id || form.id
     const rawFiles = uploadFileList.value.filter(f => f.raw)
     const existingFiles = uploadFileList.value.filter(f => !f.raw)
     let maxTpnum = 0
@@ -517,7 +523,7 @@ const handleSubmit = async () => {
     for (let i = 0; i < rawFiles.length; i++) {
       const formData = new FormData()
       formData.append('file', rawFiles[i].raw)
-      formData.append('lsh', String(lshToUse))
+      formData.append('id', String(idToUse))
       formData.append('yiyuanmc', form.yiyuanmc || '')
       formData.append('tpnum', String(maxTpnum + i + 1))
       try {

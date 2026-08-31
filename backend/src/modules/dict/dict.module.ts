@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DictController } from './dict.controller';
 import { DictService } from './dict.service';
-import { XtConfigServer } from '../entities/xtConfigServer.entity';
-import { ZdMokuai } from '../entities/zdMokuai.entity';
-import { ZdChuangti } from '../entities/zdChuangti.entity';
-import { ZdJishuyuan } from '../entities/zdJishuyuan.entity';
+import { Hospital } from '../hospital/hospital.entity';
+import { Module as ModuleEntity } from './module.entity';
+import { Form } from './form.entity';
+import { Staff } from '../staff/staff.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([XtConfigServer, ZdMokuai, ZdChuangti, ZdJishuyuan])],
+  imports: [TypeOrmModule.forFeature([Hospital, ModuleEntity, Form, Staff])],
   controllers: [DictController],
   providers: [DictService],
   exports: [DictService],

@@ -12,7 +12,6 @@ import StaffManage from '@/views/settings/staff.vue'
 import ModuleManage from '@/views/settings/module.vue'
 import FormManage from '@/views/settings/form.vue'
 import UserManage from '@/views/user/index.vue'
-import HospitalManage from '@/views/hospital/index.vue'
 import RoleManage from '@/views/role/index.vue'
 import DiscussList from '@/views/discuss/index.vue'
 import Report from '@/views/report/index.vue'
@@ -54,7 +53,6 @@ const routes: RouteRecordRaw[] = [
           { path: 'module', name: 'ModuleManage', component: ModuleManage, meta: { title: '模块维护', permission: 'settings' } },
           { path: 'form', name: 'FormManage', component: FormManage, meta: { title: '窗体维护', permission: 'settings' } },
           { path: 'user', name: 'UserManage', component: UserManage, meta: { title: '用户管理', permission: 'user' } },
-          { path: 'hospital', name: 'HospitalManage', component: HospitalManage, meta: { title: '医院维护' } },
           { path: 'role', name: 'RoleManage', component: RoleManage, meta: { title: '角色管理', permission: 'role' } }
         ]
       }

@@ -1,7 +1,10 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
+import { Role } from '../role/role.entity';
 import { LoginDto, SmsLoginDto, SendCodeDto } from './dto/auth.dto';
 import { SmsService } from '../sms/sms.service';
 
@@ -16,6 +19,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private smsService: SmsService,
+    @InjectRepository(Role) private roleRepository: Repository<Role>,
   ) {}
 
   // 存储验证码的临时容器（实际项目中应该使用 Redis）
@@ -53,7 +57,21 @@ export class AuthService {
     // 5. 返回用户信息（不包含密码字段）
     const { password: _, ...userInfo } = user;
     
-    return { token, user: userInfo };
+    // 6. 查询角色信息，获取 viewOthers（查看非本人数据）权限
+    let viewOthers = 0;
+    try {
+      const role = await this.roleRepository.findOne({ where: { name: user.role } });
+      if (role) {
+        viewOthers = role.viewOthers || 0;
+      }
+    } catch (e) {
+      this.logger.warn('查询角色信息失败:' + e.message);
+    }
+    
+    // 把 viewOthers 加到返回的 user 对象中
+    const result = { ...userInfo, viewOthers };
+    
+    return { token, user: result };
   }
 
   // 发送短信验证码

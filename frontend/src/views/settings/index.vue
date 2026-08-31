@@ -14,10 +14,6 @@
             <el-icon><UserFilled /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
-          <el-menu-item index="hospital">
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>医院维护</span>
-          </el-menu-item>
           <el-menu-item index="role">
             <el-icon><Position /></el-icon>
             <span>角色管理</span>
@@ -93,7 +89,6 @@ const updateActiveMenu = () => {
   const path = route.path
   if (path.includes('/staff')) activeMenu.value = 'staff'
   else if (path.includes('/user')) activeMenu.value = 'user'
-  else if (path.includes('/hospital')) activeMenu.value = 'hospital'
   else if (path.includes('/role')) activeMenu.value = 'role'
   else if (path.includes('/module')) activeMenu.value = 'module'
   else if (path.includes('/form')) activeMenu.value = 'form'
@@ -122,8 +117,6 @@ const handleMenuSelect = (index: string) => {
     router.push('/settings/staff')
   } else if (index === 'user') {
     router.push('/settings/user')
-  } else if (index === 'hospital') {
-    router.push('/settings/hospital')
   } else if (index === 'role') {
     router.push('/settings/role')
   } else if (index === 'module') {

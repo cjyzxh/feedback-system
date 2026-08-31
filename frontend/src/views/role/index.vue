@@ -162,12 +162,12 @@ const handleAdd = () => {
 
 const handleEdit = async (row) => {
   const res = await roleApi.getById(row.id)
-  const role = res.data
+  const role = res.data.data  // 后端返回 { code, message, data: 角色数据 }
   form.id = role.id
   form.name = role.name
   form.description = role.description || ''
   form.viewOthers = role.viewOthers || 0
-    form.isAdmin = role.isAdmin || 0
+  form.isAdmin = role.isAdmin || 0
   form.status = role.status
   form.permissions = role.permissions || []
   

@@ -3,127 +3,333 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>时效分析报表</span>
+          <span><el-icon><DataAnalysis /></el-icon> 数据统计</span>
           <el-button @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="研发处理时效" name="dev">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>紧急（≤24小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ devData.urgent.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ devData.urgent.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="devData.urgent.total ? (devData.urgent.ok / devData.urgent.total * 100) : 0" />
-              </el-card>
-            </el-col>
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>急（≤72小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ devData.normal.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ devData.normal.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="devData.normal.total ? (devData.normal.ok / devData.normal.total * 100) : 0" />
-              </el-card>
-            </el-col>
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>一般（≤168小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ devData.low.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ devData.low.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="devData.low.total ? (devData.low.ok / devData.low.total * 100) : 0" />
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-tab-pane>
-        
-        <el-tab-pane label="测试时效" name="test">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>紧急（≤12小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ testData.urgent.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ testData.urgent.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="testData.urgent.total ? (testData.urgent.ok / testData.urgent.total * 100) : 0" />
-              </el-card>
-            </el-col>
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>急（≤24小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ testData.normal.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ testData.normal.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="testData.normal.total ? (testData.normal.ok / testData.normal.total * 100) : 0" />
-              </el-card>
-            </el-col>
-            <el-col :span="8">
-              <el-card shadow="hover">
-                <h3>一般（≤48小时）</h3>
-                <div class="stat">
-                  <span class="num">{{ testData.low.total }}</span>
-                  <span class="label">总计</span>
-                </div>
-                <div class="stat">
-                  <span class="num success">{{ testData.low.ok }}</span>
-                  <span class="label">达标</span>
-                </div>
-                <el-progress :percentage="testData.low.total ? (testData.low.ok / testData.low.total * 100) : 0" />
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-tab-pane>
-      </el-tabs>
+      <!-- 查询条件 -->
+      <el-form :inline="true" :model="searchForm" class="search-form">
+        <el-form-item label="开始日期">
+          <el-date-picker v-model="searchForm.startDate" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" style="width:150px" />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker v-model="searchForm.endDate" type="date" placeholder="选择结束日期" value-format="YYYY-MM-DD" style="width:150px" />
+        </el-form-item>
+        <el-form-item v-if="canViewOthers">
+          <el-checkbox v-model="viewAll">查询所有人员</el-checkbox>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+      
+      <!-- 统计概览卡片 -->
+      <el-row :gutter="20" class="stat-cards" v-if="statsData.total > 0">
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card total">
+            <div class="stat-icon"><el-icon><Document /></el-icon></div>
+            <div class="stat-info">
+              <div class="stat-num">{{ statsData.total }}</div>
+              <div class="stat-label">问题总数</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card processed">
+            <div class="stat-icon"><el-icon><CircleCheck /></el-icon></div>
+            <div class="stat-info">
+              <div class="stat-num">{{ statsData.processed }}</div>
+              <div class="stat-label">已处理</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card pending">
+            <div class="stat-icon"><el-icon><Clock /></el-icon></div>
+            <div class="stat-info">
+              <div class="stat-num">{{ statsData.pending }}</div>
+              <div class="stat-label">待处理</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card rate">
+            <div class="stat-icon"><el-icon><TrendCharts /></el-icon></div>
+            <div class="stat-info">
+              <div class="stat-num">{{ statsData.total ? ((statsData.processed / statsData.total) * 100).toFixed(1) : 0 }}%</div>
+              <div class="stat-label">处理率</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+      
+      <!-- 图表区域 -->
+      <el-row :gutter="20" class="chart-row" v-if="statsData.total > 0">
+        <el-col :span="12">
+          <el-card shadow="hover">
+            <template #header>
+              <span class="chart-title">人员问题处理统计</span>
+            </template>
+            <div ref="barChartRef" class="chart-container"></div>
+          </el-card>
+        </el-col>
+        <el-col :span="12">
+          <el-card shadow="hover">
+            <template #header>
+              <span class="chart-title">问题状态分布</span>
+            </template>
+            <div ref="pieChartRef" class="chart-container"></div>
+          </el-card>
+        </el-col>
+      </el-row>
+      
+      <!-- 人员统计表格 -->
+      <el-card shadow="hover" class="table-card" v-if="personStats.length > 0">
+        <template #header>
+          <span class="chart-title">人员处理明细</span>
+        </template>
+        <el-table :data="personStats" border stripe>
+          <el-table-column prop="name" label="姓名" width="100" />
+          <el-table-column prop="total" label="问题总数" width="100" align="center" />
+          <el-table-column prop="processed" label="已处理" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="success" size="small">{{ row.processed }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="pending" label="待处理" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="warning" size="small">{{ row.pending }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="rate" label="处理率" width="120" align="center">
+            <template #default="{ row }">
+              <el-progress :percentage="row.rate" :stroke-width="8" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="avgHours" label="平均处理时长(小时)" width="160" align="center" />
+        </el-table>
+      </el-card>
+      
+      <!-- 空状态 -->
+      <el-empty v-if="!loading && statsData.total === 0" description="暂无统计数据，请调整查询条件后重试" />
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import api from '@/api'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { DataAnalysis, Refresh, Search, Document, CircleCheck, Clock, TrendCharts } from '@element-plus/icons-vue'
+import axios from 'axios'
+import * as echarts from 'echarts'
 
-const activeTab = ref('dev')
-const devData = reactive({ urgent: { total: 0, ok: 0 }, normal: { total: 0, ok: 0 }, low: { total: 0, ok: 0 } })
-const testData = reactive({ urgent: { total: 0, ok: 0 }, normal: { total: 0, ok: 0 }, low: { total: 0, ok: 0 } })
+const loading = ref(false)
+const barChartRef = ref(null)
+const pieChartRef = ref(null)
+let barChart = null
+let pieChart = null
 
+// 获取当前登录者
+const getCurrentUser = () => {
+  const userStr = localStorage.getItem('user')
+  const user = userStr ? JSON.parse(userStr) : {}
+  return user?.realName || user?.username || localStorage.getItem('username') || ''
+}
+
+// 判断当前用户是否有"查看非本人数据"权限
+const canViewOthers = computed(() => {
+  return parseInt(localStorage.getItem('viewOthers') || '0') === 1
+})
+
+// 默认日期：最近30天
+const getDefaultDate = (days) => {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return date.toISOString().split('T')[0]
+}
+
+const searchForm = reactive({
+  startDate: getDefaultDate(30),
+  endDate: new Date().toISOString().split('T')[0]
+})
+const viewAll = ref(false)
+
+// 统计数据
+const statsData = reactive({
+  total: 0,
+  processed: 0,
+  pending: 0
+})
+
+// 人员统计数据
+const personStats = ref([])
+
+// 加载数据
 const loadData = async () => {
+  loading.value = true
   try {
-    const devRes = await api.get('/feedback/report/dev-efficiency')
-    const testRes = await api.get('/feedback/report/test-efficiency')
-    Object.assign(devData, devRes)
-    Object.assign(testData, testRes)
-  } catch (e) {
-    console.error(e)
+    const currentUser = getCurrentUser()
+    const params = {
+      page: 1,
+      pageSize: 1000,  // 取足够多的数据进行统计
+      startDate: searchForm.startDate || undefined,
+      endDate: searchForm.endDate || undefined
+    }
+    
+    // 不勾选"查询所有人员"时，只查询当前登录者的数据
+    if (!viewAll.value) {
+      params.xggcs = currentUser
+    }
+    
+    const res = await axios.get('/api/feedback', { params })
+    const data = res.data?.data || res.data || res
+    const list = data?.list || []
+    
+    // 统计总数据
+    statsData.total = list.length
+    statsData.processed = list.filter(item => item.gongchengsbz === 'Y').length
+    statsData.pending = list.filter(item => item.gongchengsbz === 'N').length
+    
+    // 按人员统计
+    const personMap = {}
+    list.forEach(item => {
+      const name = item.xggcs || '未分配'
+      if (!personMap[name]) {
+        personMap[name] = { name, total: 0, processed: 0, pending: 0, hours: [] }
+      }
+      personMap[name].total++
+      if (item.gongchengsbz === 'Y') {
+        personMap[name].processed++
+        // 计算处理时长（如果有录入时间和修改时间）
+        if (item.lvrusj && item.xgsj) {
+          const start = new Date(item.lvrusj).getTime()
+          const end = new Date(item.xgsj).getTime()
+          const hours = (end - start) / (1000 * 60 * 60)
+          if (hours > 0 && hours < 720) {  // 排除异常值
+            personMap[name].hours.push(hours)
+          }
+        }
+      } else {
+        personMap[name].pending++
+      }
+    })
+    
+    // 转换为数组并计算处理率和平均时长
+    personStats.value = Object.values(personMap).map(p => {
+      const avgHours = p.hours.length > 0 
+        ? (p.hours.reduce((a, b) => a + b, 0) / p.hours.length).toFixed(1)
+        : '-'
+      return {
+        name: p.name,
+        total: p.total,
+        processed: p.processed,
+        pending: p.pending,
+        rate: p.total ? Math.round((p.processed / p.total) * 100) : 0,
+        avgHours
+      }
+    }).sort((a, b) => b.total - a.total)
+    
+    // 渲染图表
+    await nextTick()
+    renderCharts()
+    
+  } catch (err) {
+    console.error('加载统计数据失败:', err)
+    ElMessage.error('加载统计数据失败')
+  } finally {
+    loading.value = false
   }
+}
+
+// 渲染图表
+const renderCharts = () => {
+  // 柱状图：人员问题处理统计
+  if (barChartRef.value) {
+    if (!barChart) {
+      barChart = echarts.init(barChartRef.value)
+    }
+    const names = personStats.value.map(p => p.name)
+    const processedData = personStats.value.map(p => p.processed)
+    const pendingData = personStats.value.map(p => p.pending)
+    
+    barChart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { data: ['已处理', '待处理'], bottom: 0 },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+      xAxis: { type: 'category', data: names, axisLabel: { rotate: 30 } },
+      yAxis: { type: 'value', name: '问题数' },
+      series: [
+        {
+          name: '已处理',
+          type: 'bar',
+          data: processedData,
+          itemStyle: { color: '#67c23a', borderRadius: [4, 4, 0, 0] },
+          barWidth: '30%'
+        },
+        {
+          name: '待处理',
+          type: 'bar',
+          data: pendingData,
+          itemStyle: { color: '#e6a23c', borderRadius: [4, 4, 0, 0] },
+          barWidth: '30%'
+        }
+      ]
+    })
+  }
+  
+  // 饼图：问题状态分布
+  if (pieChartRef.value) {
+    if (!pieChart) {
+      pieChart = echarts.init(pieChartRef.value)
+    }
+    
+    pieChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { bottom: 0 },
+      series: [
+        {
+          name: '问题状态',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+          label: { show: true, formatter: '{b}\n{d}%' },
+          emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+          data: [
+            { value: statsData.processed, name: '已处理', itemStyle: { color: '#67c23a' } },
+            { value: statsData.pending, name: '待处理', itemStyle: { color: '#e6a23c' } }
+          ]
+        }
+      ]
+    })
+  }
+}
+
+// 窗口大小变化时重新渲染图表
+window.addEventListener('resize', () => {
+  if (barChart) barChart.resize()
+  if (pieChart) pieChart.resize()
+})
+
+const handleSearch = () => {
+  if (!searchForm.startDate || !searchForm.endDate) {
+    ElMessage.warning('请选择开始日期和结束日期')
+    return
+  }
+  if (searchForm.startDate > searchForm.endDate) {
+    ElMessage.warning('开始日期不能大于结束日期')
+    return
+  }
+  loadData()
+}
+
+const handleReset = () => {
+  searchForm.startDate = getDefaultDate(30)
+  searchForm.endDate = new Date().toISOString().split('T')[0]
+  viewAll.value = false
+  loadData()
 }
 
 onMounted(() => {
@@ -132,20 +338,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stat {
-  display: inline-block;
-  margin-right: 20px;
+.report-container { padding: 20px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
+.search-form { margin-bottom: 20px; }
+
+.stat-cards { margin-bottom: 20px; }
+.stat-card { display: flex; align-items: center; padding: 10px; }
+.stat-card .stat-icon {
+  width: 50px; height: 50px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: #fff; margin-right: 15px;
 }
-.stat .num {
-  font-size: 24px;
-  font-weight: bold;
-  display: block;
-}
-.stat .num.success {
-  color: #67c23a;
-}
-.stat .label {
-  font-size: 12px;
-  color: #999;
-}
+.stat-card.total .stat-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-card.processed .stat-icon { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+.stat-card.pending .stat-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-card.rate .stat-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-info { flex: 1; }
+.stat-num { font-size: 28px; font-weight: bold; color: #303133; }
+.stat-label { font-size: 13px; color: #909399; margin-top: 4px; }
+
+.chart-row { margin-bottom: 20px; }
+.chart-title { font-weight: 600; color: #303133; }
+.chart-container { width: 100%; height: 350px; }
+
+.table-card { margin-top: 0; }
 </style>

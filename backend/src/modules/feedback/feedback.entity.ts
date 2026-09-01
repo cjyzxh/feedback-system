@@ -20,9 +20,6 @@ export class Feedback {
   @Column({ name: 'chuangtimc', nullable: true, length: 50 })
   chuangtimc: string;
 
-  @Column({ name: 'wentilx', nullable: true, length: 50 })
-  wentilx: string;
-
   @Column({ name: 'wentism', type: 'text', nullable: true })
   wentism: string;
 
@@ -47,9 +44,6 @@ export class Feedback {
   @Column({ name: 'xggcs', nullable: true, length: 50 })
   xggcs: string;
 
-  @Column({ name: 'csgcs', nullable: true, length: 50 })
-  csgcs: string;
-
   @Column({ name: 'jingjicd', nullable: true, length: 10 })
   jingjicd: string;
 
@@ -67,4 +61,7 @@ export class Feedback {
 
   @Column({ name: 'shcsgcs', nullable: true, length: 50 })
   shcsgcs: string;
+
+  @Column({ name: 'cssj', nullable: true })
+  cssj: Date;
 }

@@ -14,6 +14,12 @@ export class User {
   @Column({ length: 50 })
   realName: string;
 
+  @Column({ length: 10, nullable: true })
+  gender: string; // 男 | 女
+
+  @Column({ type: 'date', nullable: true })
+  birthDate: Date; // 出生日期
+
   @Column({ length: 100 })
   email: string;
 

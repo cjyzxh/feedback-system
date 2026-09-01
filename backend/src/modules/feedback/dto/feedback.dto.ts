@@ -26,9 +26,6 @@ export class CreateFeedbackDto {
   chuangtimc?: string;
 
   @IsOptional()
-  wentilx?: string;
-
-  @IsOptional()
   wentism?: string;
 
   @IsOptional()
@@ -56,9 +53,6 @@ export class CreateFeedbackDto {
   engineer?: string;
 
   @IsOptional()
-  csgcs?: string;
-
-  @IsOptional()
   jingjicd?: string;
 
   @IsOptional()
@@ -66,6 +60,12 @@ export class CreateFeedbackDto {
 
   @IsOptional()
   szcsgcs?: string;
+
+  @IsOptional()
+  shcsgcs?: string;
+
+  @IsOptional()
+  cssj?: Date;
 
   @IsOptional()
   lurusr?: string;
@@ -100,9 +100,6 @@ export class UpdateFeedbackDto {
   chuangtimc?: string;
 
   @IsOptional()
-  wentilx?: string;
-
-  @IsOptional()
   wentism?: string;
 
   @IsOptional()
@@ -130,13 +127,19 @@ export class UpdateFeedbackDto {
   engineer?: string;
 
   @IsOptional()
-  csgcs?: string;
-
-  @IsOptional()
   jingjicd?: string;
 
   @IsOptional()
   taolunbz?: string;
+
+  @IsOptional()
+  szcsgcs?: string;
+
+  @IsOptional()
+  shcsgcs?: string;
+
+  @IsOptional()
+  cssj?: Date;
 
   @IsOptional()
   lurusr?: string;
@@ -151,6 +154,9 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   pageSize?: number;
+
+  @IsOptional()
+  id?: number;
 
   @IsOptional()
   keyword?: string;
@@ -180,14 +186,20 @@ export class QueryFeedbackDto {
   gongchengsbz?: string;
 
   @IsOptional()
+  shouhoubz?: string;
+
+  @IsOptional()
+  taolunbz?: string;
+
+  @IsOptional()
   lurumid?: number;
 
   @IsOptional()
   lurusr?: string;
 
   @IsOptional()
-  csrbz?: string;
+  startDate?: string;
 
   @IsOptional()
-  taolunbz?: string;
+  endDate?: string;
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
@@ -22,7 +22,6 @@ export class FeedbackService {
         shishiry: dto.shishiry,
         mokuai: dto.mokuai || dto.module,
         chuangtimc: dto.chuangtimc || dto.form,
-        wentilx: dto.wentilx,
         wentism: dto.wentism,
         shouzhongcs: dto.shouzhongcs,
         gongcscs: dto.gongcscs,
@@ -31,11 +30,12 @@ export class FeedbackService {
         gongchengsbz: dto.gongchengsbz || 'N',
         shouhoubz: dto.shouhoubz || 'N',
         xggcs: dto.xggcs || dto.engineer,
-        csgcs: dto.csgcs,
         jingjicd: dto.jingjicd,
         lvrusj: new Date(),
         taolunbz: dto.taolunbz || 'N',
         szcsgcs: dto.szcsgcs,
+        shcsgcs: dto.shcsgcs,
+        cssj: dto.cssj,
       });
       
       const saved = await this.feedbackRepository.save(feedback);
@@ -50,9 +50,14 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, csrbz, taolunbz } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, startDate, endDate, id } = query;
       
       const where: any = {};
+      
+      // 按ID精确查询
+      if (id) {
+        where.id = id;
+      }
       
       if (keyword) {
         where.wentism = Like(`%${keyword}%`);
@@ -81,12 +86,29 @@ export class FeedbackService {
         where.gongchengsbz = gongchengsbz;
       }
 
-      if (csrbz !== undefined) {
-        where.csrbz = csrbz;
+      if (shouhoubz !== undefined) {
+        where.shouhoubz = shouhoubz;
       }
 
       if (taolunbz !== undefined) {
         where.taolunbz = taolunbz;
+      }
+
+      // 时间范围查询（lvrusj 录入时间）
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.lvrusj = Between(start, end);
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.lvrusj = Between(start, new Date());
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.lvrusj = Between(new Date('1900-01-01'), end);
       }
       
       const [list, total] = await this.feedbackRepository.findAndCount({
@@ -144,7 +166,6 @@ export class FeedbackService {
       if (dto.shishiry !== undefined) feedback.shishiry = dto.shishiry;
       if (dto.mokuai || dto.module) feedback.mokuai = dto.mokuai || dto.module;
       if (dto.chuangtimc || dto.form) feedback.chuangtimc = dto.chuangtimc || dto.form;
-      if (dto.wentilx !== undefined) feedback.wentilx = dto.wentilx;
       if (dto.wentism !== undefined) feedback.wentism = dto.wentism;
       if (dto.shouzhongcs !== undefined) feedback.shouzhongcs = dto.shouzhongcs;
       if (dto.gongcscs !== undefined) feedback.gongcscs = dto.gongcscs;
@@ -153,9 +174,11 @@ export class FeedbackService {
       if (dto.gongchengsbz !== undefined) feedback.gongchengsbz = dto.gongchengsbz;
       if (dto.shouhoubz !== undefined) feedback.shouhoubz = dto.shouhoubz;
       if (dto.xggcs || dto.engineer) feedback.xggcs = dto.xggcs || dto.engineer;
-      if (dto.csgcs !== undefined) feedback.csgcs = dto.csgcs;
       if (dto.jingjicd !== undefined) feedback.jingjicd = dto.jingjicd;
       if (dto.taolunbz !== undefined) feedback.taolunbz = dto.taolunbz;
+      if (dto.szcsgcs !== undefined) feedback.szcsgcs = dto.szcsgcs;
+      if (dto.shcsgcs !== undefined) feedback.shcsgcs = dto.shcsgcs;
+      if (dto.cssj !== undefined) feedback.cssj = dto.cssj;
       
       feedback.xgsj = new Date();
       
@@ -185,59 +208,24 @@ export class FeedbackService {
     }
   }
 
-  // 根据ID获取图片列表 - 图片命名格式: {id}-{序号}.{扩展名}
+  // 获取问题图片列表
   async getImagesById(id: number): Promise<string[]> {
-    try {
-      const uploadsDir = './uploads';
-      
-      if (!fs.existsSync(uploadsDir)) {
-        return [];
-      }
-      
-      const files = fs.readdirSync(uploadsDir);
-      
-      // 过滤出以 id- 开头的图片文件
-      const imageFiles = files.filter(file => {
-        const prefix = `${id}-`;
-        const ext = path.extname(file).toLowerCase();
-        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext);
-        return file.startsWith(prefix) && isImage;
-      });
-      
-      // 按序号排序
-      imageFiles.sort((a, b) => {
-        const aNum = parseInt(a.split('-')[1]?.split('.')[0] || '0');
-        const bNum = parseInt(b.split('-')[1]?.split('.')[0] || '0');
-        return aNum - bNum;
-      });
-      
-      return imageFiles;
-    } catch (error) {
-      console.error('获取图片列表失败:', error);
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
       return [];
     }
+    // 图片命名格式: {id}-{序号}.{扩展名}，在 uploads 目录下直接查找
+    return fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`) && /\.(jpg|jpeg|png|gif|bmp)$/i.test(f));
   }
 
-  // 根据ID删除所有图片
+  // 删除问题图片目录
   async deleteImagesById(id: number): Promise<void> {
-    try {
-      const uploadsDir = './uploads';
-      
-      if (!fs.existsSync(uploadsDir)) {
-        return;
-      }
-      
-      const files = fs.readdirSync(uploadsDir);
-      
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (fs.existsSync(uploadDir)) {
+      const files = fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`));
       for (const file of files) {
-        if (file.startsWith(`${id}-`)) {
-          const filePath = path.join(uploadsDir, file);
-          fs.unlinkSync(filePath);
-          console.log('已删除图片:', file);
-        }
+        fs.unlinkSync(path.join(uploadDir, file));
       }
-    } catch (error) {
-      console.error('删除图片失败:', error);
     }
   }
 }

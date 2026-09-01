@@ -10,11 +10,11 @@
             <el-icon><User /></el-icon>
             <span>人员维护</span>
           </el-menu-item>
-          <el-menu-item index="user">
+          <el-menu-item index="user" v-if="isAdmin">
             <el-icon><UserFilled /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
-          <el-menu-item index="role">
+          <el-menu-item index="role" v-if="isAdmin">
             <el-icon><Position /></el-icon>
             <span>角色管理</span>
           </el-menu-item>
@@ -72,14 +72,20 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref } from 'vue'
+import { reactive, computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, UserFilled, OfficeBuilding, Position, Grid, Document, Setting } from '@element-plus/icons-vue'
+import { User, UserFilled, Position, Grid, Document, Setting } from '@element-plus/icons-vue'
 import api from '@/api'
 
 const route = useRoute()
 const router = useRouter()
+
+// 判断当前用户是否是管理员
+const isAdmin = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return parseInt(u.isAdmin || '0') === 1
+})
 
 const isSubRoute = computed(() => route.path !== '/settings')
 const activeMenu = ref('system')
@@ -99,9 +105,7 @@ const updateActiveMenu = () => {
 updateActiveMenu()
 
 // 监听路由变化
-import { watch } from 'vue'
 watch(() => route.path, updateActiveMenu)
-const currentView = ref('system')
 
 const dbSettings = reactive({
   type: '',
@@ -222,7 +226,6 @@ initDbSettings()
 
 .content-area .el-card {
   height: 100%;
-  min-height: calc(100vh - 120px);
   min-height: calc(100vh - 120px);
   margin: 0;
   border: 1px solid #ebeef5;

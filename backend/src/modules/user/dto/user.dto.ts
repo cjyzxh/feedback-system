@@ -10,6 +10,14 @@ export class CreateUserDto {
   @IsString()
   realName: string;
 
+  @IsOptional()
+  @IsString()
+  gender?: string; // 男 | 女
+
+  @IsOptional()
+  @IsString()
+  birthDate?: string; // 出生日期 YYYY-MM-DD
+
   @IsString()
   email: string;
 
@@ -43,11 +51,23 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  gender?: string; // 男 | 女
+
+  @IsOptional()
+  @IsString()
+  birthDate?: string; // 出生日期 YYYY-MM-DD
+
+  @IsOptional()
+  @IsString()
   email?: string;
 
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string; // 新密码（明文，后端会加密）
 
   @IsOptional()
   @IsString()

@@ -12,6 +12,13 @@
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="角色名称" width="150" />
         <el-table-column prop="description" label="描述" />
+        <el-table-column prop="isAdmin" label="是否管理员" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.isAdmin === 1 ? 'danger' : 'info'">
+              {{ row.isAdmin === 1 ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="viewOthers" label="查看非本人数据" width="120">
           <template #default="{ row }">
             <el-tag :type="row.viewOthers === 1 ? 'success' : 'info'">
@@ -47,8 +54,8 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑角色' : '新增角色'" width="700px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑角色' : '新增角色'" width="500px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
         </el-form-item>
@@ -66,31 +73,6 @@
             <el-radio :value="1">正常</el-radio>
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item label="页面权限">
-          <el-table :data="permissionList" border size="small">
-            <el-table-column prop="name" label="页面" width="120" />
-            <el-table-column label="查看" width="70">
-              <template #default="{ row }">
-                <el-checkbox v-model="row.view" />
-              </template>
-            </el-table-column>
-            <el-table-column label="新增" width="70">
-              <template #default="{ row }">
-                <el-checkbox v-model="row.add" />
-              </template>
-            </el-table-column>
-            <el-table-column label="编辑" width="70">
-              <template #default="{ row }">
-                <el-checkbox v-model="row.edit" />
-              </template>
-            </el-table-column>
-            <el-table-column label="删除" width="70">
-              <template #default="{ row }">
-                <el-checkbox v-model="row.delete" />
-              </template>
-            </el-table-column>
-          </el-table>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -117,26 +99,14 @@ const queryForm = reactive({
   pageSize: 10
 })
 
-const permissionOptions = [
-  { code: 'feedback', name: '问题反馈' },
-  { code: 'test', name: '问题处理' },
-  { code: 'testcheck', name: '问题测试' },
-  { code: 'user', name: '用户管理' },
-  { code: 'role', name: '角色管理' },
-  { code: 'settings', name: '系统设置' }
-]
-
 const form = reactive({
   id: null,
   name: '',
   description: '',
   viewOthers: 0,
   isAdmin: 0,
-  status: 1,
-  permissions: []
+  status: 1
 })
-
-const permissionList = ref(permissionOptions.map(p => ({ ...p, view: false, add: false, edit: false, delete: false })))
 
 const rules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
@@ -153,36 +123,21 @@ const handleAdd = () => {
   form.name = ''
   form.description = ''
   form.viewOthers = 0
+  form.isAdmin = 0
   form.status = 1
-  form.permissions = []
-  permissionList.value = permissionOptions.map(p => ({ ...p, view: false, add: false, edit: false, delete: false }))
   isEdit.value = false
   dialogVisible.value = true
 }
 
 const handleEdit = async (row) => {
   const res = await roleApi.getById(row.id)
-  const role = res.data.data  // 后端返回 { code, message, data: 角色数据 }
+  const role = res.data.data
   form.id = role.id
   form.name = role.name
   form.description = role.description || ''
   form.viewOthers = role.viewOthers || 0
   form.isAdmin = role.isAdmin || 0
   form.status = role.status
-  form.permissions = role.permissions || []
-  
-  const perms = role.permissions || []
-  permissionList.value = permissionOptions.map(p => {
-    const found = perms.find(x => x.page === p.code)
-    return {
-      ...p,
-      view: found ? true : false,
-      add: found ? (found.add || false) : false,
-      edit: found ? (found.edit || false) : false,
-      delete: found ? (found.delete || false) : false
-    }
-  })
-  
   isEdit.value = true
   dialogVisible.value = true
 }
@@ -197,23 +152,12 @@ const handleDelete = async (row) => {
 const handleSubmit = async () => {
   await formRef.value.validate()
   
-  const permissions = permissionList.value
-    .filter(p => p.view || p.add || p.edit || p.delete)
-    .map(p => ({
-      page: p.code,
-      view: p.view,
-      add: p.add,
-      edit: p.edit,
-      delete: p.delete
-    }))
-  
   const data = {
     name: form.name,
     description: form.description,
     viewOthers: form.viewOthers,
     isAdmin: form.isAdmin,
-    status: form.status,
-    permissions
+    status: form.status
   }
   
   if (isEdit.value) {

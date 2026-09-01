@@ -37,12 +37,12 @@ const routes: RouteRecordRaw[] = [
       { path: '/test', name: 'TestHandle', component: TestHandle, meta: { title: '问题处理', permission: 'test' } },
       // 问题测试
       { path: '/testcheck', name: 'TestCheck', component: TestCheck, meta: { title: '问题测试', permission: 'testcheck' } },
-      // 问题讨论
-      { path: '/discuss', name: 'DiscussList', component: DiscussList, meta: { title: '问题讨论', permission: 'test' } },
-      // 时效报表
-      { path: '/report', name: 'Report', component: Report, meta: { title: '时效报表', permission: 'test' } },
+      // 问题讨论（暂时隐藏菜单）
+      { path: '/discuss', name: 'DiscussList', component: DiscussList, meta: { title: '问题讨论', permission: 'test', hidden: true } },
+      // 数据统计
+      { path: '/report', name: 'Report', component: Report, meta: { title: '数据统计', permission: 'test' } },
       
-      // 系统管理（子菜单）
+      // 系统设置（人员维护等）
       {
         path: '/settings',
         component: Settings,
@@ -52,8 +52,8 @@ const routes: RouteRecordRaw[] = [
           { path: 'staff', name: 'StaffManage', component: StaffManage, meta: { title: '人员维护', permission: 'settings' } },
           { path: 'module', name: 'ModuleManage', component: ModuleManage, meta: { title: '模块维护', permission: 'settings' } },
           { path: 'form', name: 'FormManage', component: FormManage, meta: { title: '窗体维护', permission: 'settings' } },
-          { path: 'user', name: 'UserManage', component: UserManage, meta: { title: '用户管理', permission: 'user' } },
-          { path: 'role', name: 'RoleManage', component: RoleManage, meta: { title: '角色管理', permission: 'role' } }
+          { path: 'user', name: 'UserManage', component: UserManage, meta: { title: '用户管理', permission: 'user', requireAdmin: true } },
+          { path: 'role', name: 'RoleManage', component: RoleManage, meta: { title: '角色管理', permission: 'role', requireAdmin: true } }
         ]
       }
     ]

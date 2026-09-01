@@ -35,8 +35,15 @@
       <el-table :data="tableData" border stripe>
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="username" label="用户名" width="100" />
-        
         <el-table-column prop="realName" label="姓名" width="100" />
+        <el-table-column prop="gender" label="性别" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.gender === '男'" type="primary" size="small">男</el-tag>
+            <el-tag v-else-if="row.gender === '女'" type="danger" size="small">女</el-tag>
+            <span v-else style="color: #303133; font-size: 14px;">未设置</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="birthDate" label="出生日期" width="110" />
         <el-table-column prop="phone" label="手机号" width="120" />
         <el-table-column prop="email" label="邮箱" width="180" />
         <el-table-column prop="role" label="角色" width="100">
@@ -61,17 +68,28 @@
       <el-pagination v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize" :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next,jumper" @size-change="loadData" @current-change="loadData" style="margin-top:15px" />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑用户' : '新增用户'" width="500px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑用户' : '新增用户'" width="500px" @opened="onDialogOpened">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="isEdit" />
         </el-form-item>
-        
         <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input v-model="form.password" type="password" show-password />
         </el-form-item>
+        <el-form-item v-if="isEdit" label="重置密码">
+          <el-input v-model="form.password" type="password" show-password placeholder="留空则不修改密码" />
+        </el-form-item>
         <el-form-item label="姓名" prop="realName">
           <el-input v-model="form.realName" />
+        </el-form-item>
+        <el-form-item label="性别" prop="gender">
+          <el-radio-group v-model="form.gender">
+            <el-radio value="男">男</el-radio>
+            <el-radio value="女">女</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="出生日期" prop="birthDate">
+          <el-date-picker v-model="form.birthDate" type="date" placeholder="选择出生日期" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" />
@@ -100,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
@@ -108,17 +126,22 @@ const tableData = ref([])
 const total = ref(0)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const formRef = ref()
+const formRef = ref(null)
 const roleList = ref([])
 
 const queryForm = reactive({ username: '', realName: '', role: '', status: undefined, page: 1, pageSize: 10 })
-const form = reactive({ id: null, username: '', password: '', realName: '', phone: '', email: '', role: '', status: 1 })
+const form = reactive({ id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', status: 1 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }]
+}
+
+const onDialogOpened = () => {
+  // 对话框打开后，表单已经渲染，formRef 应该可用
+  console.log('对话框已打开，formRef:', formRef.value)
 }
 
 const loadRoles = async () => {
@@ -141,12 +164,16 @@ const loadData = async () => {
 const resetQuery = () => { queryForm.username = ''; queryForm.realName = ''; queryForm.role = ''; queryForm.status = undefined; queryForm.page = 1; loadData() }
 
 const handleAdd = () => {
-  Object.assign(form, { id: null, username: '', password: '', realName: '', phone: '', email: '', role: '', status: 1 })
+  Object.assign(form, { id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', status: 1 })
   isEdit.value = false
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => { Object.assign(form, { ...row, password: '' }); isEdit.value = true; dialogVisible.value = true }
+const handleEdit = (row) => { 
+  Object.assign(form, { ...row, password: '' })
+  isEdit.value = true
+  dialogVisible.value = true
+}
 
 const handleDelete = async (row) => {
   await ElMessageBox.confirm('确定删除该用户吗?', '提示', { type: 'warning' })
@@ -156,13 +183,45 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
-  await formRef.value.validate()
+  console.log('handleSubmit 被调用，formRef:', formRef.value)
+  
+  // 如果 formRef 不可用，直接手动验证
+  if (!formRef.value) {
+    console.warn('formRef 不可用，使用手动验证')
+    // 手动验证必填字段
+    if (!form.username) { ElMessage.error('请输入用户名'); return }
+    if (!isEdit.value && !form.password) { ElMessage.error('请输入密码'); return }
+    if (!form.realName) { ElMessage.error('请输入姓名'); return }
+    if (!form.email) { ElMessage.error('请输入邮箱'); return }
+  } else {
+    try {
+      await formRef.value.validate()
+    } catch (err) {
+      console.error('表单验证失败:', err)
+      return
+    }
+  }
+  
   try {
-    if (isEdit.value) { await axios.put('/api/user/' + form.id, form); ElMessage.success('更新成功') }
-    else { await axios.post('/api/user', form); ElMessage.success('创建成功') }
+    if (isEdit.value) {
+      // 编辑用户时，如果密码为空，不传递密码字段
+      const data = { ...form }
+      if (!data.password) {
+        delete data.password
+      }
+      await axios.put('/api/user/' + form.id, data)
+      ElMessage.success('更新成功')
+    }
+    else { 
+      await axios.post('/api/user', form)
+      ElMessage.success('创建成功')
+    }
     dialogVisible.value = false
     loadData()
-  } catch (err) { ElMessage.error(err.message || '操作失败') }
+  } catch (err) { 
+    console.error('提交失败:', err)
+    ElMessage.error(err.message || '操作失败') 
+  }
 }
 
 onMounted(() => { loadRoles(); loadData() })

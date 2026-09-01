@@ -57,19 +57,21 @@ export class AuthService {
     // 5. 返回用户信息（不包含密码字段）
     const { password: _, ...userInfo } = user;
     
-    // 6. 查询角色信息，获取 viewOthers（查看非本人数据）权限
+    // 6. 查询角色信息，获取 viewOthers（查看非本人数据）和 isAdmin（是否管理员）权限
     let viewOthers = 0;
+    let isAdmin = 0;
     try {
       const role = await this.roleRepository.findOne({ where: { name: user.role } });
       if (role) {
         viewOthers = role.viewOthers || 0;
+        isAdmin = role.isAdmin || 0;
       }
     } catch (e) {
       this.logger.warn('查询角色信息失败:' + e.message);
     }
     
-    // 把 viewOthers 加到返回的 user 对象中
-    const result = { ...userInfo, viewOthers };
+    // 把 viewOthers 和 isAdmin 加到返回的 user 对象中
+    const result = { ...userInfo, viewOthers, isAdmin };
     
     return { token, user: result };
   }
@@ -176,7 +178,23 @@ export class AuthService {
     // 8. 返回用户信息（不含密码）
     const { password: _, ...userInfo } = user;
     
-    return { token, user: userInfo };
+    // 9. 查询角色信息，获取 viewOthers（查看非本人数据）和 isAdmin（是否管理员）权限
+    let viewOthers = 0;
+    let isAdmin = 0;
+    try {
+      const role = await this.roleRepository.findOne({ where: { name: user.role } });
+      if (role) {
+        viewOthers = role.viewOthers || 0;
+        isAdmin = role.isAdmin || 0;
+      }
+    } catch (e) {
+      this.logger.warn('查询角色信息失败:' + e.message);
+    }
+    
+    // 把 viewOthers 和 isAdmin 加到返回的 user 对象中
+    const result = { ...userInfo, viewOthers, isAdmin };
+    
+    return { token, user: result };
   }
 
   // 根据用户ID获取用户信息

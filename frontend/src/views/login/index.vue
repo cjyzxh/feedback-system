@@ -1,8 +1,20 @@
 <template>
   <div class="login-container">
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="circle circle-1"></div>
+      <div class="circle circle-2"></div>
+      <div class="circle circle-3"></div>
+      <div class="grid-bg"></div>
+    </div>
+    
     <div class="login-box">
       <div class="login-header">
+        <div class="logo-icon">
+          <el-icon :size="40"><Monitor /></el-icon>
+        </div>
         <h1 class="title">问题反馈系统</h1>
+        <p class="subtitle">HIS 问题跟踪与管理平台</p>
       </div>
       
       <div class="login-tabs">
@@ -29,6 +41,7 @@
             placeholder="请输入用户名或ID号" 
             size="large" 
             :prefix-icon="User"
+            clearable
           />
         </el-form-item>
         
@@ -51,6 +64,7 @@
             size="large" 
             :prefix-icon="Iphone"
             maxlength="11"
+            clearable
           />
         </el-form-item>
         
@@ -77,13 +91,21 @@
         </el-form-item>
         
         <el-form-item>
-          <el-button type="primary" size="large" class="login-button" @click="handleLogin" :loading="loading" :disabled="isLoginDisabled">
-            {{ loading ? '登录中...' : '登 录' }}
-          </el-button>
+          <div class="button-group">
+            <button type="button" class="btn-gradient" @click="handleLogin">
+              <span v-if="loading" class="loading-text">登录中...</span>
+              <span v-else>登 录</span>
+            </button>
+            <button type="button" class="btn-gradient" @click="handleClear">
+              <el-icon class="btn-icon"><Delete /></el-icon>清 空
+            </button>
+          </div>
         </el-form-item>
       </el-form>
-      
-      <div class="login-tip" v-if="loginType === 'account'">测试账号：admin 密码：123456</div>
+    </div>
+    
+    <div class="footer">
+      <p>北京创佳益软件有限公司 版权所有(2004-2026)</p>
     </div>
   </div>
 </template>
@@ -92,7 +114,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Iphone, Message } from '@element-plus/icons-vue'
+import { User, Lock, Iphone, Message, Monitor, Delete } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -100,7 +122,7 @@ const loading = ref(false)
 const loginType = ref('account')
 const countdown = ref(0)
 const timer = ref(null)
-const hasSentCode = ref(false) // 记录是否已发送过验证码
+const hasSentCode = ref(false)
 const loginForm = reactive({
   username: '',
   password: '',
@@ -108,14 +130,12 @@ const loginForm = reactive({
   code: ''
 })
 
-// 计算登录按钮是否应该禁用
 const isLoginDisabled = computed(() => {
   if (loading.value) return true
   
   if (loginType.value === 'account') {
     return !loginForm.username || !loginForm.password
   } else {
-    // 短信登录：未发送验证码 或 手机号为空 或 验证码不是6位数字
     return !hasSentCode.value || !loginForm.phone || !/^\d{6}$/.test(loginForm.code)
   }
 })
@@ -126,7 +146,24 @@ const switchLoginType = (type) => {
   loginForm.password = ''
   loginForm.phone = ''
   loginForm.code = ''
-  hasSentCode.value = false // 切换登录类型时重置已发送状态
+  hasSentCode.value = false
+}
+
+const handleClear = () => {
+  if (loginType.value === 'account') {
+    loginForm.username = ''
+    loginForm.password = ''
+  } else {
+    loginForm.phone = ''
+    loginForm.code = ''
+    hasSentCode.value = false
+    if (timer.value) {
+      clearInterval(timer.value)
+      timer.value = null
+    }
+    countdown.value = 0
+  }
+  ElMessage.success('已清空')
 }
 
 const sendCode = async () => {
@@ -142,7 +179,6 @@ const sendCode = async () => {
   }
   
   try {
-      // 直接使用原生 fetch，完全避免 axios 拦截器问题
       const response = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: {
@@ -153,12 +189,11 @@ const sendCode = async () => {
       
       let result;
       if (response.ok) {
-        // 如果响应正常，解析JSON
         result = await response.json();
         
         if (result.code === 200) {
           ElMessage.success('验证码已发送')
-          hasSentCode.value = true // 设置为已发送验证码
+          hasSentCode.value = true
           countdown.value = 60
           timer.value = setInterval(() => {
             countdown.value--
@@ -171,12 +206,10 @@ const sendCode = async () => {
           ElMessage.error(result.message || '发送验证码失败')
         }
       } else {
-        // 如果响应错误，尝试解析JSON错误信息
         try {
           result = await response.json();
           ElMessage.error(result.message || `发送验证码失败 (${response.status})`)
         } catch (jsonError) {
-          // 如果无法解析JSON，显示状态码
           ElMessage.error(`发送验证码失败 (${response.status})`)
         }
       }
@@ -201,7 +234,6 @@ const handleLogin = async () => {
   
   loading.value = true
   try {
-    // 直接使用原生 fetch，完全避免 axios 拦截器问题
     let url, data
     if (loginType.value === 'account') {
       url = '/api/auth/login'
@@ -227,7 +259,6 @@ const handleLogin = async () => {
     
     let res;
     if (response.ok) {
-      // 如果响应正常，解析JSON
       res = await response.json();
       
       const token = res.data?.token;
@@ -242,21 +273,20 @@ const handleLogin = async () => {
         localStorage.setItem('viewOthers', user?.viewOthers || 0)
         ElMessage.success('登录成功')
         router.push('/')
+      } else {
+        ElMessage.error(res.message || '登录失败，未获取到token')
       }
     } else {
-      // 如果响应错误，尝试解析JSON错误信息
       try {
         res = await response.json();
-        // 显示服务器返回的具体错误信息
         ElMessage.error(res.message || `登录失败 (${response.status})`)
       } catch (jsonError) {
-        // 如果无法解析JSON，显示状态码
         ElMessage.error(`登录失败 (${response.status})`)
       }
     }
   } catch (error) {
     console.error('登录失败:', error)
-    ElMessage.error('登录失败')
+    ElMessage.error('登录失败: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -264,18 +294,246 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.login-box { width: 440px; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); }
-.login-header { text-align: center; margin-bottom: 24px; }
-.title { font-size: 28px; font-weight: 600; color: #333; }
-.login-tabs { display: flex; margin-bottom: 24px; border-bottom: 2px solid #f0f0f0; }
-.tab-item { flex: 1; text-align: center; padding: 12px; cursor: pointer; color: #666; font-size: 15px; transition: all 0.3s; }
-.tab-item.active { color: #667eea; border-bottom: 2px solid #667eea; font-weight: 500; }
-.tab-item:hover { color: #667eea; }
-.login-form { margin-top: 24px; }
-.code-input-wrapper { display: flex; gap: 10px; }
-.code-input-wrapper .el-input { flex: 1; }
-.code-button { white-space: nowrap; padding: 0 20px; }
-.login-button { width: 100%; font-size: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
-.login-tip { margin-top: 24px; text-align: center; color: #999; font-size: 12px; }
+.login-container { 
+  position: relative;
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  min-height: 100vh; 
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  overflow: hidden;
+}
+
+/* 背景装饰 */
+.bg-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+  animation: float 8s ease-in-out infinite;
+}
+
+.circle-1 {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.circle-2 {
+  width: 300px;
+  height: 300px;
+  bottom: -50px;
+  right: -50px;
+  animation-delay: 2s;
+}
+
+.circle-3 {
+  width: 200px;
+  height: 200px;
+  top: 50%;
+  right: 10%;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+  50% { transform: translateY(-30px) scale(1.1); opacity: 0.8; }
+}
+
+.grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.login-box { 
+  position: relative;
+  z-index: 10;
+  width: 440px; 
+  padding: 40px; 
+  background: rgba(255, 255, 255, 0.98); 
+  border-radius: 16px; 
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-header { 
+  text-align: center; 
+  margin-bottom: 24px; 
+}
+
+.logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
+  50% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.6); }
+}
+
+.title { 
+  font-size: 26px; 
+  font-weight: 600; 
+  color: #333;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.login-tabs { 
+  display: flex; 
+  margin-bottom: 24px; 
+  border-bottom: 2px solid #f0f0f0; 
+}
+
+.tab-item { 
+  flex: 1; 
+  text-align: center; 
+  padding: 12px; 
+  cursor: pointer; 
+  color: #666; 
+  font-size: 15px; 
+  transition: all 0.3s; 
+}
+
+.tab-item.active { 
+  color: #667eea; 
+  border-bottom: 2px solid #667eea; 
+  font-weight: 500; 
+}
+
+.tab-item:hover { 
+  color: #667eea; 
+}
+
+.login-form { 
+  margin-top: 24px; 
+}
+
+.code-input-wrapper { 
+  display: flex; 
+  gap: 10px; 
+}
+
+.code-input-wrapper .el-input { 
+  flex: 1; 
+}
+
+.code-button { 
+  white-space: nowrap; 
+  padding: 0 20px; 
+}
+
+.button-group {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-gradient {
+  width: 150px;
+  height: 40px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 2px;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #7689f0 0%, #865bb2 100%);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-gradient:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  margin-right: 4px;
+  font-size: 15px;
+}
+
+.loading-text {
+  display: inline-block;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.login-tip { 
+  margin-top: 24px; 
+  text-align: center; 
+  color: #999; 
+  font-size: 12px; 
+}
+
+.footer {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  z-index: 10;
+}
+
+.footer p {
+  margin: 0;
+}
 </style>

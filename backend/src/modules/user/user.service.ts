@@ -49,7 +49,7 @@ export class UserService {
       skip: (page - 1) * pageSize,
       take: pageSize,
       // 密码不返回给前端
-      select: ['id', 'username', 'realName', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
     });
     
     return { list, total };
@@ -59,7 +59,7 @@ export class UserService {
   async findById(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ['id', 'username', 'realName', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
     });
     
     if (!user) {
@@ -72,6 +72,11 @@ export class UserService {
   // 更新用户
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findById(id);
+    
+    // 如果有密码字段，先加密再赋值
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
     
     Object.assign(user, updateUserDto);
     

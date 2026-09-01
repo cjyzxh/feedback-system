@@ -228,4 +228,43 @@ export class FeedbackService {
       }
     }
   }
+
+  // 获取待处理、待测试和测试返回问题数量（用于消息提醒）
+  async getReminderCount(currentUser: string): Promise<{ pendingCount: number; testCount: number; returnedCount: number; pendingList: any[]; testList: any[]; returnedList: any[] }> {
+    try {
+      // 待处理问题：gongchengsbz='N' 且 xggcs=当前登录者
+      const pendingList = await this.feedbackRepository.find({
+        where: { gongchengsbz: 'N', xggcs: currentUser },
+        order: { lvrusj: 'DESC' },
+        take: 10
+      });
+
+      // 待测试问题：gongchengsbz='Y' 且 shouhoubz='N' 且 shishiry=当前登录者
+      const testList = await this.feedbackRepository.find({
+        where: { gongchengsbz: 'Y', shouhoubz: 'N', shishiry: currentUser },
+        order: { xgsj: 'DESC' },
+        take: 10
+      });
+
+      // 测试后返回的问题：gongchengsbz='N' 且 xggcs=当前登录者 且 有测试记录（shouhoucs有值或cssj有值）
+      // 这类问题是测试不通过被返回给工程师重新处理的，需要特别提醒（红色）
+      const returnedList = pendingList.filter((item: any) => {
+        return (item.shouhoucs && item.shouhoucs.trim() !== '') || 
+               (item.cssj && item.cssj !== null) ||
+               (item.shcsgcs && item.shcsgcs.trim() !== '');
+      }).slice(0, 5);
+
+      return {
+        pendingCount: pendingList.length,
+        testCount: testList.length,
+        returnedCount: returnedList.length,
+        pendingList,
+        testList,
+        returnedList
+      };
+    } catch (error) {
+      console.error('获取提醒数量失败:', error);
+      return { pendingCount: 0, testCount: 0, returnedCount: 0, pendingList: [], testList: [], returnedList: [] };
+    }
+  }
 }

@@ -139,4 +139,12 @@ export class FeedbackController {
     await this.feedbackService.batchRemove(body.ids);
     return { code: 200, message: '删除成功', data: null };
   }
+
+  // 获取待处理和待测试问题数量（用于消息提醒）
+  // GET /api/feedback/reminder/count?currentUser=xxx
+  @Get('reminder/count')
+  async getReminderCount(@Query('currentUser') currentUser: string) {
+    const data = await this.feedbackService.getReminderCount(currentUser);
+    return { code: 200, message: '查询成功', data };
+  }
 }

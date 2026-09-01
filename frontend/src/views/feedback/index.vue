@@ -60,8 +60,8 @@
             <el-tag v-else type="info" size="small">一般</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="wentism" label="问题说明" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="shouhoucs" label="测试结果" min-width="120" show-overflow-tooltip>
+        <el-table-column prop="wentism" label="问题说明" min-width="150" />
+        <el-table-column prop="shouhoucs" label="测试结果" min-width="120">
           <template #default="{ row }">
             <span v-if="row.shouhoucs" style="color: #f56c6c">{{ row.shouhoucs }}</span>
             <span v-else style="color: #c0c4cc">-</span>
@@ -840,6 +840,13 @@ onMounted(() => { loadDicts(); loadData() })
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .search-form { margin-bottom: 20px; }
 .full-width { width: 100%; }
+
+/* 表格内容不换行，超出显示省略号 */
+:deep(.el-table .cell) {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
 
 /* 莫兰迪色系按钮 */
 .morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }

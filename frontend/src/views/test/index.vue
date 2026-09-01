@@ -132,19 +132,19 @@
       </template>
       <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
         <el-table-column prop="id" label="问题ID号" width="60" align="center" />
-        <el-table-column prop="yiyuanmc" label="医院名称" min-width="90" show-overflow-tooltip />
+        <el-table-column prop="yiyuanmc" label="医院名称" min-width="90" />
         <el-table-column prop="mokuai" label="模块" width="55" />
         <el-table-column prop="chuangtimc" label="窗体" width="55" />
         <el-table-column prop="shishiry" label="跟进人" width="65" />
         <el-table-column prop="xggcs" label="工程师" width="65" />
-        <el-table-column prop="wentism" label="问题说明" min-width="80" show-overflow-tooltip />
-        <el-table-column prop="shouzhongcs" label="测试说明" min-width="80" show-overflow-tooltip>
+        <el-table-column prop="wentism" label="问题说明" min-width="80" />
+        <el-table-column prop="shouzhongcs" label="测试说明" min-width="80">
           <template #default="{ row }">
             <span v-if="row.shouzhongcs">{{ row.shouzhongcs }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="shouhoucs" label="测试结果" min-width="80" show-overflow-tooltip>
+        <el-table-column prop="shouhoucs" label="测试结果" min-width="80">
           <template #default="{ row }">
             <span v-if="row.shouhoucs" style="color: #f56c6c">{{ row.shouhoucs }}</span>
             <span v-else style="color: #c0c4cc">-</span>
@@ -496,6 +496,13 @@ onMounted(() => { loadList() })
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .button-group { display: flex; gap: 3px; }
+
+/* 表格内容不换行，超出显示省略号 */
+:deep(.el-table .cell) {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
 
 /* ========== 莫兰迪色系按钮 - 低饱和度、柔和、高级 ========== */
 .morandi-btn {

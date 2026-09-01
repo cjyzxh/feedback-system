@@ -149,19 +149,19 @@
       </template>
       <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
         <el-table-column prop="id" label="问题ID号" width="80" align="center" />
-        <el-table-column prop="yiyuanmc" label="医院名称" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="yiyuanmc" label="医院名称" min-width="120" />
         <el-table-column prop="mokuai" label="模块" width="70" />
         <el-table-column prop="chuangtimc" label="窗体" width="70" />
         <el-table-column prop="xggcs" label="工程师" width="70" />
         <el-table-column prop="shishiry" label="跟进人" width="70" />
-        <el-table-column prop="wentism" label="问题说明" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="shouzhongcs" label="测试说明" min-width="120" show-overflow-tooltip>
+        <el-table-column prop="wentism" label="问题说明" min-width="120" />
+        <el-table-column prop="shouzhongcs" label="测试说明" min-width="120">
           <template #default="{ row }">
             <span v-if="row.shouzhongcs">{{ row.shouzhongcs }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="gongcscs" label="处理意见" min-width="100" show-overflow-tooltip />
+        <el-table-column prop="gongcscs" label="处理意见" min-width="100" />
         <el-table-column prop="jingjicd" label="紧急" width="60" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
@@ -434,6 +434,13 @@ onMounted(() => { loadList() })
 .check-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .header-buttons { display: flex; gap: 3px; }
+
+/* 表格内容不换行，超出显示省略号 */
+:deep(.el-table .cell) {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
 
 /* ========== 莫兰迪色系按钮 - 低饱和度、柔和、高级 ========== */
 .morandi-btn {

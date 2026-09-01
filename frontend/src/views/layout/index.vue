@@ -763,39 +763,41 @@ onUnmounted(() => {
 .content { flex: 1; padding: 0; overflow-y: auto; background: #f5f7fa; }
 
 /* 浅色侧边栏菜单样式 - 清新简约 */
-:deep(.el-menu) { border-right: none; background: #ffffff; }
+:deep(.el-menu) { border-right: 1px solid #e8f5f0; background: linear-gradient(180deg, #f5fcf9 0%, #f0f7f4 100%); }
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   color: #606266 !important;
-  font-size: 14px;
-  height: 48px;
-  line-height: 48px;
+  font-size: 16px;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
+  height: 50px;
+  line-height: 50px;
 }
 :deep(.el-menu-item:hover),
 :deep(.el-sub-menu__title:hover) {
-  background: #f0fffb !important;
+  background: #e8f5f0 !important;
   color: #00b894 !important;
 }
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, #e6fff9 0%, #ffffff 100%) !important;
+  background: linear-gradient(90deg, #d4f5e9 0%, #f5fcf9 100%) !important;
   color: #00b894 !important;
   font-weight: 600;
   border-right: 3px solid #00b894;
 }
 /* 子菜单样式 */
 :deep(.el-sub-menu .el-menu-item) {
-  background: #fafbfc !important;
+  background: #edf6f2 !important;
   color: #606266 !important;
-  height: 44px;
-  line-height: 44px;
-  font-size: 13px;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
+  height: 46px;
+  line-height: 46px;
+  font-size: 15px;
 }
 :deep(.el-sub-menu .el-menu-item:hover) {
-  background: #f0fffb !important;
+  background: #e0f2eb !important;
   color: #00b894 !important;
 }
 :deep(.el-sub-menu .el-menu-item.is-active) {
-  background: #e6fff9 !important;
+  background: #d4f5e9 !important;
   color: #00b894 !important;
   font-weight: 600;
 }

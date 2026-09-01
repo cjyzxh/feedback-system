@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="handle-page">
     <!-- 上部：处理问题表单 -->
     <el-card class="form-card">
@@ -6,15 +6,15 @@
         <div class="card-header">
           <span><el-icon><Edit /></el-icon> 处理问题</span>
           <div class="button-group">
-            <el-button type="primary" @click="handleSubmit" :loading="submitting" :disabled="!selected">
+            <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting" :disabled="!selected">
               <el-icon><Check /></el-icon> 确认处理
             </el-button>
-            <el-button type="success" @click="viewImages(form)" :disabled="!hasImages">
+            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
               <el-icon><Picture /></el-icon> 查看图片
             </el-button>
-            <el-button type="warning" @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
-            <el-button type="info" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
-            <el-button type="info" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
+            <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
+            <el-button class="morandi-btn morandi-purple" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
+            <el-button class="morandi-btn morandi-orange" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
           </div>
         </div>
       </template>
@@ -192,7 +192,7 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="currentIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button type="primary" @click="openImageViewer">
+          <el-button type="warning" plain @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
           </el-button>
         </div>
@@ -480,10 +480,78 @@ onMounted(() => { loadList() })
 </script>
 
 <style scoped>
-.handle-page { padding: 16px; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+.handle-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 16px; }
-.button-group { display: flex; gap: 8px; }
+.button-group { display: flex; gap: 3px; }
+
+/* ========== 莫兰迪色系按钮 - 低饱和度、柔和、高级 ========== */
+.morandi-btn {
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.morandi-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  color: #ffffff !important;
+}
+.morandi-btn:active {
+  transform: translateY(0);
+}
+.morandi-btn:disabled,
+.morandi-btn.is-disabled {
+  background: #dcdfe6 !important;
+  color: #909399 !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 确认处理 - 莫兰迪绿（柔和、沉稳，表示完成确认） */
+.morandi-green {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
+}
+.morandi-green:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
+}
+
+/* 查看图片 - 莫兰迪黄（柔和、温暖，表示查看浏览） */
+.morandi-yellow {
+  background: linear-gradient(135deg, #C9C08F 0%, #B8AF7E 100%) !important;
+}
+.morandi-yellow:hover {
+  background: linear-gradient(135deg, #D4CC9E 0%, #C9C08F 100%) !important;
+}
+
+/* 分配修改人 - 莫兰迪蓝（沉稳、专业，表示分配任务） */
+.morandi-blue {
+  background: linear-gradient(135deg, #7B8FA1 0%, #6A7E90 100%) !important;
+}
+.morandi-blue:hover {
+  background: linear-gradient(135deg, #8FA3B8 0%, #7B8FA1 100%) !important;
+}
+
+/* 分配跟进人 - 莫兰迪紫（优雅、协作，表示跟进配合） */
+.morandi-purple {
+  background: linear-gradient(135deg, #A69CAC 0%, #958B9B 100%) !important;
+}
+.morandi-purple:hover {
+  background: linear-gradient(135deg, #B5A9B8 0%, #A69CAC 100%) !important;
+}
+
+/* 待讨论 - 莫兰迪橙（温暖、活跃，表示讨论待处理） */
+.morandi-orange {
+  background: linear-gradient(135deg, #C9A87C 0%, #B8976B 100%) !important;
+}
+.morandi-orange:hover {
+  background: linear-gradient(135deg, #D4B58F 0%, #C9A87C 100%) !important;
+}
+
 .action-buttons { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; white-space: nowrap; }
 .action-buttons .el-button { flex-shrink: 0; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }

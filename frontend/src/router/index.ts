@@ -15,6 +15,7 @@ import UserManage from '@/views/user/index.vue'
 import RoleManage from '@/views/role/index.vue'
 import DiscussList from '@/views/discuss/index.vue'
 import Report from '@/views/report/index.vue'
+import ModifyStatusReport from '@/views/report/modify-status.vue'
 
 // 路由配置
 // 类似于 VB6 的菜单配置，定义每个路径对应的页面组件
@@ -41,6 +42,8 @@ const routes: RouteRecordRaw[] = [
       { path: '/discuss', name: 'DiscussList', component: DiscussList, meta: { title: '问题讨论', permission: 'test', hidden: true } },
       // 数据统计
       { path: '/report', name: 'Report', component: Report, meta: { title: '数据统计', permission: 'test' } },
+      // 修改状态统计（数据统计的子菜单）
+      { path: '/report/modify-status', name: 'ModifyStatusReport', component: ModifyStatusReport, meta: { title: '修改状态统计', permission: 'test' } },
       
       // 系统设置（人员维护等）
       {
@@ -68,11 +71,17 @@ const router = createRouter({ history: createWebHistory(), routes })
 router.beforeEach((to, from, next) => {
   // 从 localStorage 中获取 token
   const token = localStorage.getItem('token')
+  // 判断是否是内置超级用户admin
+  const isSuperAdmin = localStorage.getItem('isSuperAdmin') === '1'
   
   // 如果页面需要认证但没有 token，跳转到登录页
   if (to.meta.requiresAuth && !token) next('/login')
   // 如果已经登录了但访问登录页，跳转到首页
   else if (to.path === '/login' && token) next('/')
+  // 如果是内置超级用户，只能访问系统设置相关页面，其他页面跳转到系统设置
+  else if (isSuperAdmin && !to.path.startsWith('/settings')) {
+    next('/settings')
+  }
   // 其他情况正常跳转
   else next()
 })

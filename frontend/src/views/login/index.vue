@@ -234,6 +234,54 @@ const handleLogin = async () => {
   
   loading.value = true
   try {
+    // ========== 内置超级用户 admin（系统初始化用，不连接数据库） ==========
+    if (loginType.value === 'account' && loginForm.username.trim().toLowerCase() === 'admin') {
+      // 密码格式：当天日期(YYYYMMDD) + 大写X，例如 20260901X
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = String(today.getMonth() + 1).padStart(2, '0')
+      const day = String(today.getDate()).padStart(2, '0')
+      const expectedPassword = `${year}${month}${day}X`
+      
+      if (loginForm.password === expectedPassword) {
+        // 内置超级用户登录成功，不连接数据库
+        const superAdminUser = {
+          id: 0,
+          username: 'admin',
+          realName: '系统管理员',
+          role: '超级管理员',
+          roleName: '超级管理员',
+          isAdmin: 1,
+          viewOthers: 1,
+          isSuperAdmin: true,  // 标记为内置超级用户，只能使用系统设置菜单
+          permissions: []
+        }
+        
+        localStorage.setItem('token', 'super-admin-token-' + Date.now())
+        localStorage.setItem('user', JSON.stringify(superAdminUser))
+        localStorage.setItem('username', '系统管理员')
+        localStorage.setItem('roleName', '超级管理员')
+        localStorage.setItem('permissions', JSON.stringify([]))
+        localStorage.setItem('viewOthers', '1')
+        localStorage.setItem('isSuperAdmin', '1')  // 标记为内置超级用户
+        
+        // 清除消息提醒记录
+        localStorage.removeItem('confirmedPendingIds')
+        localStorage.removeItem('confirmedTestIds')
+        localStorage.removeItem('confirmedReturnedIds')
+        localStorage.removeItem('lastRemindTimes')
+        
+        ElMessage.success('超级管理员登录成功（仅可使用系统设置）')
+        router.push('/settings')  // 直接跳转到系统设置页面
+        return
+      } else {
+        ElMessage.error('超级管理员密码错误（格式：当天日期+X，例如 20260901X）')
+        loading.value = false
+        return
+      }
+    }
+    // ========== 内置超级用户判断结束 ==========
+    
     let url, data
     if (loginType.value === 'account') {
       url = '/api/auth/login'
@@ -271,6 +319,12 @@ const handleLogin = async () => {
         localStorage.setItem('roleName', user?.roleName || user?.role || '用户')
         localStorage.setItem('permissions', JSON.stringify(user?.permissions || []))
         localStorage.setItem('viewOthers', user?.viewOthers || 0)
+        // 登录成功后清除消息提醒的已确认记录和提醒时间
+        // 这样每次登录后都会立即提醒所有待处理/待测试/测试返回的问题，就算之前点过了也提醒
+        localStorage.removeItem('confirmedPendingIds')
+        localStorage.removeItem('confirmedTestIds')
+        localStorage.removeItem('confirmedReturnedIds')
+        localStorage.removeItem('lastRemindTimes')
         ElMessage.success('登录成功')
         router.push('/')
       } else {

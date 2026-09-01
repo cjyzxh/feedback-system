@@ -1,4 +1,4 @@
-<!-- Sat Mar 21 16:31:58 CST 2026 -->
+﻿<!-- Sat Mar 21 16:31:58 CST 2026 -->
 <template>
   <div class="feedback-container">
     <el-card class="main-card" shadow="hover">
@@ -157,9 +157,11 @@
         </el-form-item>
       </el-form>
       
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
+            <template #footer>
+        <div style="text-align: center; width: 100%;">
+          <el-button class="morandi-btn morandi-gray" @click="dialogVisible = false">取消</el-button>
+          <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting">保存</el-button>
+        </div>
       </template>
     </el-dialog>
     
@@ -497,6 +499,20 @@ onMounted(() => { loadDicts(); loadData() })
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .search-form { margin-bottom: 20px; }
 .full-width { width: 100%; }
+
+/* 对话框 footer 按钮右对齐 */
+:deep(.el-dialog__footer) { text-align: right; }
+.dialog-footer-right { float: right; display: flex; gap: 10px; }
+:deep(.el-dialog__footer)::after { content: ""; display: block; clear: both; }
+
+/* 莫兰迪色系按钮 */
+.morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.morandi-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); color: #ffffff !important; }
+.morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+.morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
+.morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
+.morandi-gray { background: linear-gradient(135deg, #A8A8A8 0%, #969696 100%) !important; }
+.morandi-gray:hover { background: linear-gradient(135deg, #B8B8B8 0%, #A8A8A8 100%) !important; }
 .lsh-box :deep(.el-input__wrapper) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .lsh-box :deep(.el-input__inner) { color: white; font-weight: bold; }
 .priority-box { display: flex; gap: 10px; }

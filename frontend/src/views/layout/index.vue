@@ -7,22 +7,36 @@
         class="el-menu-vertical"
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/feedback">
-          <el-icon><ChatDotRound /></el-icon style="font-size:16px">
-          <template #title>问题列表</template>
-        </el-menu-item>
-        <el-menu-item index="/test">
-          <el-icon><Tools /></el-icon style="font-size:16px">
-          <template #title>问题处理</template>
-        </el-menu-item>
-        <el-menu-item index="/testcheck">
-          <el-icon><CircleCheck /></el-icon style="font-size:16px">
-          <template #title>问题测试</template>
-        </el-menu-item>
-        <el-menu-item index="/report">
-          <el-icon><DataAnalysis /></el-icon style="font-size:16px">
-          <template #title>数据统计</template>
-        </el-menu-item>
+        <!-- 普通用户菜单（超级管理员不可见） -->
+        <template v-if="!isSuperAdmin">
+          <el-menu-item index="/feedback">
+            <el-icon><ChatDotRound /></el-icon style="font-size:16px">
+            <template #title>问题列表</template>
+          </el-menu-item>
+          <el-menu-item index="/test">
+            <el-icon><Tools /></el-icon style="font-size:16px">
+            <template #title>问题处理</template>
+          </el-menu-item>
+          <el-menu-item index="/testcheck">
+            <el-icon><CircleCheck /></el-icon style="font-size:16px">
+            <template #title>问题测试</template>
+          </el-menu-item>
+          <el-sub-menu index="/report">
+            <template #title>
+              <el-icon><DataAnalysis /></el-icon style="font-size:16px">
+              <span>数据统计</span>
+            </template>
+            <el-menu-item index="/report">
+              <el-icon><DataAnalysis /></el-icon style="font-size:14px">
+              <template #title>通用统计</template>
+            </el-menu-item>
+            <el-menu-item index="/report/modify-status">
+              <el-icon><TrendCharts /></el-icon style="font-size:14px">
+              <template #title>修改状态统计</template>
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
+        <!-- 系统设置菜单（所有用户可见） -->
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon style="font-size:16px">
           <template #title>系统设置</template>
@@ -31,6 +45,7 @@
     </div>
     <div class="main-content">
       <div class="header">
+        <div class="header-left"></div>
         <div class="title">{{ route.meta?.title || '' }}</div>
         <div class="user-info">
           <span class="username-link" @click="openProfileDialog">{{ username }} ({{ roleName }})</span>
@@ -94,7 +109,7 @@
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
-import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, Key, Bell } from '@element-plus/icons-vue'
+import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, Key, Bell, TrendCharts } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
 import axios from 'axios'
 
@@ -108,7 +123,7 @@ const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('use
 
 // ========== 消息提醒功能 ==========
 const reminderTimer = ref<any>(null)
-const CHECK_INTERVAL = 30 * 1000       // 每30秒检查一次新问题
+const CHECK_INTERVAL = 10 * 1000       // 每10秒检查一次新问题
 const REMIND_INTERVAL = 5 * 60 * 1000  // 同一个问题每5分钟重复提醒一次（未点击时）
 
 // 从 localStorage 获取已确认（点击过）的问题ID - 这些不再提醒
@@ -546,7 +561,7 @@ const checkNewProblems = async () => {
 const startReminder = () => {
   // 立即检查一次
   checkNewProblems()
-  // 每30秒检查一次新问题
+  // 每10秒检查一次新问题
   reminderTimer.value = setInterval(() => {
     checkNewProblems()
   }, CHECK_INTERVAL)
@@ -565,6 +580,12 @@ const stopReminder = () => {
 const isAdmin = computed(() => {
   const u = JSON.parse(localStorage.getItem('user') || '{}')
   return parseInt(u.isAdmin || '0') === 1
+})
+
+// 判断当前用户是否是内置超级用户admin（系统初始化用，只能使用系统设置菜单）
+const isSuperAdmin = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.isSuperAdmin === true || localStorage.getItem('isSuperAdmin') === '1'
 })
 
 const activeMenu = computed(() => route.path)
@@ -662,6 +683,8 @@ const logout = () => {
   localStorage.removeItem('roleName')
   localStorage.removeItem('user')
   localStorage.removeItem('viewOthers')
+  localStorage.removeItem('isSuperAdmin')  // 清除内置超级用户标记
+  localStorage.removeItem('permissions')
   router.push('/login')
 }
 
@@ -685,18 +708,113 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.layout-container { display: flex; height: 100vh; }
-.sidebar { width: 200px; background: #304156; color: #fff; }
-.logo { padding: 20px; font-size: 18px; font-weight: bold; text-align: center; border-bottom: 1px solid #3a3a3a; }
+/* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
+.layout-container { display: flex; height: 100vh; background: #f5f7fa; }
+.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+.logo { 
+  padding: 20px 15px; 
+  font-size: 17px; 
+  font-weight: 600; 
+  text-align: center; 
+  border-bottom: 1px solid #f0f2f5; 
+  color: #00b894; 
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #f0fffb 0%, #ffffff 100%);
+}
 .main-content { flex: 1; display: flex; flex-direction: column; }
-.header { height: 60px; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid #e4e7ed; }
-.title { font-size: 18px; font-weight: bold; }
-.user-info { display: flex; align-items: center; gap: 10px; }
-.username-link { cursor: pointer; color: #409eff; }
-.username-link:hover { text-decoration: underline; }
-.content { flex: 1; padding: 20px; overflow-y: auto; background: #f0f2f5; }
-.el-menu { border-right: none; background: #304156; }
-.el-menu-item, .el-sub-menu__title { color: #bfcbd9; }
-.el-menu-item:hover, .el-menu-item.is-active, .el-sub-menu__title:hover { background: #263445; color: #409eff; }
-.el-sub-menu .el-menu-item { background: #1f2d3d; }
+.header { 
+  height: 60px; 
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffd 100%);
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 0 24px; 
+  border-bottom: 1px solid #e4e7ed; 
+  box-shadow: 0 2px 8px rgba(0, 184, 148, 0.08);
+  position: relative;
+}
+.header-left { flex: 1; }
+.title { 
+  flex: 1;
+  font-size: 22px; 
+  font-weight: 600; 
+  text-align: center;
+  background: linear-gradient(135deg, #00b894 0%, #00a884 50%, #009376 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 4px rgba(0, 184, 148, 0.1);
+}
+.user-info { 
+  flex: 1;
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  justify-content: flex-end;
+}
+.username-link { cursor: pointer; color: #00b894; font-weight: 500; }
+.username-link:hover { text-decoration: underline; color: #00a884; }
+.content { flex: 1; padding: 0; overflow-y: auto; background: #f5f7fa; }
+
+/* 浅色侧边栏菜单样式 - 清新简约 */
+:deep(.el-menu) { border-right: none; background: #ffffff; }
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  color: #606266 !important;
+  font-size: 14px;
+  height: 48px;
+  line-height: 48px;
+}
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background: #f0fffb !important;
+  color: #00b894 !important;
+}
+:deep(.el-menu-item.is-active) {
+  background: linear-gradient(90deg, #e6fff9 0%, #ffffff 100%) !important;
+  color: #00b894 !important;
+  font-weight: 600;
+  border-right: 3px solid #00b894;
+}
+/* 子菜单样式 */
+:deep(.el-sub-menu .el-menu-item) {
+  background: #fafbfc !important;
+  color: #606266 !important;
+  height: 44px;
+  line-height: 44px;
+  font-size: 13px;
+}
+:deep(.el-sub-menu .el-menu-item:hover) {
+  background: #f0fffb !important;
+  color: #00b894 !important;
+}
+:deep(.el-sub-menu .el-menu-item.is-active) {
+  background: #e6fff9 !important;
+  color: #00b894 !important;
+  font-weight: 600;
+}
+/* 菜单图标颜色 */
+:deep(.el-menu-item .el-icon),
+:deep(.el-sub-menu__title .el-icon) {
+  color: #909399 !important;
+  font-size: 16px;
+}
+:deep(.el-menu-item:hover .el-icon),
+:deep(.el-sub-menu__title:hover .el-icon),
+:deep(.el-menu-item.is-active .el-icon) {
+  color: #00b894 !important;
+}
+/* 退出按钮样式 */
+:deep(.el-button--danger) {
+  background: #ffffff;
+  border-color: #f56c6c;
+  color: #f56c6c;
+}
+:deep(.el-button--danger:hover) {
+  background: #fef0f0;
+  border-color: #f56c6c;
+  color: #f56c6c;
+}
 </style>

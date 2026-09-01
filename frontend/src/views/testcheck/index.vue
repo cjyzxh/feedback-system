@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="check-page">
     <!-- 上部：测试问题表单 -->
     <el-card class="form-card">
@@ -6,13 +6,13 @@
         <div class="card-header">
           <span><el-icon><CircleCheck /></el-icon> 测试问题</span>
           <div class="header-buttons">
-            <el-button type="success" @click="handleConfirm" :loading="submitting">
+            <el-button class="morandi-btn morandi-green" @click="handleConfirm" :loading="submitting">
               <el-icon><Check /></el-icon> 确认测试问题
             </el-button>
-            <el-button type="info" @click="handleReset">
+            <el-button class="morandi-btn morandi-pink" @click="handleReset">
               <el-icon><RefreshLeft /></el-icon> 返回测试问题
             </el-button>
-            <el-button type="primary" @click="viewImages(form)" :disabled="!hasImages">
+            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
               <el-icon><Picture /></el-icon> 查看图片
             </el-button>
           </div>
@@ -190,7 +190,7 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="currentIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button type="primary" @click="openImageViewer">
+          <el-button type="warning" plain @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
           </el-button>
         </div>
@@ -419,9 +419,61 @@ onMounted(() => { loadList() })
 </script>
 
 <style scoped>
-.check-page { padding: 16px; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+.check-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
-.header-buttons { display: flex; gap: 10px; }
+.header-buttons { display: flex; gap: 3px; }
+
+/* ========== 莫兰迪色系按钮 - 低饱和度、柔和、高级 ========== */
+.morandi-btn {
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.morandi-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  color: #ffffff !important;
+}
+.morandi-btn:active {
+  transform: translateY(0);
+}
+.morandi-btn:disabled,
+.morandi-btn.is-disabled {
+  background: #dcdfe6 !important;
+  color: #909399 !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 确认测试问题 - 莫兰迪绿（柔和、沉稳，表示确认完成） */
+.morandi-green {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
+}
+.morandi-green:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
+}
+
+/* 返回测试问题 - 莫兰迪粉（柔和、温暖，表示退回返回） */
+.morandi-pink {
+  background: linear-gradient(135deg, #C9A9A6 0%, #B89895 100%) !important;
+}
+.morandi-pink:hover {
+  background: linear-gradient(135deg, #D4B5B0 0%, #C9A9A6 100%) !important;
+}
+
+/* 查看图片 - 莫兰迪黄（柔和、温暖，表示查看浏览） */
+.morandi-yellow {
+  background: linear-gradient(135deg, #C9C08F 0%, #B8AF7E 100%) !important;
+}
+.morandi-yellow:hover {
+  background: linear-gradient(135deg, #D4CC9E 0%, #C9C08F 100%) !important;
+}
+
 .header-right { display: flex; align-items: center; gap: 12px; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .form-card { flex-shrink: 0; }

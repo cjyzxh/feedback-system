@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="feedback-container">
     <el-card class="main-card" shadow="hover">
       <template #header>
@@ -232,11 +232,13 @@
           </div>
         </el-form-item>
         
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
-            <el-icon><Check /></el-icon> {{ isEdit ? '更新' : '保存' }}
-          </el-button>
-          <el-button @click="dialogVisible = false">取消</el-button>
+        <el-form-item label-width="0" style="margin: 0; padding: 0;">
+          <div style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 3px; width: 100%; text-align: center;">
+            <el-button class="morandi-btn morandi-green" style="min-width: 110px; height: 42px; padding: 0 20px;" @click="handleSubmit" :loading="submitting">
+              <el-icon><Check /></el-icon> {{ isEdit ? '更新' : '保存' }}
+            </el-button>
+            <el-button class="morandi-btn morandi-gray" style="min-width: 110px; height: 42px; padding: 0 20px;" @click="dialogVisible = false">取消</el-button>
+          </div>
         </el-form-item>
       </el-form>
     </el-dialog>
@@ -834,10 +836,20 @@ onMounted(() => { loadDicts(); loadData() })
 </script>
 
 <style scoped>
-.feedback-container { padding: 20px; }
+.feedback-container { padding: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .search-form { margin-bottom: 20px; }
 .full-width { width: 100%; }
+
+/* 莫兰迪色系按钮 */
+.morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }
+.morandi-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); color: #ffffff !important; }
+.morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+.morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
+.morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
+.morandi-gray { background: linear-gradient(135deg, #A8A8A8 0%, #969696 100%) !important; }
+.morandi-gray:hover { background: linear-gradient(135deg, #B8B8B8 0%, #A8A8A8 100%) !important; }
+
 .lsh-box :deep(.el-input__wrapper) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .lsh-box :deep(.el-input__inner) { color: white; font-weight: bold; }
 .priority-box { display: flex; gap: 8px; }

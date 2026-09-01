@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="settings-manage">
     <div class="left-sidebar">
       <el-card>

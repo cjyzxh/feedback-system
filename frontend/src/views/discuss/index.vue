@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="discuss-container">
     <el-card>
       <template #header>
@@ -170,7 +170,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.discuss-container { padding: 20px; }
+.discuss-container { padding: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .search-form { margin-bottom: 20px; }
 </style>

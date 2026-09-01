@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="report-container">
     <el-card>
       <template #header>
@@ -171,21 +171,41 @@ const loadData = async () => {
   loading.value = true
   try {
     const currentUser = getCurrentUser()
-    const params = {
+    const baseParams = {
       page: 1,
       pageSize: 1000,  // 取足够多的数据进行统计
       startDate: searchForm.startDate || undefined,
       endDate: searchForm.endDate || undefined
     }
     
-    // 不勾选"查询所有人员"时，只查询当前登录者的数据
-    if (!viewAll.value) {
-      params.xggcs = currentUser
-    }
+    let list = []
     
-    const res = await axios.get('/api/feedback', { params })
-    const data = res.data?.data || res.data || res
-    const list = data?.list || []
+    if (viewAll.value) {
+      // 勾选"查询所有人员"时，查询所有数据
+      const res = await axios.get('/api/feedback', { params: baseParams })
+      const data = res.data?.data || res.data || res
+      list = data?.list || []
+    } else {
+      // 不勾选时，同时查询工程师(xggcs)和跟进人员(shishiry)为当前用户的问题，合并并去重
+      // （之前只查询xggcs，导致测试人员/跟进人员登录后看不到数据）
+      const [resEngineer, resFollower] = await Promise.all([
+        axios.get('/api/feedback', { params: { ...baseParams, xggcs: currentUser } }),
+        axios.get('/api/feedback', { params: { ...baseParams, shishiry: currentUser } })
+      ])
+      
+      const listEngineer = resEngineer.data?.data?.list || resEngineer.data?.list || []
+      const listFollower = resFollower.data?.data?.list || resFollower.data?.list || []
+      
+      // 合并并按id去重
+      const merged = [...listEngineer, ...listFollower]
+      const uniqueMap = {}
+      merged.forEach(item => {
+        if (!uniqueMap[item.id]) {
+          uniqueMap[item.id] = item
+        }
+      })
+      list = Object.values(uniqueMap)
+    }
     
     // 统计总数据
     statsData.total = list.length
@@ -338,7 +358,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.report-container { padding: 20px; }
+.report-container { padding: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
 .search-form { margin-bottom: 20px; }

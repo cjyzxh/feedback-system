@@ -746,6 +746,10 @@ onUnmounted(() => {
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 3px;
   text-shadow: 0 2px 4px rgba(0, 184, 148, 0.1);
+  /* 考虑左侧导航栏宽度(210px)，让标题在整个页面居中 */
+  /* 左侧导航栏占用210px，所以标题需要向左偏移105px（导航栏宽度的一半） */
+  position: relative;
+  left: -105px;
 }
 .user-info { 
   flex: 1;

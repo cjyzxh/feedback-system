@@ -279,13 +279,42 @@ const loadData = async () => {
     
     let list: any[] = []
     
-    if (viewAll.value || canViewOthers.value) {
-      // 查询所有人员
-      const res = await axios.get('/api/feedback', { params: baseParams })
-      const data = res.data?.data || res.data || res
-      list = data?.list || []
+    if (viewAll.value) {
+      // 勾选"查询所有人员"时，先找出类别包含"工程师"的操作员，然后按人循环查询
+      // 1. 先查询人员列表，找出类别包含工程师的操作员
+      const staffRes = await axios.get('/api/staff')
+      const staffData = staffRes.data?.data || staffRes.data || {}
+      const staffList = staffData?.list || staffData || []
+      const engineerList = staffList.filter((s: any) => 
+        s.category && s.category.includes('1') && s.xingming  // category='1'表示研发人员
+      )
+      const engineerNames = [...new Set(engineerList.map((s: any) => s.xingming))]
+      
+      // 2. 按人循环查询问题，合并结果
+      const allResults = await Promise.all(
+        engineerNames.map((name: string) => 
+          axios.get('/api/feedback', { params: { ...baseParams, xggcs: name } })
+        )
+      )
+      
+      // 3. 合并所有结果并去重
+      const merged: any[] = []
+      allResults.forEach((res: any) => {
+        const data = res.data?.data || res.data || res
+        const itemList = data?.list || []
+        merged.push(...itemList)
+      })
+      
+      // 按id去重
+      const uniqueMap: Record<string, any> = {}
+      merged.forEach((item: any) => {
+        if (!uniqueMap[item.id]) {
+          uniqueMap[item.id] = item
+        }
+      })
+      list = Object.values(uniqueMap)
     } else {
-      // 只查询当前用户作为工程师的问题
+      // 不勾选时，只查询当前用户作为工程师的问题（不管是否有查看非本人数据权限）
       const res = await axios.get('/api/feedback', { params: { ...baseParams, xggcs: currentUser } })
       const data = res.data?.data || res.data || res
       list = data?.list || []

@@ -13,7 +13,7 @@
         <div class="logo-icon">
           <el-icon :size="40"><Monitor /></el-icon>
         </div>
-        <h1 class="title">问题反馈系统</h1>
+        <h1 class="title">创佳益问题反馈系统</h1>
         <p class="subtitle">HIS 问题跟踪与管理平台</p>
       </div>
       
@@ -92,11 +92,11 @@
         
         <el-form-item>
           <div class="button-group">
-            <button type="button" class="btn-gradient" @click="handleLogin">
+            <button type="button" class="btn-gradient btn-login" @click="handleLogin">
               <span v-if="loading" class="loading-text">登录中...</span>
               <span v-else>登 录</span>
             </button>
-            <button type="button" class="btn-gradient" @click="handleClear">
+            <button type="button" class="btn-gradient btn-clear" @click="handleClear">
               <el-icon class="btn-icon"><Delete /></el-icon>清 空
             </button>
           </div>
@@ -354,7 +354,7 @@ const handleLogin = async () => {
   justify-content: center; 
   align-items: center; 
   min-height: 100vh; 
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, #e8f5f0 0%, #f0f7f4 30%, #f5f9f7 60%, #eaf4ef 100%);
   overflow: hidden;
 }
 
@@ -371,7 +371,7 @@ const handleLogin = async () => {
 .circle {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(143, 175, 143, 0.25) 0%, transparent 70%);
   animation: float 8s ease-in-out infinite;
 }
 
@@ -381,6 +381,7 @@ const handleLogin = async () => {
   top: -100px;
   left: -100px;
   animation-delay: 0s;
+  background: radial-gradient(circle, rgba(143, 175, 143, 0.3) 0%, transparent 70%);
 }
 
 .circle-2 {
@@ -389,6 +390,7 @@ const handleLogin = async () => {
   bottom: -50px;
   right: -50px;
   animation-delay: 2s;
+  background: radial-gradient(circle, rgba(201, 192, 143, 0.3) 0%, transparent 70%);
 }
 
 .circle-3 {
@@ -397,6 +399,7 @@ const handleLogin = async () => {
   top: 50%;
   right: 10%;
   animation-delay: 4s;
+  background: radial-gradient(circle, rgba(166, 156, 172, 0.25) 0%, transparent 70%);
 }
 
 @keyframes float {
@@ -411,8 +414,8 @@ const handleLogin = async () => {
   width: 100%;
   height: 100%;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(143, 175, 143, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 175, 143, 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -421,10 +424,11 @@ const handleLogin = async () => {
   z-index: 10;
   width: 440px; 
   padding: 40px; 
-  background: rgba(255, 255, 255, 0.98); 
+  background: linear-gradient(180deg, #ffffff 0%, #f8fffd 50%, #f5fcf9 100%);
   border-radius: 16px; 
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(143, 175, 143, 0.15), 0 8px 24px rgba(0, 0, 0, 0.06);
   animation: slideUp 0.6s ease-out;
+  border: 1px solid rgba(143, 175, 143, 0.25);
 }
 
 @keyframes slideUp {
@@ -450,28 +454,32 @@ const handleLogin = async () => {
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
   color: #fff;
   margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 24px rgba(143, 175, 143, 0.35);
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
-  50% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.6); }
+  0%, 100% { box-shadow: 0 8px 24px rgba(143, 175, 143, 0.35); }
+  50% { box-shadow: 0 8px 32px rgba(143, 175, 143, 0.55); }
 }
 
 .title { 
   font-size: 26px; 
   font-weight: 600; 
-  color: #333;
+  background: linear-gradient(135deg, #00b894 0%, #00a884 50%, #009376 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0;
+  letter-spacing: 2px;
 }
 
 .subtitle {
   font-size: 13px;
-  color: #999;
+  color: #909399;
   margin-top: 8px;
 }
 
@@ -486,23 +494,54 @@ const handleLogin = async () => {
   text-align: center; 
   padding: 12px; 
   cursor: pointer; 
-  color: #666; 
+  color: #909399; 
   font-size: 15px; 
   transition: all 0.3s; 
 }
 
 .tab-item.active { 
-  color: #667eea; 
-  border-bottom: 2px solid #667eea; 
+  color: #00b894; 
+  border-bottom: 2px solid #00b894; 
   font-weight: 500; 
 }
 
 .tab-item:hover { 
-  color: #667eea; 
+  color: #00b894; 
 }
 
 .login-form { 
   margin-top: 24px; 
+}
+
+/* 输入框样式 - 浅青绿色背景，与整体风格协调 */
+.login-form :deep(.el-input__wrapper) {
+  background: linear-gradient(135deg, #f8fffd 0%, #f5fcf9 100%);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #d4e8e0 inset;
+  transition: all 0.3s;
+}
+
+.login-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #8FAF8F inset;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffd 100%);
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #00b894 inset, 0 0 10px rgba(0, 184, 148, 0.15);
+  background: linear-gradient(135deg, #ffffff 0%, #f0fffb 100%);
+}
+
+.login-form :deep(.el-input__inner) {
+  color: #303133;
+  font-size: 14px;
+}
+
+.login-form :deep(.el-input__inner::placeholder) {
+  color: #a8b5b0;
+}
+
+.login-form :deep(.el-input__prefix) {
+  color: #8FAF8F;
 }
 
 .code-input-wrapper { 
@@ -521,32 +560,48 @@ const handleLogin = async () => {
 
 .button-group {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   justify-content: center;
   width: 100%;
 }
 
 .btn-gradient {
   width: 150px;
-  height: 40px;
+  height: 42px;
   font-size: 15px;
   font-weight: 500;
   color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   letter-spacing: 2px;
 }
 
-.btn-gradient:hover {
-  background: linear-gradient(135deg, #7689f0 0%, #865bb2 100%);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
+/* 登录按钮 - 莫兰迪绿 */
+.btn-login {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
+  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35);
+}
+
+.btn-login:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%);
+  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5);
+  transform: translateY(-1px);
+}
+
+/* 清空按钮 - 莫兰迪绿（与登录按钮一致） */
+.btn-clear {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
+  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35);
+}
+
+.btn-clear:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%);
+  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5);
   transform: translateY(-1px);
 }
 
@@ -572,7 +627,7 @@ const handleLogin = async () => {
 .login-tip { 
   margin-top: 24px; 
   text-align: center; 
-  color: #999; 
+  color: #909399; 
   font-size: 12px; 
 }
 
@@ -582,7 +637,7 @@ const handleLogin = async () => {
   left: 0;
   right: 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.6);
+  color: #909399;
   font-size: 13px;
   z-index: 10;
 }

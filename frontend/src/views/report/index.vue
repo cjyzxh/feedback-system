@@ -181,23 +181,32 @@ const loadData = async () => {
     let list = []
     
     if (viewAll.value) {
-      // 勾选"查询所有人员"时，查询所有数据
-      const res = await axios.get('/api/feedback', { params: baseParams })
-      const data = res.data?.data || res.data || res
-      list = data?.list || []
-    } else {
-      // 不勾选时，同时查询工程师(xggcs)和跟进人员(shishiry)为当前用户的问题，合并并去重
-      // （之前只查询xggcs，导致测试人员/跟进人员登录后看不到数据）
-      const [resEngineer, resFollower] = await Promise.all([
-        axios.get('/api/feedback', { params: { ...baseParams, xggcs: currentUser } }),
-        axios.get('/api/feedback', { params: { ...baseParams, shishiry: currentUser } })
-      ])
+      // 勾选"查询所有人员"时，先找出类别包含"工程师"的操作员，然后按人循环查询
+      // 1. 先查询人员列表，找出类别包含工程师的操作员
+      const staffRes = await axios.get('/api/staff')
+      const staffData = staffRes.data?.data || staffRes.data || {}
+      const staffList = staffData?.list || staffData || []
+      const engineerList = staffList.filter(s => 
+        s.category && s.category.includes('1') && s.xingming  // category='1'表示研发人员
+      )
+      const engineerNames = [...new Set(engineerList.map(s => s.xingming))]
       
-      const listEngineer = resEngineer.data?.data?.list || resEngineer.data?.list || []
-      const listFollower = resFollower.data?.data?.list || resFollower.data?.list || []
+      // 2. 按人循环查询问题，合并结果
+      const allResults = await Promise.all(
+        engineerNames.map(name => 
+          axios.get('/api/feedback', { params: { ...baseParams, xggcs: name } })
+        )
+      )
       
-      // 合并并按id去重
-      const merged = [...listEngineer, ...listFollower]
+      // 3. 合并所有结果并去重
+      const merged = []
+      allResults.forEach(res => {
+        const data = res.data?.data || res.data || res
+        const itemList = data?.list || []
+        merged.push(...itemList)
+      })
+      
+      // 按id去重
       const uniqueMap = {}
       merged.forEach(item => {
         if (!uniqueMap[item.id]) {
@@ -205,6 +214,12 @@ const loadData = async () => {
         }
       })
       list = Object.values(uniqueMap)
+    } else {
+      // 不勾选时，只查询工程师(xggcs)为当前用户的问题（这个报表是查研发人员的）
+      // 如果当前登录者不是研发人员，就查不到数据
+      const res = await axios.get('/api/feedback', { params: { ...baseParams, xggcs: currentUser } })
+      const data = res.data?.data || res.data || res
+      list = data?.list || []
     }
     
     // 统计总数据

@@ -88,12 +88,18 @@
             </div>
           </el-col>
         </el-row>
-        <!-- 第二行：问题说明、测试结果（测试返回时显示）和处理意见 -->
+        <!-- 第二行：问题说明、测试说明、测试结果（测试返回时显示）和处理意见 -->
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">问题说明</div>
               <div class="info-value textarea large-text">{{ form.wentism || '-' }}</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="info-item large">
+              <div class="info-label big">测试说明</div>
+              <div class="info-value textarea large-text">{{ form.shouzhongcs || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="4" v-if="form.shouhoucs">
@@ -102,7 +108,7 @@
               <div class="info-value textarea large-text" style="color: #f56c6c; font-weight: 500;">{{ form.shouhoucs }}</div>
             </div>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <div class="info-item large">
               <div class="info-label big required">处理意见</div>
               <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." />
@@ -132,6 +138,12 @@
         <el-table-column prop="shishiry" label="跟进人" width="65" />
         <el-table-column prop="xggcs" label="工程师" width="65" />
         <el-table-column prop="wentism" label="问题说明" min-width="80" show-overflow-tooltip />
+        <el-table-column prop="shouzhongcs" label="测试说明" min-width="80" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.shouzhongcs">{{ row.shouzhongcs }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="shouhoucs" label="测试结果" min-width="80" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.shouhoucs" style="color: #f56c6c">{{ row.shouhoucs }}</span>

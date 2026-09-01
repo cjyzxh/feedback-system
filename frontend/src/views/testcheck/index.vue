@@ -82,21 +82,27 @@
             </div>
           </el-col>
         </el-row>
-        <!-- 第二行：问题说明、处理意见、测试结果（等高显示） -->
+        <!-- 第二行：问题说明、测试说明、处理意见、测试结果（等高显示） -->
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">问题说明</div>
               <div class="info-value textarea large-text">{{ form.wentism || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
+            <div class="info-item large">
+              <div class="info-label big">测试说明</div>
+              <div class="info-value textarea large-text">{{ form.shouzhongcs || '-' }}</div>
+            </div>
+          </el-col>
+          <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">处理意见</div>
               <div class="info-value textarea large-text">{{ form.gongcscs || '暂无' }}</div>
             </div>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big required">测试结果</div>
               <el-input 
@@ -149,6 +155,12 @@
         <el-table-column prop="xggcs" label="工程师" width="70" />
         <el-table-column prop="shishiry" label="跟进人" width="70" />
         <el-table-column prop="wentism" label="问题说明" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="shouzhongcs" label="测试说明" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.shouzhongcs">{{ row.shouzhongcs }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="gongcscs" label="处理意见" min-width="100" show-overflow-tooltip />
         <el-table-column prop="jingjicd" label="紧急" width="60" align="center">
           <template #default="{ row }">

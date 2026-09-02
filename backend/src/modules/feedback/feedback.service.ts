@@ -51,7 +51,7 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
       
       const where: any = {};
       
@@ -124,21 +124,22 @@ export class FeedbackService {
         }
       }
 
-      // 时间范围查询（lvrusj 录入时间）
+      // 时间范围查询（默认按 lvrusj 录入时间，可通过 dateField 指定为 xgsj 处理时间）
+      const queryDateField = dateField || 'lvrusj';
       if (startDate && endDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.lvrusj = Between(start, end);
+        where[queryDateField] = Between(start, end);
       } else if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where.lvrusj = Between(start, new Date());
+        where[queryDateField] = Between(start, new Date());
       } else if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where.lvrusj = Between(new Date('1900-01-01'), end);
+        where[queryDateField] = Between(new Date('1900-01-01'), end);
       }
       
       const [list, total] = await this.feedbackRepository.findAndCount({

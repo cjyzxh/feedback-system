@@ -18,6 +18,12 @@ export class HospitalController {
     return { code: 200, data: this.hospitalService.getCities(province), message: 'Success' };
   }
 
+  // 根据医院名称查询售后到期日
+  @Get('syq')
+  getSyq(@Query('name') name: string) {
+    return this.hospitalService.getSyqByName(name);
+  }
+
   // 分页查询
   @Get()
   findAll(@Query('page') page: number, @Query('pageSize') pageSize: number, @Query('keyword') keyword: string) {

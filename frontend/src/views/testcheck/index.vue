@@ -2,22 +2,6 @@
   <div class="check-page">
     <!-- 上部：测试问题表单 -->
     <el-card class="form-card">
-      <template #header>
-        <div class="card-header">
-          <span><el-icon><CircleCheck /></el-icon> 测试问题</span>
-          <div class="header-buttons">
-            <el-button class="morandi-btn morandi-green" @click="handleConfirm" :loading="submitting">
-              <el-icon><Check /></el-icon> 确认测试问题
-            </el-button>
-            <el-button class="morandi-btn morandi-pink" @click="handleReset">
-              <el-icon><RefreshLeft /></el-icon> 返回测试问题
-            </el-button>
-            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
-              <el-icon><Picture /></el-icon> 查看图片
-            </el-button>
-          </div>
-        </div>
-      </template>
       <div class="form-content">
         <!-- 第一行：基础信息（缩小显示，一行显示） -->
         <el-row :gutter="12" class="basic-info">
@@ -106,6 +90,7 @@
             <div class="info-item large">
               <div class="info-label big required">测试结果</div>
               <el-input 
+                class="test-result-input"
                 v-model="form.shouhoucs" 
                 type="textarea" 
                 :rows="5" 
@@ -122,7 +107,7 @@
       <template #header>
         <div class="card-header">
           <span><el-icon><List /></el-icon> 待测试问题列表</span>
-          <div class="header-right">
+          <div class="header-filters">
             <el-date-picker
               v-model="startDate"
               type="date"
@@ -143,45 +128,56 @@
               style="width: 140px"
             />
             <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待测试问题</el-checkbox>
-            <el-button type="primary" link @click="loadList"><el-icon><Refresh /></el-icon> 刷新</el-button>
+            <el-button type="primary" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          </div>
+          <div class="header-actions">
+            <el-button class="morandi-btn morandi-green" @click="handleConfirm" :loading="submitting">
+              <el-icon><Check /></el-icon> 确认测试问题
+            </el-button>
+            <el-button class="morandi-btn morandi-pink" @click="handleReset">
+              <el-icon><RefreshLeft /></el-icon> 返回测试问题
+            </el-button>
+            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
+              <el-icon><Picture /></el-icon> 查看图片
+            </el-button>
           </div>
         </div>
       </template>
       <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
-        <el-table-column prop="id" label="问题ID号" width="80" align="center" />
-        <el-table-column prop="yiyuanmc" label="医院名称" min-width="120" />
-        <el-table-column prop="mokuai" label="模块" width="70" />
-        <el-table-column prop="chuangtimc" label="窗体" width="70" />
+        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="yiyuanmc" label="医院名称" min-width="50" />
+        <el-table-column prop="mokuai" label="模块" width="90" />
+        <el-table-column prop="chuangtimc" label="窗体" width="90" />
         <el-table-column prop="xggcs" label="工程师" width="70" />
         <el-table-column prop="shishiry" label="跟进人" width="70" />
-        <el-table-column prop="wentism" label="问题说明" min-width="120" />
-        <el-table-column prop="shouzhongcs" label="测试说明" min-width="120">
+        <el-table-column prop="wentism" label="问题说明" min-width="40" />
+        <el-table-column prop="shouzhongcs" label="测试说明" min-width="40">
           <template #default="{ row }">
             <span v-if="row.shouzhongcs">{{ row.shouzhongcs }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="gongcscs" label="处理意见" min-width="100" />
-        <el-table-column prop="jingjicd" label="紧急" width="60" align="center">
+        <el-table-column prop="gongcscs" label="处理意见" min-width="40" />
+        <el-table-column prop="jingjicd" label="紧急" width="65" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
             <el-tag v-else-if="row.jingjicd === '急'" type="warning" size="small">急</el-tag>
             <el-tag v-else type="info" size="small">一般</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="lvrusj" label="录入时间" width="160">
+        <el-table-column prop="lvrusj" label="录入时间" width="180">
           <template #default="{ row }">
             <span v-if="row.lvrusj">{{ formatDate(row.lvrusj) }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="xgsj" label="处理时间" width="160">
+        <el-table-column prop="xgsj" label="处理时间" width="180">
           <template #default="{ row }">
             <span v-if="row.xgsj">{{ formatDate(row.xgsj) }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="50" align="center">
+        <el-table-column label="图片" width="55" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
           </template>
@@ -235,10 +231,10 @@ const selected = ref<any>(null)
 const submitting = ref(false)
 const viewAll = ref(false)  // 查询所有待测试问题，默认false（只查自己的）
 
-// 时间条件：默认开始日期为一周前，结束日期为当前日期
+// 时间条件：默认开始日期为一年前，结束日期为当前日期
 const getDefaultStartDate = () => {
   const date = new Date()
-  date.setDate(date.getDate() - 7)
+  date.setFullYear(date.getFullYear() - 1)
   return date.toISOString().split('T')[0]
 }
 const getDefaultEndDate = () => {
@@ -282,9 +278,10 @@ const loadList = async () => {
   const user = userStr ? JSON.parse(userStr) : null
   const params: any = { gongchengsbz: 'Y', shouhoubz: 'N' }  // 处理=是，售后=否（待测试）
   
-  // 时间范围条件
+  // 时间范围条件（问题测试页按 xgsj 处理时间查询）
   if (startDate.value) params.startDate = startDate.value
   if (endDate.value) params.endDate = endDate.value
+  params.dateField = 'xgsj'
   
   // 获取当前登录者名称
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
@@ -300,6 +297,14 @@ const loadList = async () => {
     console.log('测试页查询结果:', res.data)
     list.value = res?.data?.data?.list || res?.data?.list || []
   } catch (err) { console.error('加载列表失败', err) }
+}
+
+// 刷新：清空上面表单数据，重新加载列表
+const handleRefresh = () => {
+  selected.value = null
+  Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null })
+  hasImages.value = false
+  loadList()
 }
 
 const handleRowClick = async (row: any) => {
@@ -419,6 +424,7 @@ const handleReset = async () => {
     const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
     
     // 返回测试问题：gongchengsbz=N（退回工程师），shouhoucs=测试结果（返回原因），shcsgcs=当前操作员，cssj=当前时间
+    // 注意：shouzhongcs（测试说明）保留数据库中的值，只清空界面显示
     const updateData: any = {
       gongchengsbz: 'N',
       shouhoucs: form.shouhoucs || '',
@@ -429,7 +435,7 @@ const handleReset = async () => {
     await axios.put('/api/feedback/' + form.id, updateData)
     ElMessage.success('已退回工程师重新处理')
     selected.value = null
-    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null })
+    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null })
     loadList()
   } catch (err) { ElMessage.error('操作失败') }
   finally { submitting.value = false }
@@ -439,9 +445,30 @@ onMounted(() => { loadList() })
 </script>
 
 <style scoped>
-.check-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
+.check-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.card-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.form-header { display: flex; justify-content: flex-start; align-items: center; }
 .header-buttons { display: flex; gap: 3px; }
+.header-filters { display: flex; align-items: center; gap: 3px; margin-left: 10px; flex-wrap: wrap; }
+.header-filters .el-checkbox { margin-right: 8px !important; }
+.header-actions { display: flex; align-items: center; margin-left: auto; flex-shrink: 0; }
+.header-actions .el-button { margin-left: 0 !important; margin-right: 4px !important; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+/* 复选框样式：显眼的边框和背景 */
+:deep(.el-checkbox__inner) {
+  border: 2px solid #00b894 !important;
+  background-color: #f0faf7 !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #00b894 !important;
+  border-color: #00b894 !important;
+}
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner::after) {
+  border-color: #ffffff !important;
+}
 
 /* 表格内容不换行，超出显示省略号 */
 :deep(.el-table .cell) {
@@ -503,19 +530,23 @@ onMounted(() => { loadList() })
 
 .header-right { display: flex; align-items: center; gap: 12px; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.form-card { flex-shrink: 0; }
+.form-card { flex-shrink: 0; margin: 0; }
+.form-card :deep(.el-card__body) { padding-top: 12px; padding-bottom: 1px; padding-left: 20px; padding-right: 20px; }
 .form-content { display: flex; flex-direction: column; gap: 12px; }
 .basic-info { margin-bottom: 8px; }
 .info-item { background: #f8f9fa; padding: 8px 12px; border-radius: 6px; }
 .info-item.small { padding: 6px 8px; }
-.info-item.large { padding: 12px 16px; background: #fff; border: 1px solid #e4e7ed; height: 100%; display: flex; flex-direction: column; }
+.info-item.large { padding: 12px 16px; background: #fff; border: 1px solid #e4e7ed; height: 180px; display: flex; flex-direction: column; }
 .info-label { font-size: 11px; color: #909399; margin-bottom: 4px; }
 .info-label.big { font-size: 13px; font-weight: 600; color: #303133; }
 .info-label.required::before { content: '*'; color: #f56c6c; margin-right: 4px; }
 .info-value { font-size: 12px; color: #303133; font-weight: 500; }
-.info-value.textarea { white-space: pre-wrap; word-break: break-all; flex: 1; overflow-y: auto; }
-.large-text { min-height: 80px; max-height: 120px; }
-.table-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.info-value.textarea { white-space: pre-wrap; word-break: break-all; flex: 1; overflow-y: auto; overflow-x: hidden; }
+.large-text { font-size: 14px; line-height: 1.6; }
+.test-result-input { flex: 1; display: flex; flex-direction: column; }
+.test-result-input :deep(.el-textarea) { flex: 1; }
+.test-result-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
+.table-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin: 0; }
 .table-card :deep(.el-card__body) { flex: 1; overflow: hidden; padding: 0; }
 .selected-row { background-color: #ecf5ff !important; }
 .carousel-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }

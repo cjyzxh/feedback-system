@@ -211,4 +211,7 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   endDate?: string;
+
+  @IsOptional()
+  dateField?: string;  // 日期查询字段：lvrusj（录入时间，默认）或 xgsj（处理时间）
 }

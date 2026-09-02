@@ -4,7 +4,6 @@
       <template #header>
         <div class="card-header">
           <span>问题反馈</span>
-          <el-button type="primary" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
@@ -51,9 +50,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
-          <el-button @click="handleResetSearch">重置</el-button>
-          <el-button type="success" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
+          <el-button class="morandi-btn morandi-gray" @click="handleResetSearch">重置</el-button>
+          <el-button class="morandi-btn morandi-green" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
         </el-form-item>
       </el-form>
       
@@ -134,16 +133,25 @@
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="isEdit ? 10 : 12">
+          <el-col :span="24">
             <el-form-item label="紧急程度" prop="jingjicd">
-              <div class="priority-box">
-                <el-button size="small" :type="form.jingjicd === '紧急' ? 'danger' : 'default'" @click="form.jingjicd = '紧急'" :class="{ active: form.jingjicd === '紧急'}">紧急</el-button>
-                <el-button size="small" :type="form.jingjicd === '急' ? 'warning' : 'default'" @click="form.jingjicd = '急'" :class="{ active: form.jingjicd === '急'}">急</el-button>
-                <el-button size="small" :type="form.jingjicd === '一般' ? 'info' : 'default'" @click="form.jingjicd = '一般'" :class="{ active: form.jingjicd === '一般'}">一般</el-button>
+              <div class="priority-content">
+                <div class="priority-box">
+                  <el-button :type="form.jingjicd === '紧急' ? 'danger' : 'default'" @click="form.jingjicd = '紧急'" :class="{ active: form.jingjicd === '紧急'}">紧急</el-button>
+                  <el-button :type="form.jingjicd === '急' ? 'warning' : 'default'" @click="form.jingjicd = '急'" :class="{ active: form.jingjicd === '急'}">急</el-button>
+                  <el-button :type="form.jingjicd === '一般' ? 'info' : 'default'" @click="form.jingjicd = '一般'" :class="{ active: form.jingjicd === '一般'}">一般</el-button>
+                </div>
+                <div class="shouhou-right" v-if="shouhouDaoqiRi">
+                  <span class="shouhou-title">售后到期日:</span>
+                  <div class="shouhou-date" :class="isShouhouExpired ? 'expired' : 'valid'">
+                    <el-icon><Calendar /></el-icon>
+                    <span>{{ shouhouDaoqiRi }}</span>
+                  </div>
+                </div>
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="8" v-if="isEdit">
+          <el-col :span="6" v-if="isEdit">
             <el-form-item label="录入时间">
               <el-input :model-value="formatDate(form.lvrusj)" disabled />
             </el-form-item>
@@ -162,7 +170,7 @@
           </el-col>
           <el-col :span="16">
             <el-form-item label="医院名称" prop="yiyuanmc">
-              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" :disabled="isCustomerUser">
+              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" :disabled="isCustomerUser" @change="onHospitalChange">
                 <el-option v-for="h in hospitals" :key="h.label" :label="h.label" :value="h.label" />
               </el-select>
             </el-form-item>
@@ -386,9 +394,11 @@
           </div>
         </el-form-item>
         
-        <el-form-item>
-          <el-button @click="viewDialogVisible = false">关 闭</el-button>
-        </el-form-item>
+        <div class="view-dialog-actions">
+          <el-button class="morandi-btn morandi-bright-blue" @click="viewDialogVisible = false">
+            <el-icon><Close /></el-icon> 关 闭
+          </el-button>
+        </div>
       </el-form>
     </el-dialog>
     
@@ -433,7 +443,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const loading = ref(false)
@@ -596,6 +606,36 @@ const customerFollower = computed(() => {
 const form = reactive({
   id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '', shouhoucs: '', shcsgcs: '', cssj: null as any, lvrusj: null as any, xgsj: null as any
 })
+
+// 售后到期日
+const shouhouDaoqiRi = ref('')
+const isShouhouExpired = computed(() => {
+  if (!shouhouDaoqiRi.value) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expireDate = new Date(shouhouDaoqiRi.value)
+  return expireDate < today
+})
+
+// 医院选择变化时查询售后到期日
+const onHospitalChange = async (val: string) => {
+  if (!val) {
+    shouhouDaoqiRi.value = ''
+    return
+  }
+  try {
+    const response = await axios.get(`/api/hospital/syq?name=${encodeURIComponent(val)}`)
+    console.log('售后到期日返回:', response.data)
+    if (response.data && response.data.syq) {
+      shouhouDaoqiRi.value = response.data.syq
+    } else {
+      shouhouDaoqiRi.value = ''
+    }
+  } catch (e) {
+    console.error('查询售后到期日失败:', e)
+    shouhouDaoqiRi.value = ''
+  }
+}
 
 const rules = {
   banben: [{ required: true, message: '请选择软件版本', trigger: 'change' }],
@@ -794,6 +834,7 @@ const handleAdd = async () => {
   
   form.id = 0
   form.banben = 'HIS问题'
+  shouhouDaoqiRi.value = ''  // 清空售后到期日
   // 如果是客户用户（userType === '客户'），自动填充医院、跟进人员、工程师，并设为只读
   if (userType === '客户') {
     form.yiyuanmc = userHospital
@@ -888,6 +929,22 @@ const handleEdit = async (row: any) => {
       const res = await axios.get('/api/dict/modules', { params: { banben: form.banben } })
       modules.value = res.data?.data || []
     } catch (err) { console.error('加载模块失败:', err) }
+  }
+  // 编辑时如果有医院名称，查询售后到期日
+  if (form.yiyuanmc) {
+    try {
+      const response = await axios.get(`/api/hospital/syq?name=${encodeURIComponent(form.yiyuanmc)}`)
+      if (response.data && response.data.syq) {
+        shouhouDaoqiRi.value = response.data.syq
+      } else {
+        shouhouDaoqiRi.value = ''
+      }
+    } catch (e) {
+      console.error('查询售后到期日失败:', e)
+      shouhouDaoqiRi.value = ''
+    }
+  } else {
+    shouhouDaoqiRi.value = ''
   }
   dialogVisible.value = true
 }
@@ -1070,14 +1127,36 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
 .morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
 .morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
+.morandi-blue { background: linear-gradient(135deg, #8FA5AF 0%, #7A94A0 100%) !important; }
+.morandi-blue:hover { background: linear-gradient(135deg, #9DB3BD 0%, #8FA5AF 100%) !important; }
 .morandi-gray { background: linear-gradient(135deg, #A8A8A8 0%, #969696 100%) !important; }
 .morandi-gray:hover { background: linear-gradient(135deg, #B8B8B8 0%, #A8A8A8 100%) !important; }
+
+/* 紧急程度和售后到期日同一行，左右分布 */
+.priority-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.priority-box { display: flex; gap: 8px; }
+.priority-box .el-button { min-width: 60px; font-size: 12px; padding: 6px 12px; font-weight: 500; }
+.priority-box .el-button.active { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.shouhou-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.shouhou-title { font-size: 14px; color: #606266; white-space: nowrap; font-weight: 500; }
+
+/* 售后到期日显示 */
+.shouhou-date { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; height: 24px; box-sizing: border-box; line-height: 20px; }
+.shouhou-date.expired { background: #fef0f0; color: #f56c6c; border: 1px solid #fbc4c4; }
+.shouhou-date.valid { background: #ecf5ff; color: #409eff; border: 1px solid #b3d8ff; }
+.view-dialog-actions { display: flex; justify-content: center; align-items: center; margin-top: 20px; width: 100%; text-align: center; }
+.view-dialog-actions .el-button { padding: 11px 36px !important; font-size: 14px !important; height: auto; line-height: 1.5; }
+
+/* 淡黄色按钮 */
+.morandi-bright-blue { background: linear-gradient(135deg, #E8D8A8 0%, #D4C08A 100%) !important; color: #5a4a2a !important; }
+.morandi-bright-blue:hover { background: linear-gradient(135deg, #F0E0B0 0%, #E0CC96 100%) !important; color: #5a4a2a !important; }
 
 .lsh-box :deep(.el-input__wrapper) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .lsh-box :deep(.el-input__inner) { color: white; font-weight: bold; }
 .priority-box { display: flex; gap: 8px; }
 .priority-box .el-button { min-width: 60px; font-size: 12px; padding: 6px 12px; font-weight: 500; }
 .priority-box .el-button.active { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
 .upload-area { width: 100%; }
 .upload-icon { font-size: 28px; color: #999; }
 .upload-text { font-size: 12px; color: #999; margin-top: 8px; text-align: center; line-height: 1.6; }

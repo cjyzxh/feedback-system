@@ -23,8 +23,8 @@ export class Hospital {
   @Column({ name: 'ZCM', type: 'nvarchar', length: 'MAX', nullable: true })
   zcm: string;
 
-  @Column({ name: 'SYQ', type: 'int', nullable: true })
-  syq: number;
+  @Column({ name: 'SYQ', type: 'datetime', nullable: true })
+  syq: Date;
 
   @Column({ name: 'YJLX', length: 50, nullable: true })
   yjlx: string;

@@ -2,86 +2,152 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createConnection, Connection } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class DatabaseConfigService {
   private logger = new Logger(DatabaseConfigService.name);
   private envPath: string;
+  private configFilePath: string;
 
   constructor(private nestConfigService: NestConfigService) {
-    this.envPath = path.join(__dirname, '..', '..', '..', '.env');
+    // 使用 process.cwd() 获取项目根目录（NestJS 运行时的工作目录）
+    this.envPath = path.join(process.cwd(), '.env');
+    this.configFilePath = path.join(process.cwd(), 'database-config.json');
   }
 
-  // 获取数据库配置
-  getDatabaseConfig() {
+  // 从JSON文件读取所有类型的配置
+  private getAllConfigs(): any {
+    try {
+      if (fs.existsSync(this.configFilePath)) {
+        const content = fs.readFileSync(this.configFilePath, 'utf8');
+        return JSON.parse(content);
+      }
+    } catch (error) {
+      this.logger.error('读取数据库配置文件失败:', error);
+    }
+    return {};
+  }
+
+  // 保存所有类型的配置到JSON文件
+  private saveAllConfigs(configs: any): void {
+    try {
+      fs.writeFileSync(this.configFilePath, JSON.stringify(configs, null, 2), 'utf8');
+    } catch (error) {
+      this.logger.error('保存数据库配置文件失败:', error);
+    }
+  }
+
+  // 获取指定类型的数据库配置
+  getDatabaseConfig(type?: string) {
+    const configs = this.getAllConfigs();
+    const targetType = type || this.nestConfigService.get<string>('DB_TYPE') || 'mssql';
+
+    // 如果有该类型的保存配置，返回
+    if (configs[targetType]) {
+      return {
+        type: targetType,
+        host: configs[targetType].host || '',
+        port: configs[targetType].port || null,
+        username: configs[targetType].username || '',
+        password: configs[targetType].password || '',
+        database: configs[targetType].database || '',
+      };
+    }
+
+    // 否则返回空配置
     return {
-      type: this.nestConfigService.get<string>('DB_TYPE') || 'mysql',
-      host: this.nestConfigService.get<string>('DB_HOST') || '',
-      port: parseInt(this.nestConfigService.get<string>('DB_PORT') || '3306'),
-      username: this.nestConfigService.get<string>('DB_USERNAME') || '',
-      password: this.nestConfigService.get<string>('DB_PASSWORD') || '',
-      database: this.nestConfigService.get<string>('DB_NAME') || '',
+      type: targetType,
+      host: '',
+      port: null,
+      username: '',
+      password: '',
+      database: '',
     };
   }
 
   // 测试数据库连接
   async testConnection(config: any): Promise<{ success: boolean; message: string }> {
+    let dataSource: DataSource | null = null;
     try {
+      this.logger.log('测试连接配置:', JSON.stringify(config));
+      
       const connectionOptions: any = {
         type: config.type as any,
         host: config.host,
-        port: config.port,
+        port: Number(config.port), // 确保是数字类型
         username: config.username,
         password: config.password,
         database: config.database,
         entities: [],
         synchronize: false,
-        extra: {},
       };
 
-      // MSSQL 特殊配置
+      // MSSQL 特殊配置（和主应用保持一致）
       if (config.type === 'mssql') {
-        connectionOptions.options = {
-          encrypt: true, // 使用加密
-          trustServerCertificate: true, // 信任服务器证书（开发环境使用）
-        };
         connectionOptions.extra = {
+          trustServerCertificate: true,
+        };
+        connectionOptions.options = {
+          encrypt: true,
           trustServerCertificate: true,
         };
       }
 
-      const connection: Connection = await createConnection(connectionOptions);
-      await connection.close();
-      return { success: true, message: '连接成功' };
-    } catch (error) {
+      this.logger.log('DataSource 配置:', JSON.stringify(connectionOptions));
+      
+      dataSource = new DataSource(connectionOptions);
+      await dataSource.initialize();
+      this.logger.log('DataSource 初始化成功');
+
+      // 执行一个简单的查询验证连接
+      await dataSource.query('SELECT 1');
+      this.logger.log('查询验证成功');
+
+      await dataSource.destroy();
+      return { success: true, message: '数据库连接成功' };
+    } catch (error: any) {
       this.logger.error('数据库连接测试失败:', error);
-      return { success: false, message: error.message };
+      if (dataSource) {
+        try { await dataSource.destroy(); } catch (e) {}
+      }
+      return { success: false, message: error.message || '数据库连接失败' };
     }
   }
 
   // 保存数据库配置
   saveDatabaseConfig(config: any): boolean {
     try {
-      // 读取当前 .env 文件内容
+      // 1. 保存到对应类型的JSON配置文件
+      const configs = this.getAllConfigs();
+      configs[config.type] = {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        password: config.password,
+        database: config.database,
+      };
+      this.saveAllConfigs(configs);
+
+      // 2. 同时更新 .env 文件（作为当前激活的配置）
       let envContent = '';
       if (fs.existsSync(this.envPath)) {
         envContent = fs.readFileSync(this.envPath, 'utf8');
       }
 
-      // 更新或添加数据库配置
-      const configKeys = [
-        'DB_TYPE',
-        'DB_HOST',
-        'DB_PORT',
-        'DB_USERNAME',
-        'DB_PASSWORD',
-        'DB_NAME',
-      ];
+      const configMapping: { [key: string]: string } = {
+        'DB_TYPE': 'type',
+        'DB_HOST': 'host',
+        'DB_PORT': 'port',
+        'DB_USERNAME': 'username',
+        'DB_PASSWORD': 'password',
+        'DB_NAME': 'database',
+      };
 
-      configKeys.forEach(key => {
+      Object.keys(configMapping).forEach(key => {
         const regex = new RegExp(`${key}=.*`, 'g');
-        const value = config[key.toLowerCase().replace('db_', '')];
+        const field = configMapping[key];
+        const value = config[field];
         const line = `${key}=${typeof value === 'string' && value.includes(' ') ? `"${value}"` : value}`;
 
         if (regex.test(envContent)) {
@@ -91,7 +157,6 @@ export class DatabaseConfigService {
         }
       });
 
-      // 写入 .env 文件
       fs.writeFileSync(this.envPath, envContent.trim());
       return true;
     } catch (error) {
@@ -102,6 +167,7 @@ export class DatabaseConfigService {
 
   // 检查数据库结构
   async checkDatabaseStructure(config: any): Promise<{ success: boolean; message: string }> {
+    let dataSource: DataSource | null = null;
     try {
       const connectionOptions: any = {
         type: config.type as any,
@@ -111,28 +177,31 @@ export class DatabaseConfigService {
         password: config.password,
         database: config.database,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        synchronize: true, // 自动生成表结构
+        synchronize: true,
         logging: true,
-        extra: {},
       };
 
-      // MSSQL 特殊配置
+      // MSSQL 特殊配置（和主应用保持一致）
       if (config.type === 'mssql') {
+        connectionOptions.extra = {
+          trustServerCertificate: true,
+        };
         connectionOptions.options = {
           encrypt: true,
           trustServerCertificate: true,
         };
-        connectionOptions.extra = {
-          trustServerCertificate: true,
-        };
       }
 
-      const connection: Connection = await createConnection(connectionOptions);
-      await connection.close();
+      dataSource = new DataSource(connectionOptions);
+      await dataSource.initialize();
+      await dataSource.destroy();
       return { success: true, message: '数据库结构检查完成' };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('数据库结构检查失败:', error);
-      return { success: false, message: error.message };
+      if (dataSource) {
+        try { await dataSource.destroy(); } catch (e) {}
+      }
+      return { success: false, message: error.message || '数据库结构检查失败' };
     }
   }
 }

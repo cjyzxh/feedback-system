@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ConfigModule as NestConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -21,35 +21,50 @@ import { ConfigModule } from './modules/config/config.module';
       envFilePath: '.env',
     }),
 
-    // 数据库连接配置
-    TypeOrmModule.forRoot({
-      type: (process.env.DB_TYPE || 'mssql') as any,
-      host: process.env.DB_HOST || '192.168.2.5',
-      port: parseInt(process.env.DB_PORT || '1433'),
-      username: process.env.DB_USERNAME || 'SA',
-      password: process.env.DB_PASSWORD || '1',
-      database: process.env.DB_NAME || 'cjy_wtfk',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false, // 关闭自动建表，手动管理表结构
-      logging: process.env.NODE_ENV === 'development',
-      // MSSQL 特殊配置
-      extra: {
-        trustServerCertificate: true,
+    // 数据库连接配置（异步，确保配置加载完成后再连接）
+    TypeOrmModule.forRootAsync({
+      imports: [NestConfigModule],
+      useFactory: (configService: ConfigService) => {
+        const dbType = configService.get<string>('DB_TYPE') || 'mssql';
+        const isMssql = dbType === 'mssql';
+        
+        const config: any = {
+          type: dbType as any,
+          host: configService.get<string>('DB_HOST') || '192.168.2.5',
+          port: parseInt(configService.get<string>('DB_PORT') || (isMssql ? '1433' : '3306')),
+          username: configService.get<string>('DB_USERNAME') || 'SA',
+          password: configService.get<string>('DB_PASSWORD') || '1',
+          database: configService.get<string>('DB_NAME') || 'cjy_wtfk',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+          logging: configService.get<string>('NODE_ENV') === 'development',
+          retryAttempts: 0,
+        };
+
+        // MSSQL 特殊配置
+        if (isMssql) {
+          config.extra = {
+            trustServerCertificate: true,
+          };
+          config.options = {
+            encrypt: true,
+            trustServerCertificate: true,
+          };
+        }
+
+        return config;
       },
-      options: {
-        encrypt: true,
-        trustServerCertificate: true,
-      },
+      inject: [ConfigService],
     }),
 
     // 业务模块
-    AuthModule,        // 认证模块
-    UserModule,        // 用户管理模块
-    FeedbackModule,    // 问题反馈模块
-    HospitalModule,    // 医院管理模块
-    RoleModule,        // 角色管理模块
-    DictModule,        // 字典模块
-    StaffModule,       // 人员模块
+    AuthModule,
+    UserModule,
+    FeedbackModule,
+    HospitalModule,
+    RoleModule,
+    DictModule,
+    StaffModule,
 
     // 配置管理模块
     ConfigModule,

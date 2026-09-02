@@ -106,4 +106,29 @@ export class HospitalService {
     const hospital = await this.findOne(id);
     await this.hospitalRepository.remove(hospital);
   }
+
+  // 根据医院名称查询售后到期日
+  async getSyqByName(name: string): Promise<{ syq: string | null }> {
+    try {
+      const hospital = await this.hospitalRepository.findOne({
+        where: { name: name, zuofeibz: '否' },
+      });
+      console.log('查询医院售后到期日:', name, '结果:', hospital ? { syq: hospital.syq, qy: hospital.qy } : '未找到');
+      
+      if (hospital && hospital.syq) {
+        // SYQ 是 datetime 类型，格式化为 yyyy-MM-dd
+        const d = new Date(hospital.syq);
+        if (!isNaN(d.getTime())) {
+          const formatted = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          console.log('售后到期日格式化后:', formatted);
+          return { syq: formatted };
+        }
+        return { syq: String(hospital.syq) };
+      }
+      return { syq: null };
+    } catch (error) {
+      console.error('查询售后到期日失败:', error);
+      return { syq: null };
+    }
+  }
 }

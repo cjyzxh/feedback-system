@@ -9,38 +9,64 @@
       >
         <!-- 普通用户菜单（超级管理员不可见） -->
         <template v-if="!isSuperAdmin">
-          <el-menu-item index="/feedback">
+          <el-menu-item index="/feedback" v-if="hasMenuPermission('/feedback')">
             <el-icon><ChatDotRound /></el-icon style="font-size:16px">
             <template #title>问题列表</template>
           </el-menu-item>
-          <el-menu-item index="/test">
+          <el-menu-item index="/test" v-if="hasMenuPermission('/test')">
             <el-icon><Tools /></el-icon style="font-size:16px">
             <template #title>问题处理</template>
           </el-menu-item>
-          <el-menu-item index="/testcheck">
+          <el-menu-item index="/testcheck" v-if="hasMenuPermission('/testcheck')">
             <el-icon><CircleCheck /></el-icon style="font-size:16px">
             <template #title>问题测试</template>
           </el-menu-item>
-          <el-sub-menu index="/report">
+          <el-sub-menu index="/report" v-if="hasMenuPermission('/report') || hasMenuPermission('/report/modify-status')">
             <template #title>
               <el-icon><DataAnalysis /></el-icon style="font-size:16px">
               <span>数据统计</span>
             </template>
-            <el-menu-item index="/report">
+            <el-menu-item index="/report" v-if="hasMenuPermission('/report')">
               <el-icon><DataAnalysis /></el-icon style="font-size:14px">
               <template #title>通用统计</template>
             </el-menu-item>
-            <el-menu-item index="/report/modify-status">
+            <el-menu-item index="/report/modify-status" v-if="hasMenuPermission('/report/modify-status')">
               <el-icon><TrendCharts /></el-icon style="font-size:14px">
               <template #title>修改状态统计</template>
             </el-menu-item>
           </el-sub-menu>
         </template>
-        <!-- 系统设置菜单（所有用户可见） -->
-        <el-menu-item index="/settings">
-          <el-icon><Setting /></el-icon style="font-size:16px">
-          <template #title>系统设置</template>
-        </el-menu-item>
+        <!-- 系统设置菜单（子菜单样式） -->
+        <el-sub-menu index="/settings" v-if="hasMenuPermission('/settings') || hasMenuPermission('/settings/staff') || hasMenuPermission('/settings/user') || hasMenuPermission('/settings/role') || hasMenuPermission('/settings/module') || hasMenuPermission('/settings/form')">
+          <template #title>
+            <el-icon><Setting /></el-icon style="font-size:16px">
+            <span>系统设置</span>
+          </template>
+          <el-menu-item index="/settings" v-if="hasMenuPermission('/settings')">
+            <el-icon><Setting /></el-icon style="font-size:14px">
+            <template #title>系统管理</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/staff" v-if="hasMenuPermission('/settings/staff')">
+            <el-icon><User /></el-icon style="font-size:14px">
+            <template #title>人员维护</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/user" v-if="hasMenuPermission('/settings/user')">
+            <el-icon><UserFilled /></el-icon style="font-size:14px">
+            <template #title>用户管理</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/role" v-if="hasMenuPermission('/settings/role')">
+            <el-icon><Position /></el-icon style="font-size:14px">
+            <template #title>角色管理</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/module" v-if="hasMenuPermission('/settings/module')">
+            <el-icon><Grid /></el-icon style="font-size:14px">
+            <template #title>模块维护</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/form" v-if="hasMenuPermission('/settings/form')">
+            <el-icon><Document /></el-icon style="font-size:14px">
+            <template #title>窗体维护</template>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </div>
     <div class="main-content">
@@ -91,10 +117,10 @@
           <el-checkbox v-model="profileForm.changePassword">修改密码</el-checkbox>
         </el-form-item>
         <el-form-item v-if="profileForm.changePassword" label="新密码" prop="newPassword">
-          <el-input v-model="profileForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+          <el-input v-model="profileForm.newPassword" type="password" show-password placeholder="请输入新密码" autocomplete="new-password" />
         </el-form-item>
         <el-form-item v-if="profileForm.changePassword" label="确认密码" prop="confirmPassword">
-          <el-input v-model="profileForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+          <el-input v-model="profileForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" autocomplete="new-password" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -106,10 +132,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
-import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, Key, Bell, TrendCharts } from '@element-plus/icons-vue'
+import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFilled, Position, Grid, Document, Key, Bell, TrendCharts } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
 import axios from 'axios'
 
@@ -588,6 +614,31 @@ const isSuperAdmin = computed(() => {
   return u.isSuperAdmin === true || localStorage.getItem('isSuperAdmin') === '1'
 })
 
+// ========== 菜单权限控制 ==========
+// 解析用户的菜单权限（从角色的menuPermissions字段）
+const menuPermissions = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  try {
+    return u.menuPermissions ? JSON.parse(u.menuPermissions) : []
+  } catch(e) {
+    return []
+  }
+})
+
+// 判断用户是否有某个菜单的权限
+const hasMenuPermission = (menuPath) => {
+  // 内置超级用户可以使用系统设置的全部子菜单
+  if (isSuperAdmin.value) {
+    return menuPath === '/settings' || menuPath.startsWith('/settings/')
+  }
+  // 管理员默认拥有所有权限
+  if (isAdmin.value) {
+    return true
+  }
+  // 普通用户根据menuPermissions判断
+  return menuPermissions.value.includes(menuPath)
+}
+
 const activeMenu = computed(() => route.path)
 
 const profileForm = reactive({
@@ -605,10 +656,46 @@ const profileForm = reactive({
   confirmPassword: ''
 })
 
+const validatePassword = (rule: any, value: string, callback: any) => {
+  if (!profileForm.changePassword) {
+    callback()
+    return
+  }
+  if (!value) {
+    callback(new Error('请输入新密码'))
+    return
+  }
+  if (value.length < 8) {
+    callback(new Error('密码长度不能少于8位'))
+    return
+  }
+  if (!/[a-zA-Z]/.test(value) || !/\d/.test(value)) {
+    callback(new Error('密码必须包含字母和数字'))
+    return
+  }
+  callback()
+}
+
+const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+  if (!profileForm.changePassword) {
+    callback()
+    return
+  }
+  if (!value) {
+    callback(new Error('请再次输入新密码'))
+    return
+  }
+  if (value !== profileForm.newPassword) {
+    callback(new Error('两次输入的密码不一致'))
+    return
+  }
+  callback()
+}
+
 const profileRules = {
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
-  newPassword: [{ required: true, message: '请输入新密码', trigger: 'blur' }, { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }],
-  confirmPassword: [{ required: true, message: '请再次输入新密码', trigger: 'blur' }]
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  newPassword: [{ validator: validatePassword, trigger: 'blur' }],
+  confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }]
 }
 
 const openProfileDialog = () => {
@@ -628,20 +715,19 @@ const openProfileDialog = () => {
   profileDialogVisible.value = true
 }
 
+// 当勾选修改密码时，清空密码字段，确保用户重新输入
+watch(() => profileForm.changePassword, (newVal) => {
+  if (newVal) {
+    // 使用nextTick确保DOM渲染后再清空，防止浏览器自动填充
+    nextTick(() => {
+      profileForm.newPassword = ''
+      profileForm.confirmPassword = ''
+    })
+  }
+})
+
 const saveProfile = async () => {
   await profileFormRef.value.validate()
-  
-  // 如果勾选了修改密码，验证两次密码是否一致
-  if (profileForm.changePassword) {
-    if (!profileForm.newPassword) {
-      ElMessage.warning('请输入新密码')
-      return
-    }
-    if (profileForm.newPassword !== profileForm.confirmPassword) {
-      ElMessage.warning('两次输入的密码不一致')
-      return
-    }
-  }
   
   try {
     const data: any = {

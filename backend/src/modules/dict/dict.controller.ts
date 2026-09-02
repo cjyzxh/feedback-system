@@ -13,8 +13,8 @@ export class DictController {
   }
 
   @Get("modules")
-  getModules() {
-    return this.wrapResponse(this.dictService.getModules());
+  getModules(@Query('banben') banben: string) {
+    return this.wrapResponse(this.dictService.getModules(banben));
   }
 
   @Post("modules")

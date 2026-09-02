@@ -62,6 +62,9 @@ export class CreateFeedbackDto {
   szcsgcs?: string;
 
   @IsOptional()
+  FanKuiQD?: string;
+
+  @IsOptional()
   shcsgcs?: string;
 
   @IsOptional()
@@ -136,6 +139,9 @@ export class UpdateFeedbackDto {
   szcsgcs?: string;
 
   @IsOptional()
+  FanKuiQD?: string;
+
+  @IsOptional()
   shcsgcs?: string;
 
   @IsOptional()
@@ -190,6 +196,9 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   taolunbz?: string;
+
+  @IsOptional()
+  zhuangtai?: string;
 
   @IsOptional()
   lurumid?: number;

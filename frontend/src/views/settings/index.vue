@@ -1,39 +1,6 @@
 ﻿<template>
   <div class="settings-manage">
-    <div class="left-sidebar">
-      <el-card>
-        <template #header>
-          <span>功能导航</span>
-        </template>
-        <el-menu :default-active="activeMenu" @select="handleMenuSelect">
-          <el-menu-item index="staff">
-            <el-icon><User /></el-icon>
-            <span>人员维护</span>
-          </el-menu-item>
-          <el-menu-item index="user" v-if="isAdmin">
-            <el-icon><UserFilled /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="role" v-if="isAdmin">
-            <el-icon><Position /></el-icon>
-            <span>角色管理</span>
-          </el-menu-item>
-          <el-menu-item index="module">
-            <el-icon><Grid /></el-icon>
-            <span>模块维护</span>
-          </el-menu-item>
-          <el-menu-item index="form">
-            <el-icon><Document /></el-icon>
-            <span>窗体维护</span>
-          </el-menu-item>
-          <el-menu-item index="system">
-            <el-icon><Setting /></el-icon>
-            <span>系统设置</span>
-          </el-menu-item>
-        </el-menu>
-      </el-card>
-    </div>
-    <div class="content-area">
+    <div class="content-area-full">
       <el-card v-if="!isSubRoute">
         <template #header>
           <span>系统管理</span>
@@ -88,24 +55,6 @@ const isAdmin = computed(() => {
 })
 
 const isSubRoute = computed(() => route.path !== '/settings')
-const activeMenu = ref('system')
-
-// 更新 activeMenu 当路由变化时
-const updateActiveMenu = () => {
-  const path = route.path
-  if (path.includes('/staff')) activeMenu.value = 'staff'
-  else if (path.includes('/user')) activeMenu.value = 'user'
-  else if (path.includes('/role')) activeMenu.value = 'role'
-  else if (path.includes('/module')) activeMenu.value = 'module'
-  else if (path.includes('/form')) activeMenu.value = 'form'
-  else activeMenu.value = 'system'
-}
-
-// 初始化 activeMenu
-updateActiveMenu()
-
-// 监听路由变化
-watch(() => route.path, updateActiveMenu)
 
 const dbSettings = reactive({
   type: '',
@@ -115,22 +64,6 @@ const dbSettings = reactive({
   username: '',
   password: ''
 })
-
-const handleMenuSelect = (index: string) => {
-  if (index === 'staff') {
-    router.push('/settings/staff')
-  } else if (index === 'user') {
-    router.push('/settings/user')
-  } else if (index === 'role') {
-    router.push('/settings/role')
-  } else if (index === 'module') {
-    router.push('/settings/module')
-  } else if (index === 'form') {
-    router.push('/settings/form')
-  } else {
-    router.push('/settings')
-  }
-}
 
 const handleSaveDbSettings = async () => {
   try {
@@ -185,48 +118,29 @@ initDbSettings()
 
 <style scoped>
 .settings-manage {
-  padding: 10px;
+  padding: 0;
   height: 100%;
   min-height: calc(100vh - 100px);
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
 }
 
 .settings-home { padding: 20px; }
 
-.left-sidebar {
-  width: 200px;
-  margin: 0;
-  padding: 0;
-}
-
-.left-sidebar .el-card {
-  height: 100%;
-  min-height: calc(100vh - 120px);
-  margin: 0;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.content-area {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.content-area > * {
+.content-area-full {
   width: 100%;
   height: 100%;
-  min-height: calc(100vh - 120px);
+  margin: 0;
+  padding: 0;
 }
 
-.content-area .el-card {
+.content-area-full > * {
+  width: 100%;
   height: 100%;
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 100px);
+}
+
+.content-area-full .el-card {
+  height: 100%;
+  min-height: calc(100vh - 100px);
   margin: 0;
   border: 1px solid #ebeef5;
   border-radius: 4px;
@@ -253,9 +167,5 @@ initDbSettings()
   overflow: auto;
   margin: 0;
   box-sizing: border-box;
-}
-
-.el-menu {
-  border-right: none !important;
 }
 </style>

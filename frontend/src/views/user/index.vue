@@ -51,6 +51,23 @@
             <el-tag :type="row.role === 'admin' ? 'danger' : 'success'">{{ row.role || '用户' }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="userType" label="用户类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.userType === '客户' ? 'warning' : 'primary'" size="small">{{ row.userType || '内部员工' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="hospital" label="医院名称" min-width="150">
+          <template #default="{ row }">
+            <span v-if="row.hospital">{{ row.hospital }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="follower" label="跟进人员" width="100">
+          <template #default="{ row }">
+            <span v-if="row.follower">{{ row.follower }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
@@ -102,6 +119,22 @@
             <el-option v-for="r in roleList" :key="r.id" :label="r.name" :value="r.name" />
           </el-select>
         </el-form-item>
+        <el-form-item label="用户类型" prop="userType">
+          <el-select v-model="form.userType" placeholder="请选择用户类型">
+            <el-option label="内部员工" value="内部员工" />
+            <el-option label="客户" value="客户" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="医院名称" prop="hospital">
+          <el-select v-model="form.hospital" placeholder="请搜索选择医院（客户用户填写）" clearable filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading">
+            <el-option v-for="h in hospitalList" :key="h.label || h.value" :label="h.label || h.value" :value="h.label || h.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="跟进人员" prop="follower">
+          <el-select v-model="form.follower" placeholder="请选择跟进人员（客户用户填写）" clearable>
+            <el-option v-for="s in shishiList" :key="s.value || s.label" :label="s.label || s.value" :value="s.value || s.label" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio :value="1">正常</el-radio>
@@ -128,15 +161,18 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
 const roleList = ref([])
+const hospitalList = ref([])
+const shishiList = ref([])
+const hospitalLoading = ref(false)
 
 const queryForm = reactive({ username: '', realName: '', role: '', status: undefined, page: 1, pageSize: 10 })
-const form = reactive({ id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', status: 1 })
+const form = reactive({ id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', status: 1 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }]
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }]
 }
 
 const onDialogOpened = () => {
@@ -149,6 +185,30 @@ const loadRoles = async () => {
     const res = await axios.get('/api/roles/list')
     roleList.value = res.data.data || []
   } catch (e) { console.error('加载角色失败', e) }
+}
+
+const loadHospitals = async () => {
+  try {
+    const res = await axios.get('/api/dict/hospitals')
+    hospitalList.value = res.data.data || []
+  } catch (e) { console.error('加载医院列表失败', e) }
+}
+
+const searchHospitals = async (query) => {
+  if (!query) return
+  hospitalLoading.value = true
+  try {
+    const res = await axios.get('/api/dict/hospitals?keyword=' + query)
+    hospitalList.value = res.data.data || []
+  } catch (e) { console.error('搜索医院失败', e) }
+  finally { hospitalLoading.value = false }
+}
+
+const loadShishi = async () => {
+  try {
+    const res = await axios.get('/api/dict/shishi')
+    shishiList.value = res.data.data || []
+  } catch (e) { console.error('加载跟进人员列表失败', e) }
 }
 
 const loadData = async () => {
@@ -164,7 +224,7 @@ const loadData = async () => {
 const resetQuery = () => { queryForm.username = ''; queryForm.realName = ''; queryForm.role = ''; queryForm.status = undefined; queryForm.page = 1; loadData() }
 
 const handleAdd = () => {
-  Object.assign(form, { id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', status: 1 })
+  Object.assign(form, { id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', status: 1 })
   isEdit.value = false
   dialogVisible.value = true
 }
@@ -192,7 +252,7 @@ const handleSubmit = async () => {
     if (!form.username) { ElMessage.error('请输入用户名'); return }
     if (!isEdit.value && !form.password) { ElMessage.error('请输入密码'); return }
     if (!form.realName) { ElMessage.error('请输入姓名'); return }
-    if (!form.email) { ElMessage.error('请输入邮箱'); return }
+    if (!form.phone) { ElMessage.error('请输入手机号'); return }
   } else {
     try {
       await formRef.value.validate()
@@ -204,16 +264,44 @@ const handleSubmit = async () => {
   
   try {
     if (isEdit.value) {
-      // 编辑用户时，如果密码为空，不传递密码字段
-      const data = { ...form }
-      if (!data.password) {
-        delete data.password
+      // 创建干净的普通对象，避免响应式代理问题
+      const submitData = {
+        realName: form.realName,
+        gender: form.gender || '',
+        birthDate: form.birthDate || '',
+        phone: form.phone,
+        email: form.email || '',
+        role: form.role,
+        userType: form.userType || '内部员工',
+        hospital: form.hospital || '',
+        follower: form.follower || '',
+        status: form.status
       }
-      await axios.put('/api/user/' + form.id, data)
+      // 编辑用户时，如果密码不为空，传递密码字段
+      if (form.password) {
+        submitData.password = form.password
+      }
+      await axios.put('/api/user/' + form.id, submitData)
       ElMessage.success('更新成功')
     }
     else { 
-      await axios.post('/api/user', form)
+      // 创建干净的普通对象，避免响应式代理问题
+      const submitData = {
+        username: form.username,
+        password: form.password,
+        realName: form.realName,
+        gender: form.gender || '',
+        birthDate: form.birthDate || '',
+        phone: form.phone,
+        email: form.email || '',
+        role: form.role,
+        userType: form.userType || '内部员工',
+        hospital: form.hospital || '',
+        follower: form.follower || '',
+        status: form.status
+      }
+      console.log('提交创建用户的数据:', submitData)
+      await axios.post('/api/user', submitData)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -224,7 +312,7 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => { loadRoles(); loadData() })
+onMounted(() => { loadRoles(); loadHospitals(); loadShishi(); loadData() })
 </script>
 
 <style scoped>

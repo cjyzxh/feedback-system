@@ -40,6 +40,13 @@
       width="500px"
     >
       <el-form :model="formData" label-width="80px">
+        <el-form-item label="版本">
+          <el-select v-model="formData.banben" placeholder="请选择版本" style="width: 100%;" @change="handleVersionChange">
+            <el-option label="HIS问题" value="HIS问题" />
+            <el-option label="医保接口" value="医保接口" />
+            <el-option label="其它问题" value="其它问题" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="模块">
           <el-select v-model="formData.mokuai" placeholder="请选择模块" style="width: 100%">
             <el-option v-for="module in modules" :key="module.id" :label="module.mokuaimc" :value="module.mokuaimc" />
@@ -74,11 +81,33 @@ const dialogVisible = ref(false);
 const dialogType = ref<'add' | 'edit'>('add');
 const formData = ref({
   id: 0,
+  banben: 'HIS问题',
   mokuai: '',
   chuangtimc: ''
 });
 
 const modules = ref<any[]>([]);
+
+// 根据版本加载模块
+const loadModulesByVersion = async (banben: string) => {
+  if (!banben) {
+    modules.value = [];
+    return;
+  }
+  try {
+    const res = await axios.get('/api/dict/modules', { params: { banben } });
+    modules.value = res.data?.data || [];
+  } catch (error) {
+    console.error('加载模块失败:', error);
+    modules.value = [];
+  }
+};
+
+// 版本变化处理
+const handleVersionChange = (val: string) => {
+  formData.value.mokuai = '';
+  loadModulesByVersion(val);
+};
 
 // 加载窗体数据
 const loadForms = async () => {
@@ -106,9 +135,11 @@ const handleAdd = () => {
   dialogType.value = 'add';
   formData.value = {
     id: 0,
+    banben: 'HIS问题',
     mokuai: '',
     chuangtimc: ''
   };
+  loadModulesByVersion('HIS问题');
   dialogVisible.value = true;
 };
 
@@ -116,6 +147,13 @@ const handleAdd = () => {
 const handleEdit = (row: any) => {
   dialogType.value = 'edit';
   formData.value = { ...row };
+  // 编辑时先加载该模块对应的版本下的所有模块
+  if (row.banben) {
+    loadModulesByVersion(row.banben);
+  } else if (row.mokuai) {
+    // 如果没有版本信息，先加载所有模块
+    loadModulesByVersion('');
+  }
   dialogVisible.value = true;
 };
 
@@ -133,6 +171,10 @@ const handleDelete = async (id: number) => {
 
 // 提交
 const handleSubmit = async () => {
+  if (!formData.value.banben) {
+    ElMessage.warning('请选择版本');
+    return;
+  }
   if (!formData.value.mokuai || !formData.value.chuangtimc) {
     ElMessage.warning('请填写完整信息');
     return;

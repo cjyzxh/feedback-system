@@ -393,6 +393,14 @@ const handleReset = async () => {
   }
   
   submitting.value = true  // 立即设置提交状态，防止重复点击
+  
+  // 返回问题前必须填写测试结果
+  if (!form.shouhoucs || !form.shouhoucs.trim()) {
+    ElMessage.warning('请先填写测试结果（返回原因）')
+    submitting.value = false
+    return
+  }
+  
   try {
     await ElMessageBox.confirm('确定要将该问题退回工程师重新处理吗？', '返回测试问题', {
       confirmButtonText: '确定',

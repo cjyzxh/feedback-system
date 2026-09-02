@@ -18,10 +18,14 @@ export class DictService {
     @InjectRepository(Hospital) private configRepository: Repository<Hospital>,
   ) {}
 
-  async getModules() {
+  async getModules(banben?: string) {
     try {
+      const where: any = { mokuaimc: Like('%') };
+      if (banben) {
+        where.banben = banben;
+      }
       const modules = await this.moduleRepository.find({
-        where: { mokuaimc: Like('%') },
+        where,
         order: { mokuaimc: 'ASC' },
       });
       

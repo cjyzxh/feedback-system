@@ -41,7 +41,11 @@
     >
       <el-form :model="formData" label-width="80px">
         <el-form-item label="版本">
-          <el-input v-model="formData.banben" placeholder="请输入版本" />
+          <el-select v-model="formData.banben" placeholder="请选择版本" style="width: 100%;">
+            <el-option label="HIS问题" value="HIS问题" />
+            <el-option label="医保接口" value="医保接口" />
+            <el-option label="其它问题" value="其它问题" />
+          </el-select>
         </el-form-item>
         <el-form-item label="模块名称">
           <el-input v-model="formData.mokuaimc" placeholder="请输入模块名称" />
@@ -96,7 +100,7 @@ const handleAdd = () => {
   dialogType.value = 'add';
   formData.value = {
     id: 0,
-    banben: '',
+    banben: 'HIS问题',
     mokuaimc: ''
   };
   dialogVisible.value = true;
@@ -123,6 +127,10 @@ const handleDelete = async (id: number) => {
 
 // 提交
 const handleSubmit = async () => {
+  if (!formData.value.banben) {
+    ElMessage.warning('请选择版本');
+    return;
+  }
   if (!formData.value.mokuaimc) {
     ElMessage.warning('请填写模块名称');
     return;

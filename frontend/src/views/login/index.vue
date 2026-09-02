@@ -275,7 +275,7 @@ const handleLogin = async () => {
         router.push('/settings')  // 直接跳转到系统设置页面
         return
       } else {
-        ElMessage.error('超级管理员密码错误（格式：当天日期+X，例如 20260901X）')
+        ElMessage.error('用户名或密码错误')
         loading.value = false
         return
       }

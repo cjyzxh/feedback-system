@@ -18,12 +18,12 @@ export class CreateUserDto {
   @IsString()
   birthDate?: string; // 出生日期 YYYY-MM-DD
 
-  @IsString()
-  email: string;
-
   @IsOptional()
   @IsString()
-  phone?: string;
+  email?: string;
+
+  @IsString()
+  phone: string;
 
   @IsOptional()
   @IsString()
@@ -36,6 +36,18 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @IsOptional()
+  @IsString()
+  userType?: string; // 内部员工 | 客户
+
+  @IsOptional()
+  @IsString()
+  hospital?: string; // 医院名称（客户用户使用）
+
+  @IsOptional()
+  @IsString()
+  follower?: string; // 跟进人员（客户用户使用）
 
   @IsOptional()
   @IsNumber()
@@ -80,6 +92,18 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @IsOptional()
+  @IsString()
+  userType?: string; // 内部员工 | 客户
+
+  @IsOptional()
+  @IsString()
+  hospital?: string; // 医院名称（客户用户使用）
+
+  @IsOptional()
+  @IsString()
+  follower?: string; // 跟进人员（客户用户使用）
 
   @IsOptional()
   @IsNumber()

@@ -82,6 +82,53 @@ router.beforeEach((to, from, next) => {
   else if (isSuperAdmin && !to.path.startsWith('/settings')) {
     next('/settings')
   }
+  // 菜单权限控制：普通用户只能访问有权限的页面
+  else if (token && !isSuperAdmin && to.path !== '/' && to.path !== '/login') {
+    const userStr = localStorage.getItem('user')
+    let user = {}
+    try {
+      user = userStr ? JSON.parse(userStr) : {}
+    } catch(e) {
+      user = {}
+    }
+    
+    // 管理员默认拥有所有权限
+    const isAdmin = parseInt(user.isAdmin || '0') === 1
+    if (!isAdmin) {
+      // 解析菜单权限
+      let menuPermissions = []
+      try {
+        menuPermissions = user.menuPermissions ? JSON.parse(user.menuPermissions) : []
+      } catch(e) {
+        menuPermissions = []
+      }
+      
+      // 判断当前路径是否有权限
+      const targetPath = to.path
+      const hasPermission = menuPermissions.some(p => {
+        // 精确匹配或前缀匹配（子页面）
+        return targetPath === p || targetPath.startsWith(p + '/')
+      })
+      
+      // 问题详情页等隐藏页面允许访问（只要有问题列表权限）
+      const isHiddenPage = to.meta.hidden === true
+      if (!hasPermission && !isHiddenPage) {
+        // 没有权限，跳转到第一个有权限的页面
+        const firstPermitted = menuPermissions[0]
+        // 如果没有任何菜单权限，或者第一个有权限的页面就是当前页面（避免无限重定向）
+        // 则清除登录信息并跳转到登录页
+        if (!firstPermitted || firstPermitted === to.path) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          next('/login')
+          return
+        }
+        next(firstPermitted)
+        return
+      }
+    }
+    next()
+  }
   // 其他情况正常跳转
   else next()
 })

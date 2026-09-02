@@ -16,17 +16,22 @@ export class UserService {
 
   // 创建用户
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { password, ...rest } = createUserDto;
+    const { password, birthDate, ...rest } = createUserDto;
     
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const user = this.userRepository.create({
-      ...rest,
-      password: hashedPassword,
-    });
+    // 创建用户实体
+    const user = new User();
+    Object.assign(user, rest);
+    user.password = hashedPassword;
     
-    return this.userRepository.save(user);
+    // 只有birthDate有有效值时才设置，避免空字符串导致mssql日期验证失败
+    if (birthDate && birthDate.trim()) {
+      user.birthDate = new Date(birthDate);
+    }
+    
+    return await this.userRepository.save(user);
   }
 
   // 分页查询用户列表
@@ -49,7 +54,7 @@ export class UserService {
       skip: (page - 1) * pageSize,
       take: pageSize,
       // 密码不返回给前端
-      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'status', 'createTime', 'updateTime'],
     });
     
     return { list, total };
@@ -59,7 +64,7 @@ export class UserService {
   async findById(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'status', 'createTime', 'updateTime'],
     });
     
     if (!user) {
@@ -76,6 +81,13 @@ export class UserService {
     // 如果有密码字段，先加密再赋值
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+    
+    // 处理birthDate字段：如果为空字符串或null，设置为null（清除日期）
+    if (updateUserDto.birthDate !== undefined) {
+      if (!updateUserDto.birthDate || !updateUserDto.birthDate.trim()) {
+        updateUserDto.birthDate = null as any;
+      }
     }
     
     Object.assign(user, updateUserDto);

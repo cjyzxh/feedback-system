@@ -17,6 +17,9 @@ export class Role {
   @Column({ name: 'is_admin', default: 0 })
   isAdmin: number;
 
+  @Column({ name: 'menu_permissions', type: 'text', nullable: true })
+  menuPermissions: string;
+
   @Column({ default: 1 })
   status: number;
 

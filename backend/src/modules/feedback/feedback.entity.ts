@@ -59,6 +59,9 @@ export class Feedback {
   @Column({ name: 'szcsgcs', nullable: true, length: 50 })
   szcsgcs: string;
 
+  @Column({ name: 'FanKuiQD', nullable: true, length: 20 })
+  FanKuiQD: string;
+
   @Column({ name: 'shcsgcs', nullable: true, length: 50 })
   shcsgcs: string;
 

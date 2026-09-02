@@ -54,7 +54,7 @@
       />
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑角色' : '新增角色'" width="500px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑角色' : '新增角色'" width="600px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
@@ -74,6 +74,17 @@
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="菜单权限" prop="menuPermissions">
+          <el-tree
+            ref="menuTreeRef"
+            :data="menuTree"
+            show-checkbox
+            node-key="id"
+            :default-checked-keys="checkedMenuKeys"
+            :props="{ label: 'label', children: 'children' }"
+            style="width: 100%; border: 1px solid #e4e7ed; border-radius: 4px; padding: 10px;"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -84,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { roleApi } from '@/api'
 
@@ -93,6 +104,35 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
+const menuTreeRef = ref()
+const checkedMenuKeys = ref([])
+
+// 菜单权限树配置
+const menuTree = [
+  { id: '/feedback', label: '问题列表' },
+  { id: '/test', label: '问题处理' },
+  { id: '/testcheck', label: '问题测试' },
+  {
+    id: '/report',
+    label: '数据统计',
+    children: [
+      { id: '/report', label: '通用统计' },
+      { id: '/report/modify-status', label: '修改状态统计' }
+    ]
+  },
+  {
+    id: '/settings',
+    label: '系统设置',
+    children: [
+      { id: '/settings', label: '系统管理' },
+      { id: '/settings/staff', label: '人员维护' },
+      { id: '/settings/user', label: '用户管理' },
+      { id: '/settings/role', label: '角色管理' },
+      { id: '/settings/module', label: '模块维护' },
+      { id: '/settings/form', label: '窗体维护' }
+    ]
+  }
+]
 
 const queryForm = reactive({
   page: 1,
@@ -105,7 +145,8 @@ const form = reactive({
   description: '',
   viewOthers: 0,
   isAdmin: 0,
-  status: 1
+  status: 1,
+  menuPermissions: ''
 })
 
 const rules = {
@@ -125,8 +166,15 @@ const handleAdd = () => {
   form.viewOthers = 0
   form.isAdmin = 0
   form.status = 1
+  form.menuPermissions = ''
+  checkedMenuKeys.value = []
   isEdit.value = false
   dialogVisible.value = true
+  nextTick(() => {
+    if (menuTreeRef.value) {
+      menuTreeRef.value.setCheckedKeys([])
+    }
+  })
 }
 
 const handleEdit = async (row) => {
@@ -138,8 +186,25 @@ const handleEdit = async (row) => {
   form.viewOthers = role.viewOthers || 0
   form.isAdmin = role.isAdmin || 0
   form.status = role.status
+  form.menuPermissions = role.menuPermissions || ''
+  
+  // 解析已保存的菜单权限
+  let permissions = []
+  try {
+    permissions = role.menuPermissions ? JSON.parse(role.menuPermissions) : []
+  } catch(e) {
+    permissions = []
+  }
+  checkedMenuKeys.value = permissions
+  
   isEdit.value = true
   dialogVisible.value = true
+  
+  nextTick(() => {
+    if (menuTreeRef.value) {
+      menuTreeRef.value.setCheckedKeys(permissions)
+    }
+  })
 }
 
 const handleDelete = async (row) => {
@@ -152,12 +217,17 @@ const handleDelete = async (row) => {
 const handleSubmit = async () => {
   await formRef.value.validate()
   
+  // 获取选中的菜单权限
+  const checkedKeys = menuTreeRef.value ? menuTreeRef.value.getCheckedKeys() : []
+  const menuPermissionsStr = JSON.stringify(checkedKeys)
+  
   const data = {
     name: form.name,
     description: form.description,
     viewOthers: form.viewOthers,
     isAdmin: form.isAdmin,
-    status: form.status
+    status: form.status,
+    menuPermissions: menuPermissionsStr
   }
   
   if (isEdit.value) {

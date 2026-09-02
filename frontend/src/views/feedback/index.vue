@@ -12,7 +12,7 @@
         <el-form-item label="问题ID号">
           <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" style="width:120px" />
         </el-form-item>
-        <el-form-item label="医院">
+        <el-form-item label="医院" v-if="!isCustomerUser">
           <el-select v-model="searchForm.yiyuanmc" placeholder="请搜索选择" filterable clearable style="width:180px" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" @change="handleSearch">
             <el-option v-for="h in hospitals" :key="h.label" :label="h.label" :value="h.label" />
           </el-select>
@@ -24,16 +24,28 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleSearch" style="width:130px">
-            <el-option label="已录入" value="yiluru" />
-            <el-option label="已处理" value="yichuli" />
-            <el-option label="已测试" value="yiceshi" />
+            <el-option label="待修改" value="daixiugai" />
+            <el-option label="待测试" value="daiceshi" />
+            <el-option label="已修改" value="yixiugai" />
             <el-option label="待讨论" value="daitaolun" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="canViewOthers">
+        <el-form-item label="录入日期">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            @change="handleDateChange"
+            style="width:240px"
+          />
+        </el-form-item>
+        <el-form-item v-if="canViewOthers && !isCustomerUser">
           <el-checkbox v-model="viewAll" @change="handleSearch">查看所有问题</el-checkbox>
         </el-form-item>
-        <el-form-item v-if="canViewOthers && viewAll">
+        <el-form-item v-if="canViewOthers && viewAll && !isCustomerUser">
           <el-select v-model="selectedShishiry" placeholder="跟进人员" clearable style="width:130px" @change="handleSearch">
             <el-option v-for="s in shishiList" :key="s.value || s.xingming" :label="s.label || s.xingming" :value="s.value || s.xingming" />
           </el-select>
@@ -47,19 +59,26 @@
       
       <el-table :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName">
         <el-table-column prop="id" label="问题ID号" width="90" />
-        <el-table-column prop="banben" label="软件版本" width="100" />
-        <el-table-column prop="yiyuanmc" label="医院名称" width="150" />
-        <el-table-column prop="shishiry" label="实施人员" width="90" />
-        <el-table-column prop="mokuai" label="模块" width="100" />
-        <el-table-column prop="chuangtimc" label="窗体" width="100" />
-        <el-table-column prop="xggcs" label="工程师" width="80" />
-        <el-table-column prop="jingjicd" label="紧急程度" width="80">
+        <el-table-column prop="jingjicd" label="紧急度" width="80">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
             <el-tag v-else-if="row.jingjicd === '急'" type="warning" size="small">急</el-tag>
             <el-tag v-else type="info" size="small">一般</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="banben" label="软件版本" width="100" />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(getProblemStatus(row))" size="small">{{ getProblemStatus(row) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="yiyuanmc" label="医院名称" width="150" />
+        <el-table-column prop="shishiry" label="实施人员" width="90" />
+        <el-table-column prop="mokuai" label="模块" width="100" />
+        <el-table-column prop="chuangtimc" label="窗体" width="100" />
+        <el-table-column prop="xggcs" label="工程师" width="80" />
+        <el-table-column prop="szcsgcs" label="反馈人" width="160" />
+        <el-table-column prop="FanKuiQD" label="反馈渠道" width="100" />
         <el-table-column prop="wentism" label="问题说明" min-width="150" />
         <el-table-column prop="shouhoucs" label="测试结果" min-width="120">
           <template #default="{ row }">
@@ -67,6 +86,7 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
+        <!-- 隐藏测试人员和测试返回时间列，以保证图片和操作列不超页面范围
         <el-table-column prop="shcsgcs" label="测试人员" width="90">
           <template #default="{ row }">
             <span v-if="row.shcsgcs">{{ row.shcsgcs }}</span>
@@ -79,6 +99,7 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
+        -->
         <el-table-column prop="lvrusj" label="录入时间" width="170">
           <template #default="{ row }">
             <span v-if="row.lvrusj">{{ formatDate(row.lvrusj) }}</span>
@@ -93,8 +114,8 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">查看</el-button>
-            <el-button type="primary" link @click="handleEdit(row)" :disabled="row.shouhoubz === 'Y'">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)" :disabled="row.gongchengsbz === 'Y' || row.shouhoubz === 'Y'">删除</el-button>
+            <el-button type="primary" link @click="handleEdit(row)" :disabled="!canEdit(row)">编辑</el-button>
+            <el-button type="danger" link @click="handleDelete(row)" :disabled="!canDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -132,7 +153,7 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="软件版本" prop="banben">
-              <el-select v-model="form.banben" placeholder="请选择" class="full-width">
+              <el-select v-model="form.banben" placeholder="请选择" class="full-width" @change="onVersionChange">
                 <el-option label="HIS问题" value="HIS问题" />
                 <el-option label="医保接口" value="医保接口" />
                 <el-option label="其它问题" value="其它问题" />
@@ -141,7 +162,7 @@
           </el-col>
           <el-col :span="16">
             <el-form-item label="医院名称" prop="yiyuanmc">
-              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading">
+              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" :disabled="isCustomerUser">
                 <el-option v-for="h in hospitals" :key="h.label" :label="h.label" :value="h.label" />
               </el-select>
             </el-form-item>
@@ -165,7 +186,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="跟进人员" prop="shishiry">
-              <el-select v-model="form.shishiry" placeholder="请选择" class="full-width">
+              <el-select v-model="form.shishiry" placeholder="请选择" class="full-width" :disabled="isCustomerUser">
                 <el-option v-for="e in shishiList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
@@ -175,7 +196,7 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="工程师" prop="xggcs">
-              <el-select v-model="form.xggcs" placeholder="请选择" class="full-width">
+              <el-select v-model="form.xggcs" placeholder="请选择" class="full-width" :disabled="isCustomerUser">
                 <el-option v-for="e in yanfaList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
@@ -249,12 +270,12 @@
         <el-row :gutter="20">
           <el-col :span="6">
             <el-form-item label="问题ID号">
-              <el-input v-model="form.id" disabled />
+              <el-input v-model="form.id" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="录入时间">
-              <el-input :model-value="formatDate(form.lvrusj)" disabled />
+              <el-input :model-value="formatDate(form.lvrusj)" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="10">
@@ -267,12 +288,12 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="软件版本">
-              <el-input v-model="form.banben" disabled />
+              <el-input v-model="form.banben" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="16">
             <el-form-item label="医院名称">
-              <el-input v-model="form.yiyuanmc" disabled />
+              <el-input v-model="form.yiyuanmc" readonly />
             </el-form-item>
           </el-col>
         </el-row>
@@ -280,17 +301,17 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="模块">
-              <el-input v-model="form.mokuai" disabled />
+              <el-input v-model="form.mokuai" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="窗体">
-              <el-input v-model="form.chuangtimc" disabled />
+              <el-input v-model="form.chuangtimc" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="跟进人员">
-              <el-input v-model="form.shishiry" disabled />
+              <el-input v-model="form.shishiry" readonly />
             </el-form-item>
           </el-col>
         </el-row>
@@ -298,17 +319,31 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="工程师">
-              <el-input v-model="form.xggcs" disabled />
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈人">
+              <el-input v-model="form.szcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈渠道">
+              <el-input v-model="form.FanKuiQD" readonly />
             </el-form-item>
           </el-col>
         </el-row>
         
         <el-form-item label="问题说明">
-          <el-input v-model="form.wentism" type="textarea" :rows="4" disabled />
+          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
+        </el-form-item>
+        
+        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
+          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
         </el-form-item>
         
         <el-form-item label="测试意见" v-if="form.shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" disabled />
+          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
         </el-form-item>
         
         <!-- 处理信息 -->
@@ -316,12 +351,12 @@
         <el-row v-if="form.xgsj" :gutter="20">
           <el-col :span="8">
             <el-form-item label="处理人">
-              <el-input v-model="form.xggcs" disabled />
+              <el-input v-model="form.xggcs" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="处理时间">
-              <el-input :model-value="formatDate(form.xgsj)" disabled />
+              <el-input :model-value="formatDate(form.xgsj)" readonly />
             </el-form-item>
           </el-col>
         </el-row>
@@ -331,17 +366,17 @@
         <el-row v-if="form.cssj" :gutter="20">
           <el-col :span="8">
             <el-form-item label="测试人员">
-              <el-input v-model="form.shcsgcs" disabled />
+              <el-input v-model="form.shcsgcs" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" disabled />
+              <el-input :model-value="formatDate(form.cssj)" readonly />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item v-if="form.shouhoucs" label="测试结果">
-          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" disabled style="color: #f56c6c" />
+          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
         </el-form-item>
         
         <!-- 问题截图（只读） -->
@@ -456,7 +491,82 @@ const hospitalLoading = ref(false)
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
 
-const searchForm = reactive({ yiyuanmc: '', mokuai: '', id: '', zhuangtai: '' })
+// 当前登录者信息
+const currentUserName = ref('')
+const isAdmin = ref(false)
+
+// 初始化当前登录者信息
+const initCurrentUser = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      currentUserName.value = user?.realName || user?.username || localStorage.getItem('username') || ''
+      isAdmin.value = parseInt(user?.isAdmin || '0') === 1
+    } catch (e) {
+      currentUserName.value = localStorage.getItem('username') || ''
+      isAdmin.value = false
+    }
+  } else {
+    currentUserName.value = localStorage.getItem('username') || ''
+    isAdmin.value = false
+  }
+}
+
+// 判断是否可以编辑：只有待修改状态（gongchengsbz='N' shouhoubz='N' taolunbz='N'）可以编辑
+const canEdit = (row: any) => {
+  return row.gongchengsbz !== 'Y' && row.shouhoubz !== 'Y' && row.taolunbz !== 'Y'
+}
+
+// 判断是否可以删除：
+// 1. 只有待修改状态可以删除
+// 2. 必须是反馈人本人(szcsgcs为当前登录者)，或者当前登录者是管理员
+const canDelete = (row: any) => {
+  // 只有待修改状态可以删除
+  if (row.gongchengsbz === 'Y' || row.shouhoubz === 'Y' || row.taolunbz === 'Y') {
+    return false
+  }
+  // 必须是反馈人本人或者管理员
+  return isAdmin.value || row.szcsgcs === currentUserName.value
+}
+
+// 初始化默认日期范围：一个月前到当前日期
+const getDefaultDateRange = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setMonth(start.getMonth() - 1)
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return { startDate: formatDate(start), endDate: formatDate(end) }
+}
+
+const defaultRange = getDefaultDateRange()
+const searchForm = reactive({ 
+  yiyuanmc: '', 
+  mokuai: '', 
+  id: '', 
+  zhuangtai: '',
+  startDate: defaultRange.startDate,
+  endDate: defaultRange.endDate
+})
+// 日期范围选择器的绑定值
+const dateRange = ref([defaultRange.startDate, defaultRange.endDate])
+
+// 日期范围变化处理
+const handleDateChange = (val: any) => {
+  if (val && val.length === 2) {
+    searchForm.startDate = val[0]
+    searchForm.endDate = val[1]
+  } else {
+    searchForm.startDate = ''
+    searchForm.endDate = ''
+  }
+  handleSearch()
+}
 const viewAll = ref(false)  // 查看所有问题，默认false（只查自己跟进的）
 const selectedShishiry = ref('')  // 选中的跟进人员（查看所有问题时可用）
 
@@ -464,6 +574,25 @@ const selectedShishiry = ref('')  // 选中的跟进人员（查看所有问题�
 const canViewOthers = computed(() => {
   return parseInt(localStorage.getItem('viewOthers') || '0') === 1
 })
+
+// 判断当前用户是否是客户用户（基于userType字段）
+const isCustomerUser = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.userType === '客户'
+})
+
+// 获取客户用户的医院名称
+const customerHospital = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.hospital || ''
+})
+
+// 获取客户用户的跟进人员
+const customerFollower = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.follower || ''
+})
+
 const form = reactive({
   id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '', shouhoucs: '', shcsgcs: '', cssj: null as any, lvrusj: null as any, xgsj: null as any
 })
@@ -492,6 +621,30 @@ const formatDate = (date: any) => {
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const seconds = String(d.getSeconds()).padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+// 计算问题状态
+// 待修改: gongchengsbz='N' shouhoubz='N' taolunbz='N'
+// 待测试: gongchengsbz='Y' shouhoubz='N' taolunbz='N'
+// 已修改: gongchengsbz='Y' shouhoubz='Y' taolunbz='N'
+// 待讨论: taolunbz='Y'
+const getProblemStatus = (row: any) => {
+  if (row.taolunbz === 'Y') return '待讨论'
+  if (row.gongchengsbz === 'Y' && row.shouhoubz === 'Y') return '已修改'
+  if (row.gongchengsbz === 'Y' && row.shouhoubz === 'N') return '待测试'
+  if (row.gongchengsbz === 'N' && row.shouhoubz === 'N') return '待修改'
+  return '待修改'
+}
+
+// 获取状态对应的标签颜色
+const getStatusType = (status: string) => {
+  switch (status) {
+    case '待修改': return 'warning'
+    case '待测试': return 'info'
+    case '已修改': return 'success'
+    case '待讨论': return 'danger'
+    default: return 'info'
+  }
 }
 
 // 行颜色：测试后返回的问题（gongchengsbz='N' 且 cssj 不为空）显示为淡淡的红色
@@ -540,29 +693,33 @@ const loadData = async () => {
   loading.value = true
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
+  const currentUserType = user?.userType || '内部员工'
+  const currentUserHospital = user?.hospital || ''
+  
   const params: any = { 
     page: pagination.page, 
     pageSize: pagination.pageSize, 
     yiyuanmc: searchForm.yiyuanmc || undefined, 
     mokuai: searchForm.mokuai || undefined, 
-    id: searchForm.id || undefined 
+    id: searchForm.id || undefined,
+    startDate: searchForm.startDate || undefined,
+    endDate: searchForm.endDate || undefined,
+    zhuangtai: searchForm.zhuangtai || undefined
   }
-  // 不勾选"查看所有问题"时，只查询当前操作员跟进的问题（shishiry=当前登录者）
-  // 勾选"查看所有问题"时，如果选择了跟进人员则查询所选人员，否则查询全部
-  if (!viewAll.value) {
-    params.shishiry = currentUserName
-  } else if (selectedShishiry.value) {
-    params.shishiry = selectedShishiry.value
+  
+  // 客户用户：只查询该客户的问题（yiyuanmc = 当前用户的hospital）
+  if (currentUserType === '客户' && currentUserHospital) {
+    params.yiyuanmc = currentUserHospital
+  } else {
+    // 内部员工：不勾选"查看所有问题"时，只查询当前操作员跟进的问题（shishiry=当前登录者）
+    // 勾选"查看所有问题"时，如果选择了跟进人员则查询所选人员，否则查询全部
+    if (!viewAll.value) {
+      params.shishiry = currentUserName
+    } else if (selectedShishiry.value) {
+      params.shishiry = selectedShishiry.value
+    }
   }
-  if (searchForm.zhuangtai === 'yiluru') {
-    params.gongchengsbz = 'N'
-  } else if (searchForm.zhuangtai === 'yichuli') {
-    params.gongchengsbz = 'Y'
-  } else if (searchForm.zhuangtai === 'yiceshi') {
-    params.shouhoubz = 'Y'
-  } else if (searchForm.zhuangtai === 'daitaolun') {
-    params.taolunbz = 'Y'
-  }
+  
   try {
     const res = await axios.get('/api/feedback', { params })
     const data = res.data?.data || res.data || res
@@ -578,7 +735,19 @@ const loadData = async () => {
 }
 
 const handleSearch = () => { pagination.page = 1; loadData() }
-const handleResetSearch = () => { searchForm.yiyuanmc = ''; searchForm.mokuai = ''; searchForm.id = ''; searchForm.zhuangtai = ''; viewAll.value = false; selectedShishiry.value = ''; handleSearch() }
+const handleResetSearch = () => { 
+  const defaultRange = getDefaultDateRange()
+  searchForm.yiyuanmc = ''
+  searchForm.mokuai = ''
+  searchForm.id = ''
+  searchForm.zhuangtai = ''
+  searchForm.startDate = defaultRange.startDate
+  searchForm.endDate = defaultRange.endDate
+  dateRange.value = [defaultRange.startDate, defaultRange.endDate]
+  viewAll.value = false
+  selectedShishiry.value = ''
+  handleSearch()
+}
 
 const onModuleChange = async (moduleName: any) => {
   form.chuangtimc = ''
@@ -588,15 +757,34 @@ const onModuleChange = async (moduleName: any) => {
   catch (err) { console.error('加载窗体失败:', err) }
 }
 
+// 版本变化：加载对应版本的模块，并清空模块和窗体
+const onVersionChange = async (banben: string) => {
+  form.mokuai = ''
+  form.chuangtimc = ''
+  modules.value = []
+  forms.value = []
+  if (!banben) return
+  try {
+    const res = await axios.get('/api/dict/modules', { params: { banben } })
+    modules.value = res.data?.data || []
+  } catch (err) { console.error('加载模块失败:', err) }
+}
+
 const handleAdd = async () => {
   isEdit.value = false
-  // 获取当前登录者名称
+  // 获取当前登录者信息
   const userStr = localStorage.getItem('user')
   let currentUser = ''
+  let userHospital = ''
+  let userFollower = ''
+  let userType = '内部员工'
   if (userStr) {
     try {
       const userObj = JSON.parse(userStr)
       currentUser = userObj?.realName || userObj?.username || ''
+      userHospital = userObj?.hospital || ''
+      userFollower = userObj?.follower || ''
+      userType = userObj?.userType || '内部员工'
     } catch (e) {
       currentUser = localStorage.getItem('username') || ''
     }
@@ -606,11 +794,18 @@ const handleAdd = async () => {
   
   form.id = 0
   form.banben = 'HIS问题'
-  form.yiyuanmc = ''
-  form.shishiry = currentUser  // 跟进人员默认为当前登录者
+  // 如果是客户用户（userType === '客户'），自动填充医院、跟进人员、工程师，并设为只读
+  if (userType === '客户') {
+    form.yiyuanmc = userHospital
+    form.shishiry = userFollower
+    form.xggcs = userFollower  // 工程师默认绑定为跟进人员
+  } else {
+    form.yiyuanmc = ''
+    form.shishiry = currentUser  // 跟进人员默认为当前登录者
+    form.xggcs = ''
+  }
   form.mokuai = ''
   form.chuangtimc = ''
-  form.xggcs = ''
   form.jingjicd = '一般'
   form.wentism = ''
   form.shouzhongcs = ''
@@ -620,6 +815,9 @@ const handleAdd = async () => {
   uploadFileList.value = []
   forms.value = []
   dialogVisible.value = true
+  
+  // 加载默认版本对应的模块
+  onVersionChange('HIS问题')
 }
 
 const handleView = async (row: any) => {
@@ -655,6 +853,11 @@ const getJingjiType = (level: string) => {
 }
 
 const handleEdit = async (row: any) => {
+  // 权限验证：只有待修改状态的问题才能编辑
+  if (!canEdit(row)) {
+    ElMessage.warning('只有待修改状态的问题才能编辑')
+    return
+  }
   isEdit.value = true
   const rowCopy = JSON.parse(JSON.stringify(row))
   rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
@@ -679,10 +882,22 @@ const handleEdit = async (row: any) => {
     try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(form.mokuai)}`); forms.value = res.data.data || [] }
     catch (err) { console.error('加载窗体失败:', err) }
   }
+  // 加载对应版本的模块列表
+  if (form.banben) {
+    try {
+      const res = await axios.get('/api/dict/modules', { params: { banben: form.banben } })
+      modules.value = res.data?.data || []
+    } catch (err) { console.error('加载模块失败:', err) }
+  }
   dialogVisible.value = true
 }
 
 const handleDelete = async (row: any) => {
+  // 权限验证：只有待修改状态且是反馈人本人或管理员才能删除
+  if (!canDelete(row)) {
+    ElMessage.warning('只有待修改状态的问题，且是反馈人本人或管理员才能删除')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定要删除该问题吗？', '提示', { type: 'warning' })
     await axios.delete(`/api/feedback/${row.id}`)
@@ -759,6 +974,7 @@ const handleSubmit = async () => {
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : null
       data.szcsgcs = user?.realName || user?.username || localStorage.getItem('username') || ''
+      data.FanKuiQD = user?.userType || '内部员工'
     }
     
     let savedFeedback = null
@@ -832,7 +1048,7 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => { loadDicts(); loadData() })
+onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 </script>
 
 <style scoped>

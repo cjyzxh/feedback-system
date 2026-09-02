@@ -57,21 +57,23 @@ export class AuthService {
     // 5. 返回用户信息（不包含密码字段）
     const { password: _, ...userInfo } = user;
     
-    // 6. 查询角色信息，获取 viewOthers（查看非本人数据）和 isAdmin（是否管理员）权限
+    // 6. 查询角色信息，获取 viewOthers（查看非本人数据）、isAdmin（是否管理员）和 menuPermissions（菜单权限）
     let viewOthers = 0;
     let isAdmin = 0;
+    let menuPermissions = '';
     try {
       const role = await this.roleRepository.findOne({ where: { name: user.role } });
       if (role) {
         viewOthers = role.viewOthers || 0;
         isAdmin = role.isAdmin || 0;
+        menuPermissions = role.menuPermissions || '';
       }
     } catch (e) {
       this.logger.warn('查询角色信息失败:' + e.message);
     }
     
-    // 把 viewOthers 和 isAdmin 加到返回的 user 对象中
-    const result = { ...userInfo, viewOthers, isAdmin };
+    // 把 viewOthers、isAdmin 和 menuPermissions 加到返回的 user 对象中
+    const result = { ...userInfo, viewOthers, isAdmin, menuPermissions };
     
     return { token, user: result };
   }
@@ -86,7 +88,14 @@ export class AuthService {
       throw new UnauthorizedException('手机号格式错误');
     }
     
-    // 2. 不再检查手机号是否绑定用户，允许新用户获取验证码
+    // 2. 检查手机号是否已绑定用户且状态正常（status=1）
+    const existingUser = await this.userService.findByPhone(phone);
+    if (!existingUser) {
+      throw new UnauthorizedException('手机号不存在');
+    }
+    if (existingUser.status !== 1) {
+      throw new UnauthorizedException('该账号已被停用，请联系管理员');
+    }
     
     // 3. 生成6位随机验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -178,21 +187,23 @@ export class AuthService {
     // 8. 返回用户信息（不含密码）
     const { password: _, ...userInfo } = user;
     
-    // 9. 查询角色信息，获取 viewOthers（查看非本人数据）和 isAdmin（是否管理员）权限
+    // 9. 查询角色信息，获取 viewOthers（查看非本人数据）、isAdmin（是否管理员）和 menuPermissions（菜单权限）
     let viewOthers = 0;
     let isAdmin = 0;
+    let menuPermissions = '';
     try {
       const role = await this.roleRepository.findOne({ where: { name: user.role } });
       if (role) {
         viewOthers = role.viewOthers || 0;
         isAdmin = role.isAdmin || 0;
+        menuPermissions = role.menuPermissions || '';
       }
     } catch (e) {
       this.logger.warn('查询角色信息失败:' + e.message);
     }
     
-    // 把 viewOthers 和 isAdmin 加到返回的 user 对象中
-    const result = { ...userInfo, viewOthers, isAdmin };
+    // 把 viewOthers、isAdmin 和 menuPermissions 加到返回的 user 对象中
+    const result = { ...userInfo, viewOthers, isAdmin, menuPermissions };
     
     return { token, user: result };
   }

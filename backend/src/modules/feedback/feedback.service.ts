@@ -34,6 +34,7 @@ export class FeedbackService {
         lvrusj: new Date(),
         taolunbz: dto.taolunbz || 'N',
         szcsgcs: dto.szcsgcs,
+        FanKuiQD: dto.FanKuiQD,
         shcsgcs: dto.shcsgcs,
         cssj: dto.cssj,
       });
@@ -50,7 +51,7 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, startDate, endDate, id } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id } = query;
       
       const where: any = {};
       
@@ -82,16 +83,45 @@ export class FeedbackService {
         where.xggcs = eng;
       }
       
-      if (gongchengsbz !== undefined) {
-        where.gongchengsbz = gongchengsbz;
-      }
+      // 按状态筛选（优先级高于单个字段筛选）
+      // 待修改: gongchengsbz='N' shouhoubz='N' taolunbz='N'
+      // 待测试: gongchengsbz='Y' shouhoubz='N' taolunbz='N'
+      // 已修改: gongchengsbz='Y' shouhoubz='Y' taolunbz='N'
+      // 待讨论: taolunbz='Y'
+      if (zhuangtai) {
+        switch (zhuangtai) {
+          case 'daixiugai':
+            where.gongchengsbz = 'N';
+            where.shouhoubz = 'N';
+            where.taolunbz = 'N';
+            break;
+          case 'daiceshi':
+            where.gongchengsbz = 'Y';
+            where.shouhoubz = 'N';
+            where.taolunbz = 'N';
+            break;
+          case 'yixiugai':
+            where.gongchengsbz = 'Y';
+            where.shouhoubz = 'Y';
+            where.taolunbz = 'N';
+            break;
+          case 'daitaolun':
+            where.taolunbz = 'Y';
+            break;
+        }
+      } else {
+        // 没有选择状态时，才按单个字段筛选
+        if (gongchengsbz !== undefined) {
+          where.gongchengsbz = gongchengsbz;
+        }
 
-      if (shouhoubz !== undefined) {
-        where.shouhoubz = shouhoubz;
-      }
+        if (shouhoubz !== undefined) {
+          where.shouhoubz = shouhoubz;
+        }
 
-      if (taolunbz !== undefined) {
-        where.taolunbz = taolunbz;
+        if (taolunbz !== undefined) {
+          where.taolunbz = taolunbz;
+        }
       }
 
       // 时间范围查询（lvrusj 录入时间）

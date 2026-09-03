@@ -47,7 +47,7 @@ import { ConfigModule } from './modules/config/config.module';
             trustServerCertificate: true,
           };
           config.options = {
-            encrypt: true,
+            encrypt: false,
             trustServerCertificate: true,
           };
         }

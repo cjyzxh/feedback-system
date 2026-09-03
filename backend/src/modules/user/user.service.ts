@@ -106,7 +106,7 @@ export class UserService {
     await this.userRepository.delete(ids);
   }
 
-  // 根据用户名或ID查询用户（用于登录）
+  // 根据用户名/ID/姓名查询用户（用于登录）
   async findByUsernameOrId(identifier: string | number): Promise<User | null> {
     console.log('查询用户:', identifier, '类型:', typeof identifier);
     // 尝试作为ID查询
@@ -128,7 +128,17 @@ export class UserService {
       where: { username: String(identifier) },
     });
     console.log('按用户名查询结果:', userByUsername);
-    return userByUsername;
+    if (userByUsername) {
+      return userByUsername;
+    }
+
+    // 作为姓名（realName）查询
+    console.log('按姓名查询:', String(identifier));
+    const userByRealName = await this.userRepository.findOne({
+      where: { realName: String(identifier) },
+    });
+    console.log('按姓名查询结果:', userByRealName);
+    return userByRealName;
   }
 
   // 根据用户名查询用户（用于登录）

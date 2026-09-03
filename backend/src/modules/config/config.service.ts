@@ -89,7 +89,7 @@ export class DatabaseConfigService {
           trustServerCertificate: true,
         };
         connectionOptions.options = {
-          encrypt: true,
+          encrypt: false,
           trustServerCertificate: true,
         };
       }
@@ -187,7 +187,7 @@ export class DatabaseConfigService {
           trustServerCertificate: true,
         };
         connectionOptions.options = {
-          encrypt: true,
+          encrypt: false,
           trustServerCertificate: true,
         };
       }
@@ -279,10 +279,10 @@ export class DatabaseConfigService {
   getSystemTheme(): string {
     try {
       const configs = this.getAllConfigs();
-      return configs.systemTheme || 'morandi';
+      return configs.systemTheme || 'light';
     } catch (error) {
       this.logger.error('获取系统默认样式失败:', error);
-      return 'morandi';
+      return 'light';
     }
   }
 
@@ -290,7 +290,7 @@ export class DatabaseConfigService {
   saveSystemTheme(theme: string): boolean {
     try {
       const configs = this.getAllConfigs();
-      configs.systemTheme = theme || 'morandi';
+      configs.systemTheme = theme || 'light';
       this.saveAllConfigs(configs);
       this.logger.log('系统默认样式已保存:', theme);
       return true;

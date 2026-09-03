@@ -44,6 +44,36 @@ async function testDatabaseConnection(): Promise<{ success: boolean; error?: str
       console.log('配置文件加载成功');
     }
 
+    // 读取 database-config.json，覆盖环境变量（优先使用界面保存的配置）
+    const dbConfigPath = path.join(process.cwd(), 'database-config.json');
+    console.log('读取数据库配置文件:', dbConfigPath);
+    console.log('文件是否存在:', fs.existsSync(dbConfigPath));
+    if (fs.existsSync(dbConfigPath)) {
+      try {
+        const dbConfigContent = fs.readFileSync(dbConfigPath, 'utf8');
+        const dbConfigs = JSON.parse(dbConfigContent);
+        const dbTypeFromEnv = process.env.DB_TYPE || 'mssql';
+        if (dbConfigs[dbTypeFromEnv]) {
+          const cfg = dbConfigs[dbTypeFromEnv];
+          if (cfg.host) process.env.DB_HOST = cfg.host;
+          if (cfg.port) process.env.DB_PORT = String(cfg.port);
+          if (cfg.username) process.env.DB_USERNAME = cfg.username;
+          if (cfg.password) process.env.DB_PASSWORD = cfg.password;
+          if (cfg.database) process.env.DB_NAME = cfg.database;
+          console.log('已从 database-config.json 加载配置:', JSON.stringify({
+            type: dbTypeFromEnv,
+            host: cfg.host,
+            port: cfg.port,
+            database: cfg.database,
+          }));
+        } else {
+          console.log('database-config.json 中未找到', dbTypeFromEnv, '配置，使用环境变量默认值');
+        }
+      } catch (e: any) {
+        console.error('解析 database-config.json 失败:', e.message);
+      }
+    }
+
     const dbType = process.env.DB_TYPE || 'mssql';
     const isMssql = dbType === 'mssql';
 
@@ -68,7 +98,7 @@ async function testDatabaseConnection(): Promise<{ success: boolean; error?: str
 
     if (isMssql) {
       connectionOptions.extra = { trustServerCertificate: true };
-      connectionOptions.options = { encrypt: true, trustServerCertificate: true };
+      connectionOptions.options = { encrypt: false, trustServerCertificate: true };
     }
 
     console.log('连接选项:', JSON.stringify({

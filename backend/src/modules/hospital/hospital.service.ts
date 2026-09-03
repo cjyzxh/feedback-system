@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Hospital } from './hospital.entity';
 
 // 中文转拼音工具函数
@@ -33,6 +33,7 @@ export class HospitalService {
   constructor(
     @InjectRepository(Hospital)
     private hospitalRepository: Repository<Hospital>,
+    private dataSource: DataSource,
   ) {}
 
   // 省份列表
@@ -110,20 +111,21 @@ export class HospitalService {
   // 根据医院名称查询售后到期日
   async getSyqByName(name: string): Promise<{ syq: string | null }> {
     try {
-      const hospital = await this.hospitalRepository.findOne({
-        where: { name: name, zuofeibz: '否' },
-      });
-      console.log('查询医院售后到期日:', name, '结果:', hospital ? { syq: hospital.syq, qy: hospital.qy } : '未找到');
+      // 用原生 SQL 查询，和 dict.service.ts 保持一致的方式
+      const sql = `SELECT TOP 1 SYQ FROM xt_ConfigServer WHERE YHMC = '${name}' AND ZuoFeiBZ = '否' AND QY <> '内部'`;
+      const result = await this.hospitalRepository.query(sql);
+      console.log('查询医院售后到期日:', name, '结果:', result);
       
-      if (hospital && hospital.syq) {
-        // SYQ 是 datetime 类型，格式化为 yyyy-MM-dd
-        const d = new Date(hospital.syq);
+      if (result && result.length > 0 && result[0].SYQ) {
+        const syqValue = result[0].SYQ;
+        // 尝试格式化为 yyyy-MM-dd
+        const d = new Date(syqValue);
         if (!isNaN(d.getTime())) {
           const formatted = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           console.log('售后到期日格式化后:', formatted);
           return { syq: formatted };
         }
-        return { syq: String(hospital.syq) };
+        return { syq: String(syqValue) };
       }
       return { syq: null };
     } catch (error) {

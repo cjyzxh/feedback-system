@@ -132,7 +132,7 @@ const loginForm = reactive({
 
 // Logo 图片：莫兰迪模式用绿色 logo，浅色/深色模式用原蓝色 logo
 const logoSrc = computed(() => {
-  const mode = localStorage.getItem('themeMode') || 'morandi'
+  const mode = localStorage.getItem('themeMode') || 'light'
   if (mode === 'light' || mode === 'dark') {
     return new URL('@/assets/logo.jpg', import.meta.url).href
   }
@@ -330,7 +330,7 @@ const handleLogin = async () => {
         localStorage.setItem('viewOthers', user?.viewOthers || 0)
         // ========== 界面样式：个人优先，系统默认兜底 ==========
         const userTheme = user?.themeMode || ''
-        let finalTheme = 'morandi'
+        let finalTheme = 'light'
         if (userTheme) {
           // 个人有设置，使用个人样式
           finalTheme = userTheme
@@ -340,10 +340,10 @@ const handleLogin = async () => {
             const themeRes = await fetch('/api/config/system-theme')
             if (themeRes.ok) {
               const themeData = await themeRes.json()
-              finalTheme = themeData.theme || 'morandi'
+              finalTheme = themeData.theme || 'light'
             }
           } catch (themeErr) {
-            console.warn('获取系统默认样式失败，使用莫兰迪系:', themeErr)
+            console.warn('获取系统默认样式失败，使用浅色:', themeErr)
           }
         }
         localStorage.setItem('themeMode', finalTheme)

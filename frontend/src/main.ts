@@ -8,7 +8,7 @@ import router from './router'
 
 // 应用已保存的界面风格（莫兰迪/浅色/深色）
 // 类似于 VB6 中读取 INI 配置加载窗体主题
-const savedTheme = localStorage.getItem('themeMode')
+const savedTheme = localStorage.getItem('themeMode') || 'light'
 if (savedTheme === 'light') {
   document.body.classList.add('theme-light')
 } else if (savedTheme === 'dark') {

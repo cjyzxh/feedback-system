@@ -28,6 +28,12 @@
         </el-alert>
         
         <el-form label-width="120px">
+          <el-form-item label="界面风格">
+            <el-radio-group v-model="themeMode" @change="handleThemeChange">
+              <el-radio :value="'light'">浅色系</el-radio>
+              <el-radio :value="'dark'">深色系</el-radio>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="数据库类型">
               <el-radio-group v-model="dbSettings.type">
                 <el-radio :value="'mysql'">MySQL</el-radio>
@@ -55,6 +61,29 @@
             <el-button class="morandi-btn morandi-orange" @click="restartService">重启服务</el-button>
           </el-form-item>
         </el-form>
+
+        <!-- 图片上传路径配置 -->
+        <el-divider content-position="left">图片存储配置</el-divider>
+        <el-form label-width="120px">
+          <el-form-item label="图片存储路径">
+            <el-input v-model="uploadPath" placeholder="例如: ./uploads 或 D:/wtfk-uploads" />
+          </el-form-item>
+          <el-form-item label="当前路径">
+            <span style="color: #67c23a; font-weight: 500;">{{ uploadPath || './uploads (默认)' }}</span>
+          </el-form-item>
+          <el-form-item>
+            <el-button class="morandi-btn morandi-green" @click="handleSaveUploadPath">保存图片路径</el-button>
+            <el-button class="morandi-btn morandi-orange" @click="resetUploadPath">恢复默认</el-button>
+          </el-form-item>
+          <el-form-item>
+            <div style="color: #909399; font-size: 12px; line-height: 1.8;">
+              <p>说明：</p>
+              <p>1. 相对路径（如 ./uploads）相对于后端运行目录</p>
+              <p>2. 绝对路径（如 D:/wtfk-uploads）直接使用指定目录</p>
+              <p>3. 修改后新上传的图片将保存到新路径，已有图片仍在原路径</p>
+            </div>
+          </el-form-item>
+        </el-form>
       </el-card>
       <router-view v-else />
     </div>
@@ -78,6 +107,23 @@ const isAdmin = computed(() => {
 })
 
 const isSubRoute = computed(() => route.path !== '/settings')
+
+// ========== 界面风格主题切换 ==========
+const themeMode = ref(localStorage.getItem('themeMode') || 'light')
+
+const applyTheme = (mode: string) => {
+  if (mode === 'dark') {
+    document.body.classList.add('theme-dark')
+  } else {
+    document.body.classList.remove('theme-dark')
+  }
+}
+
+const handleThemeChange = (val: string) => {
+  localStorage.setItem('themeMode', val)
+  applyTheme(val)
+  ElMessage.success(val === 'dark' ? '已切换为深色系' : '已切换为浅色系')
+}
 
 // 应用运行状态
 const appStatus = reactive({
@@ -109,6 +155,41 @@ const dbSettings = reactive({
   username: '',
   password: ''
 })
+
+// 图片上传路径
+const uploadPath = ref('./uploads')
+
+// 加载图片上传路径
+const fetchUploadPath = async () => {
+  try {
+    const response = await api.get('/config/upload-path')
+    if (response.data && response.data.uploadPath) {
+      uploadPath.value = response.data.uploadPath
+    }
+  } catch (error) {
+    console.error('获取图片上传路径失败:', error)
+  }
+}
+
+// 保存图片上传路径
+const handleSaveUploadPath = async () => {
+  try {
+    const response = await api.post('/config/upload-path', { uploadPath: uploadPath.value })
+    if (response.data.success) {
+      ElMessage.success('图片上传路径已保存')
+    } else {
+      ElMessage.error('保存失败: ' + (response.data.message || '未知错误'))
+    }
+  } catch (error) {
+    ElMessage.error('保存图片上传路径失败')
+  }
+}
+
+// 恢复默认图片上传路径
+const resetUploadPath = () => {
+  uploadPath.value = './uploads'
+  ElMessage.info('已恢复默认路径，点击保存生效')
+}
 
 const handleSaveDbSettings = async () => {
   try {
@@ -224,8 +305,10 @@ watch(() => dbSettings.type, (newType, oldType) => {
 
 // 页面加载时初始化
 onMounted(() => {
+  applyTheme(themeMode.value);
   fetchAppStatus();
   initDbSettings();
+  fetchUploadPath();
 });
 </script>
 

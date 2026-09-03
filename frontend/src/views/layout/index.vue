@@ -1,7 +1,10 @@
 <template>
   <div class="layout-container">
     <div class="sidebar">
-      <div class="logo">问题反馈系统</div>
+      <div class="logo">
+        <img src="@/assets/logo.jpg" alt="logo" class="logo-img" />
+        <span>问题反馈系统</span>
+      </div>
       <el-menu
         :default-active="activeMenu"
         class="el-menu-vertical"
@@ -72,9 +75,15 @@
     <div class="main-content">
       <div class="header">
         <div class="header-left"></div>
-        <div class="title">{{ route.meta?.title || '' }}</div>
+        <div class="header-title">
+          <img src="@/assets/logo.jpg" alt="logo" class="header-logo-img" />
+          <span class="title">{{ route.meta?.title || '' }}</span>
+        </div>
         <div class="user-info">
-          <span class="username-link" @click="openProfileDialog">{{ username }} ({{ roleName }})</span>
+          <span class="username-link" @click="openProfileDialog">
+            <template v-if="isCustomerUser">{{ userHospital }}（{{ username }}）</template>
+            <template v-else>{{ username }} ({{ roleName }})</template>
+          </span>
           <el-button type="danger" size="small" @click="logout">退出</el-button>
         </div>
       </div>
@@ -146,6 +155,18 @@ const profileDialogVisible = ref(false)
 
 const username = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.realName || u.username || localStorage.getItem('username') || '' })
 const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.roleName || u.role || localStorage.getItem('roleName') || '用户' })
+
+// 判断当前用户是否为客户（基于userType字段）
+const isCustomerUser = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.userType === '客户'
+})
+
+// 客户绑定的医院名称
+const userHospital = computed(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  return u.hospital || ''
+})
 
 // ========== 消息提醒功能 ==========
 const reminderTimer = ref<any>(null)
@@ -799,6 +820,10 @@ onUnmounted(() => {
 .sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
 .logo { 
   padding: 20px 15px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 17px; 
   font-weight: 600; 
   text-align: center; 
@@ -806,6 +831,12 @@ onUnmounted(() => {
   color: #00b894; 
   letter-spacing: 1px;
   background: linear-gradient(135deg, #f0fffb 0%, #ffffff 100%);
+}
+.logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 .main-content { flex: 1; display: flex; flex-direction: column; }
 .header { 
@@ -820,6 +851,19 @@ onUnmounted(() => {
   position: relative;
 }
 .header-left { flex: 1; }
+.header-title { 
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.header-logo-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 5px;
+}
 .title { 
   flex: 1;
   font-size: 22px; 

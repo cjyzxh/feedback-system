@@ -11,7 +11,7 @@
     <div class="login-box">
       <div class="login-header">
         <div class="logo-icon">
-          <el-icon :size="40"><Monitor /></el-icon>
+          <img src="@/assets/logo.jpg" alt="logo" class="logo-img" />
         </div>
         <h1 class="title">创佳益问题反馈系统</h1>
         <p class="subtitle">HIS 问题跟踪与管理平台</p>
@@ -451,14 +451,15 @@ const handleLogin = async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
-  color: #fff;
+  width: 80px;
+  height: 80px;
   margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(143, 175, 143, 0.35);
-  animation: pulse 2s ease-in-out infinite;
+}
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
 }
 
 @keyframes pulse {

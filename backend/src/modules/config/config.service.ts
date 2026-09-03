@@ -204,4 +204,30 @@ export class DatabaseConfigService {
       return { success: false, message: error.message || '数据库结构检查失败' };
     }
   }
+
+  // 获取图片上传路径配置
+  getUploadPath(): string {
+    try {
+      const configs = this.getAllConfigs();
+      // 默认路径为 ./uploads
+      return configs.uploadPath || './uploads';
+    } catch (error) {
+      this.logger.error('获取图片上传路径失败:', error);
+      return './uploads';
+    }
+  }
+
+  // 保存图片上传路径配置
+  saveUploadPath(uploadPath: string): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.uploadPath = uploadPath || './uploads';
+      this.saveAllConfigs(configs);
+      this.logger.log('图片上传路径已保存:', uploadPath);
+      return true;
+    } catch (error) {
+      this.logger.error('保存图片上传路径失败:', error);
+      return false;
+    }
+  }
 }

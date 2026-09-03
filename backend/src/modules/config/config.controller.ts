@@ -122,4 +122,20 @@ setTimeout(() => {
     this.logger.log('检查数据库结构:', JSON.stringify(config));
     return await this.configService.checkDatabaseStructure(config);
   }
+
+  // 获取图片上传路径
+  @Get('upload-path')
+  getUploadPath() {
+    const uploadPath = this.configService.getUploadPath();
+    return { uploadPath };
+  }
+
+  // 保存图片上传路径
+  @Post('upload-path')
+  saveUploadPath(@Body() body: any) {
+    const uploadPath = body.uploadPath || './uploads';
+    this.logger.log('保存图片上传路径:', uploadPath);
+    const success = this.configService.saveUploadPath(uploadPath);
+    return { success, message: success ? '图片上传路径保存成功' : '保存失败' };
+  }
 }

@@ -6,6 +6,13 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 
+// 应用已保存的界面风格（深色/浅色）
+// 类似于 VB6 中读取 INI 配置加载窗体主题
+const savedTheme = localStorage.getItem('themeMode')
+if (savedTheme === 'dark') {
+  document.body.classList.add('theme-dark')
+}
+
 // 创建 Vue 应用实例
 // 类似于 VB6 中启动应用程序
 const app = createApp(App)

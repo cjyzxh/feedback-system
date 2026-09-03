@@ -1,36 +1,55 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import * as fs from 'fs';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
+import { DatabaseConfigService } from '../config/config.service';
+
+// 全局上传路径变量，应用启动时初始化
+let globalUploadPath = './uploads';
 
 // 问题反馈控制器
 // 访问路径前缀：/api/feedback
 @Controller('feedback')
 export class FeedbackController {
-  constructor(private readonly feedbackService: FeedbackService) {}
+  constructor(
+    private readonly feedbackService: FeedbackService,
+    private configService: DatabaseConfigService,
+  ) {
+    // 构造函数中初始化上传路径
+    globalUploadPath = this.configService.getUploadPath();
+  }
 
   // 上传图片 - 图片命名格式: {id}-{序号}.{扩展名}
   // POST /api/feedback/upload
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads',
+      destination: (req, file, cb) => {
+        // 确保目录存在
+        if (!fs.existsSync(globalUploadPath)) {
+          fs.mkdirSync(globalUploadPath, { recursive: true });
+        }
+        cb(null, globalUploadPath);
+      },
       filename: (req, file, cb) => {
         cb(null, file.originalname);
       },
     }),
   }))
   async upload(@UploadedFile() file: any, @Body() body: any) {
+    // 每次上传时重新读取配置，确保路径是最新的
+    globalUploadPath = this.configService.getUploadPath();
+    
     const id = parseInt(body?.id) || parseInt(body?.feedbackId) || 0;
     const tpnum = parseInt(body?.tpnum) || 1;
     
     const ext = extname(file.originalname);
     const filename = `${id}-${tpnum}${ext}`;
     const oldPath = file.path;
-    const newPath = `./uploads/${filename}`;
+    const newPath = join(globalUploadPath, filename);
     
     if (fs.existsSync(oldPath)) {
       fs.renameSync(oldPath, newPath);
@@ -60,7 +79,8 @@ export class FeedbackController {
   @Delete('image/:filename')
   async deleteImage(@Param('filename') filename: string) {
     try {
-      const filePath = './uploads/' + filename;
+      const uploadPath = this.configService.getUploadPath();
+      const filePath = join(uploadPath, filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         return { success: true };
@@ -75,9 +95,10 @@ export class FeedbackController {
   // GET /api/feedback/uploads/:filename
   @Get('uploads/:filename')
   getFile(@Param('filename') filename: string, @Res() res: any) {
-    const filePath = `./uploads/${filename}`;
+    const uploadPath = this.configService.getUploadPath();
+    const filePath = join(uploadPath, filename);
     if (fs.existsSync(filePath)) {
-      return res.sendFile(filename, { root: './uploads' });
+      return res.sendFile(filename, { root: uploadPath });
     }
     return res.status(404).send('File not found');
   }

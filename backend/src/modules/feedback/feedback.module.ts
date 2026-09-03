@@ -4,9 +4,10 @@ import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
 import { Feedback } from './feedback.entity';
 import { Ok } from './ok.entity';
+import { ConfigModule } from '../config/config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Feedback, Ok])],
+  imports: [TypeOrmModule.forFeature([Feedback, Ok]), ConfigModule],
   controllers: [FeedbackController],
   providers: [FeedbackService],
   exports: [FeedbackService],

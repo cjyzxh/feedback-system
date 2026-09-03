@@ -186,7 +186,7 @@
     </el-card>
 
     <!-- 图片预览弹窗 -->
-    <el-dialog v-model="previewVisible" title="问题截图" width="750px" destroy-on-close>
+    <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
         <div class="carousel-wrapper" v-if="previewImages.length > 0">
           <img :src="previewImages[currentIndex]" class="carousel-image" @click="openImageViewer" style="cursor: zoom-in;" />
@@ -200,6 +200,9 @@
         <div class="carousel-actions" v-if="previewImages.length > 0" style="margin-top: 16px; text-align: center;">
           <el-button type="warning" plain @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
+          </el-button>
+          <el-button type="info" plain @click="previewVisible = false">
+            <el-icon><Back /></el-icon> 返回
           </el-button>
         </div>
         <div class="viewer-tip" v-if="previewImages.length > 0">
@@ -223,7 +226,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn } from '@element-plus/icons-vue'
+import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const list = ref<any[]>([])
@@ -550,9 +553,14 @@ onMounted(() => { loadList() })
 .table-card :deep(.el-card__body) { flex: 1; overflow: hidden; padding: 0; }
 .selected-row { background-color: #ecf5ff !important; }
 .carousel-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.carousel-wrapper { width: 100%; max-height: 500px; display: flex; justify-content: center; align-items: center; }
-.carousel-image { max-width: 100%; max-height: 500px; object-fit: contain; }
-.carousel-controls { display: flex; align-items: center; gap: 16px; }
+.carousel-wrapper { width: 100%; height: 560px; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-shrink: 0; }
+.carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.carousel-controls { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .indicator { font-size: 14px; color: #606266; }
-.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: #409eff; border-radius: 4px; font-size: 12px; text-align: center; }
+.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: #409eff; border-radius: 4px; font-size: 12px; text-align: center; flex-shrink: 0; }
+.carousel-actions { display: flex; justify-content: center; gap: 1px; flex-shrink: 0; }
+
+/* 图片预览对话框：固定尺寸 */
+.preview-dialog :deep(.el-dialog) { width: 960px !important; height: 760px !important; display: flex; flex-direction: column; }
+.preview-dialog :deep(.el-dialog__body) { flex: 1; overflow: auto; display: flex; flex-direction: column; }
 </style>

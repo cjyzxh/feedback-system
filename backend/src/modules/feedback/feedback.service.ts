@@ -5,12 +5,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
+import { DatabaseConfigService } from '../config/config.service';
 
 @Injectable()
 export class FeedbackService {
   constructor(
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
+    private configService: DatabaseConfigService,
   ) {}
 
   // 创建问题反馈 - ID自增，以ID为准
@@ -241,7 +243,8 @@ export class FeedbackService {
 
   // 获取问题图片列表
   async getImagesById(id: number): Promise<string[]> {
-    const uploadDir = path.join(process.cwd(), 'uploads');
+    const uploadPath = this.configService.getUploadPath();
+    const uploadDir = path.isAbsolute(uploadPath) ? uploadPath : path.join(process.cwd(), uploadPath);
     if (!fs.existsSync(uploadDir)) {
       return [];
     }
@@ -251,7 +254,8 @@ export class FeedbackService {
 
   // 删除问题图片目录
   async deleteImagesById(id: number): Promise<void> {
-    const uploadDir = path.join(process.cwd(), 'uploads');
+    const uploadPath = this.configService.getUploadPath();
+    const uploadDir = path.isAbsolute(uploadPath) ? uploadPath : path.join(process.cwd(), uploadPath);
     if (fs.existsSync(uploadDir)) {
       const files = fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`));
       for (const file of files) {

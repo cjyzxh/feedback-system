@@ -11,7 +11,7 @@
     <div class="login-box">
       <div class="login-header">
         <div class="logo-icon">
-          <img src="@/assets/logo.jpg" alt="logo" class="logo-img" />
+          <img :src="logoSrc" alt="logo" class="logo-img" />
         </div>
         <h1 class="title">创佳益问题反馈系统</h1>
         <p class="subtitle">HIS 问题跟踪与管理平台</p>
@@ -128,6 +128,15 @@ const loginForm = reactive({
   password: '',
   phone: '',
   code: ''
+})
+
+// Logo 图片：莫兰迪模式用绿色 logo，浅色/深色模式用原蓝色 logo
+const logoSrc = computed(() => {
+  const mode = localStorage.getItem('themeMode') || 'morandi'
+  if (mode === 'light' || mode === 'dark') {
+    return new URL('@/assets/logo.jpg', import.meta.url).href
+  }
+  return new URL('@/assets/logo-morandi.jpg', import.meta.url).href
 })
 
 const isLoginDisabled = computed(() => {
@@ -319,6 +328,31 @@ const handleLogin = async () => {
         localStorage.setItem('roleName', user?.roleName || user?.role || '用户')
         localStorage.setItem('permissions', JSON.stringify(user?.permissions || []))
         localStorage.setItem('viewOthers', user?.viewOthers || 0)
+        // ========== 界面样式：个人优先，系统默认兜底 ==========
+        const userTheme = user?.themeMode || ''
+        let finalTheme = 'morandi'
+        if (userTheme) {
+          // 个人有设置，使用个人样式
+          finalTheme = userTheme
+        } else {
+          // 个人未设置，获取系统默认样式
+          try {
+            const themeRes = await fetch('/api/config/system-theme')
+            if (themeRes.ok) {
+              const themeData = await themeRes.json()
+              finalTheme = themeData.theme || 'morandi'
+            }
+          } catch (themeErr) {
+            console.warn('获取系统默认样式失败，使用莫兰迪系:', themeErr)
+          }
+        }
+        localStorage.setItem('themeMode', finalTheme)
+        localStorage.setItem('userThemeMode', userTheme)  // 个人themeMode原始值：空=跟随系统，有值=个人设置
+        // 应用样式到页面
+        document.body.classList.remove('theme-light', 'theme-dark')
+        if (finalTheme === 'light') document.body.classList.add('theme-light')
+        else if (finalTheme === 'dark') document.body.classList.add('theme-dark')
+        // ========== 界面样式结束 ==========
         // 登录成功后清除消息提醒的已确认记录和提醒时间
         // 这样每次登录后都会立即提醒所有待处理/待测试/测试返回的问题，就算之前点过了也提醒
         localStorage.removeItem('confirmedPendingIds')
@@ -514,36 +548,37 @@ const handleLogin = async () => {
   margin-top: 24px; 
 }
 
-/* 输入框样式 - 浅青绿色背景，与整体风格协调 */
+/* 输入框样式 - 默认浅青绿背景，深色模式跟随主题变量（--wtfk-input-*） */
 .login-form :deep(.el-input__wrapper) {
-  background: linear-gradient(135deg, #f8fffd 0%, #f5fcf9 100%);
+  background: var(--wtfk-input-bg, linear-gradient(135deg, #f8fffd 0%, #f5fcf9 100%));
   border-radius: 8px;
-  box-shadow: 0 0 0 1px #d4e8e0 inset;
+  box-shadow: 0 0 0 1px var(--wtfk-input-border, #d4e8e0) inset;
   transition: all 0.3s;
 }
 
 .login-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #8FAF8F inset;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fffd 100%);
+  box-shadow: 0 0 0 1px var(--wtfk-input-border-hover, #8FAF8F) inset;
+  background: var(--wtfk-input-bg-hover, linear-gradient(135deg, #ffffff 0%, #f8fffd 100%));
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #00b894 inset, 0 0 10px rgba(0, 184, 148, 0.15);
-  background: linear-gradient(135deg, #ffffff 0%, #f0fffb 100%);
+  box-shadow: 0 0 0 1px var(--wtfk-input-border-focus, #00b894) inset, 0 0 10px rgba(0, 184, 148, 0.15);
+  background: var(--wtfk-input-bg-focus, linear-gradient(135deg, #ffffff 0%, #f0fffb 100%));
 }
 
 .login-form :deep(.el-input__inner) {
-  color: #303133;
+  color: var(--wtfk-input-text, #303133);
   font-size: 14px;
 }
 
 .login-form :deep(.el-input__inner::placeholder) {
-  color: #a8b5b0;
+  color: var(--wtfk-input-placeholder, #a8b5b0);
 }
 
 .login-form :deep(.el-input__prefix) {
-  color: #8FAF8F;
+  color: var(--wtfk-input-prefix, #8FAF8F);
 }
+
 
 .code-input-wrapper { 
   display: flex; 
@@ -645,5 +680,38 @@ const handleLogin = async () => {
 
 .footer p {
   margin: 0;
+}
+</style>
+
+<style>
+/* 深色模式下登录输入框深色（非 scoped，确保选择器完整不被裁剪） */
+body.theme-dark .login-form .el-input__wrapper,
+body.theme-dark .login-form .el-select__wrapper {
+  background: #1A2332 !important;
+  box-shadow: 0 0 0 1px #34445F inset !important;
+}
+body.theme-dark .login-form .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #3B82C4 inset !important;
+}
+body.theme-dark .login-form .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #3B82C4 inset, 0 0 8px rgba(59, 130, 196, 0.3) !important;
+}
+body.theme-dark .login-form .el-input__inner {
+  color: #E6EDF7 !important;
+}
+body.theme-dark .login-form .el-input__inner::placeholder {
+  color: #6B7E97 !important;
+}
+body.theme-dark .login-form .el-input__prefix {
+  color: #93A5BD !important;
+}
+body.theme-dark .login-form .el-input__wrapper:hover,
+body.theme-dark .login-form .el-input__wrapper.is-focus {
+  background: #22304A !important;
+  box-shadow: 0 0 0 1px #3B82C4 inset !important;
+}
+body.theme-dark .login-form .el-input__inner:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #1A2332 inset !important;
+  -webkit-text-fill-color: #E6EDF7 !important;
 }
 </style>

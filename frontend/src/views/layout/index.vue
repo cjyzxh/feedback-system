@@ -1,13 +1,15 @@
 <template>
   <div class="layout-container">
-    <div class="sidebar">
+    <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
-        <img src="@/assets/logo.jpg" alt="logo" class="logo-img" />
-        <span>问题反馈系统</span>
+        <img :src="logoSrc" alt="logo" class="logo-img" />
+        <span v-if="!isCollapse">问题反馈系统</span>
       </div>
       <el-menu
         :default-active="activeMenu"
         class="el-menu-vertical"
+        :collapse="isCollapse"
+        :collapse-transition="false"
         @select="handleMenuSelect"
       >
         <!-- 普通用户菜单（超级管理员不可见） -->
@@ -74,9 +76,13 @@
     </div>
     <div class="main-content">
       <div class="header">
-        <div class="header-left"></div>
+        <div class="header-left">
+          <el-button class="collapse-btn" text size="default" @click="toggleCollapse">
+            <el-icon :size="18"><component :is="isCollapse ? Expand : Fold" /></el-icon>
+          </el-button>
+        </div>
         <div class="header-title">
-          <span class="title">{{ route.meta?.title || '' }}</span>
+          <span class="title" :style="{ left: titleOffset }">{{ route.meta?.title || '' }}</span>
         </div>
         <div class="user-info">
           <span class="username-link" @click="openProfileDialog">
@@ -121,6 +127,14 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="profileForm.email" />
         </el-form-item>
+        <el-form-item label="界面风格">
+          <el-radio-group v-model="profileForm.themeMode" @change="handleProfileThemeChange">
+            <el-radio value="">跟随系统</el-radio>
+            <el-radio value="morandi">莫兰迪系</el-radio>
+            <el-radio value="light">浅色系</el-radio>
+            <el-radio value="dark">深色系</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="修改密码">
           <el-checkbox v-model="profileForm.changePassword">修改密码</el-checkbox>
         </el-form-item>
@@ -143,7 +157,7 @@
 import { ref, computed, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
-import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFilled, Position, Grid, Document, Key, Bell, TrendCharts } from '@element-plus/icons-vue'
+import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFilled, Position, Grid, Document, Key, Bell, TrendCharts, Fold, Expand } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
 import axios from 'axios'
 
@@ -151,6 +165,62 @@ const router = useRouter()
 const route = useRoute()
 const profileFormRef = ref()
 const profileDialogVisible = ref(false)
+
+// ========== 侧边栏收缩（大图标模式）==========
+const isCollapse = ref(localStorage.getItem('sidebarCollapsed') === '1')
+const toggleCollapse = () => {
+  isCollapse.value = !isCollapse.value
+  localStorage.setItem('sidebarCollapsed', isCollapse.value ? '1' : '0')
+}
+// 标题居中偏移：随侧边栏宽度变化（展开210px/收缩64px）
+const titleOffset = computed(() => (isCollapse.value ? '-32px' : '-105px'))
+// ========== 侧边栏收缩结束 ==========
+
+// ========== 界面风格切换（个人信息弹窗中使用）==========
+const themeMode = ref(localStorage.getItem('themeMode') || 'morandi')
+// Logo 图片：莫兰迪模式用绿色 logo，浅色/深色模式用原蓝色 logo
+const logoSrc = computed(() => {
+  const mode = themeMode.value || 'morandi'
+  if (mode === 'light' || mode === 'dark') {
+    return new URL('@/assets/logo.jpg', import.meta.url).href
+  }
+  return new URL('@/assets/logo-morandi.jpg', import.meta.url).href
+})
+const applyTheme = (mode: string) => {
+  document.body.classList.remove('theme-light', 'theme-dark')
+  if (mode === 'light') {
+    document.body.classList.add('theme-light')
+  } else if (mode === 'dark') {
+    document.body.classList.add('theme-dark')
+  }
+}
+const handleProfileThemeChange = async (val: string) => {
+  let themeToApply = val
+  let label = ''
+  if (!val) {
+    // 跟随系统：获取系统默认样式并预览
+    label = '跟随系统'
+    try {
+      const res = await fetch('/api/config/system-theme')
+      if (res.ok) {
+        const data = await res.json()
+        themeToApply = data.theme || 'morandi'
+      }
+    } catch (e) {
+      console.warn('获取系统默认样式失败:', e)
+      themeToApply = 'morandi'
+    }
+  } else {
+    const labels: Record<string, string> = { morandi: '莫兰迪系', light: '浅色系', dark: '深色系' }
+    label = labels[val] || val
+  }
+  // 预览：保存到 localStorage 并应用（保存时才写入用户表）
+  localStorage.setItem('themeMode', themeToApply)
+  applyTheme(themeToApply)
+  themeMode.value = themeToApply  // 更新响应式主题，触发 logo 切换
+  ElMessage.success(`已切换为${label}（保存后生效）`)
+}
+// ========== 界面风格切换结束 ==========
 
 const username = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.realName || u.username || localStorage.getItem('username') || '' })
 const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.roleName || u.role || localStorage.getItem('roleName') || '用户' })
@@ -729,6 +799,7 @@ const openProfileDialog = () => {
   profileForm.birthDate = u.birthDate || ''
   profileForm.phone = u.phone || ''
   profileForm.email = u.email || ''
+  profileForm.themeMode = u.themeMode || ''  // 空=跟随系统，有值=个人样式
   profileForm.changePassword = false
   profileForm.newPassword = ''
   profileForm.confirmPassword = ''
@@ -754,7 +825,8 @@ const saveProfile = async () => {
       gender: profileForm.gender,
       birthDate: profileForm.birthDate,
       phone: profileForm.phone,
-      email: profileForm.email
+      email: profileForm.email,
+      themeMode: profileForm.themeMode || ''  // 空=跟随系统，有值=个人样式
     }
     
     // 如果勾选了修改密码，添加新密码
@@ -771,7 +843,9 @@ const saveProfile = async () => {
     u.birthDate = profileForm.birthDate
     u.phone = profileForm.phone
     u.email = profileForm.email
+    u.themeMode = profileForm.themeMode || ''  // 同步个人样式偏好
     localStorage.setItem('user', JSON.stringify(u))
+    localStorage.setItem('userThemeMode', profileForm.themeMode || '')  // 更新个人样式标记：空=跟随系统，有值=个人设置
     
     profileDialogVisible.value = false
   } catch (err) {
@@ -816,7 +890,10 @@ onUnmounted(() => {
 <style scoped>
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
 .layout-container { display: flex; height: 100vh; background: #f5f7fa; }
-.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); }
+.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; }
+.sidebar.collapsed { width: 64px; }
+.sidebar.collapsed .logo { padding: 16px 8px; gap: 0; }
+.sidebar.collapsed .logo span { display: none; }
 .logo { 
   padding: 20px 15px; 
   display: flex;
@@ -830,14 +907,18 @@ onUnmounted(() => {
   color: #00b894; 
   letter-spacing: 1px;
   background: linear-gradient(135deg, #f0fffb 0%, #ffffff 100%);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: padding 0.3s ease;
 }
 .logo-img {
   width: 36px;
   height: 36px;
   object-fit: contain;
   border-radius: 6px;
+  flex-shrink: 0;
 }
-.main-content { flex: 1; display: flex; flex-direction: column; }
+.main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .header { 
   height: 60px; 
   background: linear-gradient(135deg, #ffffff 0%, #f8fffd 100%);
@@ -849,7 +930,9 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 184, 148, 0.08);
   position: relative;
 }
-.header-left { flex: 1; }
+.header-left { flex: 1; display: flex; align-items: center; }
+.collapse-btn { color: #909399; padding: 6px; border-radius: 6px; }
+.collapse-btn:hover { color: #00b894; background: #e8f5f0 !important; }
 .header-title { 
   flex: 1;
   display: flex;
@@ -886,6 +969,23 @@ onUnmounted(() => {
 
 /* 浅色侧边栏菜单样式 - 清新简约 */
 :deep(.el-menu) { border-right: 1px solid #e8f5f0; background: linear-gradient(180deg, #f5fcf9 0%, #f0f7f4 100%); }
+/* 收缩（大图标）模式菜单 */
+:deep(.el-menu--collapse) { width: 64px !important; }
+:deep(.el-menu--collapse .el-menu-item),
+:deep(.el-menu--collapse .el-sub-menu__title) {
+  width: 64px !important;
+  padding: 0 !important;
+  justify-content: center;
+}
+:deep(.el-menu--collapse .el-menu-item .el-icon),
+:deep(.el-menu--collapse .el-sub-menu__title .el-icon) {
+  margin: 0 !important;
+  font-size: 20px !important;
+  width: 22px !important;
+}
+:deep(.el-menu--collapse .el-sub-menu .el-menu) {
+  width: 170px;
+}
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   color: #606266 !important;

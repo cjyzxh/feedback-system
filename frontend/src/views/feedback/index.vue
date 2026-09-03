@@ -137,9 +137,9 @@
             <el-form-item label="紧急程度" prop="jingjicd">
               <div class="priority-content">
                 <div class="priority-box">
-                  <el-button :type="form.jingjicd === '紧急' ? 'danger' : 'default'" @click="form.jingjicd = '紧急'" :class="{ active: form.jingjicd === '紧急'}">紧急</el-button>
-                  <el-button :type="form.jingjicd === '急' ? 'warning' : 'default'" @click="form.jingjicd = '急'" :class="{ active: form.jingjicd === '急'}">急</el-button>
-                  <el-button :type="form.jingjicd === '一般' ? 'info' : 'default'" @click="form.jingjicd = '一般'" :class="{ active: form.jingjicd === '一般'}">一般</el-button>
+                  <el-button :class="['priority-btn', { active: form.jingjicd === '紧急', danger: form.jingjicd === '紧急'}]" @click="form.jingjicd = '紧急'">紧急</el-button>
+                  <el-button :class="['priority-btn', { active: form.jingjicd === '急', warning: form.jingjicd === '急'}]" @click="form.jingjicd = '急'">急</el-button>
+                  <el-button :class="['priority-btn', { active: form.jingjicd === '一般', info: form.jingjicd === '一般'}]" @click="form.jingjicd = '一般'">一般</el-button>
                 </div>
                 <div class="shouhou-right" v-if="shouhouDaoqiRi">
                   <span class="shouhou-title">售后到期日:</span>
@@ -1140,6 +1140,22 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .priority-box { display: flex; gap: 8px; }
 .priority-box .el-button { min-width: 60px; font-size: 12px; padding: 6px 12px; font-weight: 500; }
 .priority-box .el-button.active { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+/* 紧急程度选中状态背景色（不依赖 Element Plus type，避免被全局主题覆盖） */
+.priority-box .el-button.priority-btn.danger.active {
+  background: linear-gradient(135deg, #E08484 0%, #D65C5C 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.priority-box .el-button.priority-btn.warning.active {
+  background: linear-gradient(135deg, #E8C87A 0%, #D4A84A 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.priority-box .el-button.priority-btn.info.active {
+  background: linear-gradient(135deg, #9AA0A6 0%, #7A8086 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
 .shouhou-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .shouhou-title { font-size: 14px; color: #606266; white-space: nowrap; font-weight: 500; }
 

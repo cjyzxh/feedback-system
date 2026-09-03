@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="check-page">
     <!-- 上部：测试问题表单 -->
     <el-card class="form-card">

@@ -38,6 +38,9 @@ export class User {
   @Column({ length: 50, nullable: true })
   follower: string; // 跟进人员（客户用户使用）
 
+  @Column({ length: 20, default: '' })
+  themeMode: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
+
   @Column({ type: 'int', default: 1 })
   status: number; // 0: 禁用, 1: 正常
 

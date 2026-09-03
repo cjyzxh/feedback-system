@@ -30,6 +30,7 @@
         <el-form label-width="120px">
           <el-form-item label="界面风格">
             <el-radio-group v-model="themeMode" @change="handleThemeChange">
+              <el-radio :value="'morandi'">莫兰迪系</el-radio>
               <el-radio :value="'light'">浅色系</el-radio>
               <el-radio :value="'dark'">深色系</el-radio>
             </el-radio-group>
@@ -84,6 +85,35 @@
             </div>
           </el-form-item>
         </el-form>
+
+        <!-- 短信服务配置 -->
+        <el-divider content-position="left">短信服务配置</el-divider>
+        <el-form label-width="120px">
+          <el-form-item label="短信用户ID">
+            <el-input v-model="smsSettings.userId" placeholder="用于签名的用户ID" autocomplete="off" />
+          </el-form-item>
+          <el-form-item label="企业ID">
+            <el-input v-model="smsSettings.companyId" placeholder="API请求使用的企业ID" autocomplete="off" />
+          </el-form-item>
+          <el-form-item label="短信密码">
+            <el-input v-model="smsSettings.password" type="password" placeholder="如未修改请保持 ******" show-password autocomplete="new-password" />
+          </el-form-item>
+          <el-form-item label="API地址">
+            <el-input v-model="smsSettings.apiUrl" placeholder="短信API请求地址" autocomplete="off" />
+          </el-form-item>
+          <el-form-item>
+            <el-button class="morandi-btn morandi-green" @click="handleSaveSmsConfig">保存短信配置</el-button>
+            <el-button class="morandi-btn morandi-blue" @click="testSmsConfig">测试发送</el-button>
+          </el-form-item>
+          <el-form-item>
+            <div style="color: #909399; font-size: 12px; line-height: 1.8;">
+              <p>说明：</p>
+              <p>1. 短信参数用于手机号验证码登录，保存后立即生效，无需重启服务</p>
+              <p>2. 密码显示 ****** 表示未修改，保存时会保留原密码</p>
+              <p>3. 点击"测试发送"可输入手机号验证短信通道是否正常</p>
+            </div>
+          </el-form-item>
+        </el-form>
       </el-card>
       <router-view v-else />
     </div>
@@ -109,20 +139,50 @@ const isAdmin = computed(() => {
 const isSubRoute = computed(() => route.path !== '/settings')
 
 // ========== 界面风格主题切换 ==========
-const themeMode = ref(localStorage.getItem('themeMode') || 'light')
+// 三种主题：morandi(莫兰迪系-默认) / light(浅色系-白底Logo蓝) / dark(深色系)
+const themeMode = ref(localStorage.getItem('themeMode') || 'morandi')
 
 const applyTheme = (mode: string) => {
-  if (mode === 'dark') {
+  // 先清除所有主题class
+  document.body.classList.remove('theme-light', 'theme-dark')
+  if (mode === 'light') {
+    document.body.classList.add('theme-light')
+  } else if (mode === 'dark') {
     document.body.classList.add('theme-dark')
-  } else {
-    document.body.classList.remove('theme-dark')
+  }
+  // morandi 为默认主题，不加 class
+}
+
+const handleThemeChange = async (val: string) => {
+  // 保存到后端系统配置（database-config.json）
+  try {
+    await api.post('/config/system-theme', { theme: val })
+    const labels: Record<string, string> = { morandi: '莫兰迪系', light: '浅色系', dark: '深色系' }
+    ElMessage.success(`系统默认样式已保存为${labels[val] || val}`)
+
+    // 如果当前用户是"跟随系统"（个人themeMode为空），则保存后立即应用新的系统默认样式
+    const userThemeMode = localStorage.getItem('userThemeMode') || ''
+    if (!userThemeMode) {
+      localStorage.setItem('themeMode', val)
+      applyTheme(val)
+    }
+    // 如果用户有个人样式，则只保存系统默认，不影响当前页面
+  } catch (e) {
+    console.error('保存系统默认样式失败:', e)
+    ElMessage.error('保存系统默认样式失败')
   }
 }
 
-const handleThemeChange = (val: string) => {
-  localStorage.setItem('themeMode', val)
-  applyTheme(val)
-  ElMessage.success(val === 'dark' ? '已切换为深色系' : '已切换为浅色系')
+// 从后端获取系统默认样式（仅用于显示单选框选中状态，不应用到当前页面）
+const fetchSystemTheme = async () => {
+  try {
+    const response = await api.get('/config/system-theme')
+    if (response.data && response.data.theme) {
+      themeMode.value = response.data.theme  // 只更新单选框显示，不 applyTheme
+    }
+  } catch (error) {
+    console.error('获取系统默认样式失败:', error)
+  }
 }
 
 // 应用运行状态
@@ -189,6 +249,75 @@ const handleSaveUploadPath = async () => {
 const resetUploadPath = () => {
   uploadPath.value = './uploads'
   ElMessage.info('已恢复默认路径，点击保存生效')
+}
+
+// ========== 短信服务配置 ==========
+const smsSettings = reactive({
+  userId: '',
+  companyId: '',
+  password: '',
+  apiUrl: '',
+})
+
+// 加载短信配置
+const fetchSmsConfig = async () => {
+  try {
+    const response = await api.get('/config/sms')
+    if (response.data) {
+      smsSettings.userId = response.data.userId || ''
+      smsSettings.companyId = response.data.companyId || ''
+      smsSettings.password = response.data.password || ''
+      smsSettings.apiUrl = response.data.apiUrl || ''
+    }
+  } catch (error) {
+    console.error('获取短信配置失败:', error)
+  }
+}
+
+// 保存短信配置
+const handleSaveSmsConfig = async () => {
+  try {
+    const response = await api.post('/config/sms', {
+      userId: smsSettings.userId,
+      companyId: smsSettings.companyId,
+      password: smsSettings.password,
+      apiUrl: smsSettings.apiUrl,
+    })
+    if (response.data.success) {
+      ElMessage.success('短信配置已保存，立即生效')
+      // 重新加载（密码会显示为 ******）
+      await fetchSmsConfig()
+    } else {
+      ElMessage.error('保存失败: ' + (response.data.message || '未知错误'))
+    }
+  } catch (error) {
+    ElMessage.error('保存短信配置失败')
+  }
+}
+
+// 测试短信发送
+const testSmsConfig = async () => {
+  try {
+    const { value: phone } = await ElMessageBox.prompt('请输入测试手机号', '测试短信发送', {
+      confirmButtonText: '发送',
+      cancelButtonText: '取消',
+      inputPattern: /^1[3-9]\d{9}$/,
+      inputErrorMessage: '请输入正确的11位手机号',
+    })
+    if (phone) {
+      // 调用发送验证码接口（会生成随机验证码并发送）
+      const response = await api.post('/auth/send-code', { phone })
+      if (response.data && response.data.success) {
+        ElMessage.success('测试短信已发送，请查收')
+      } else {
+        ElMessage.error('发送失败: ' + (response.data?.message || '未知错误'))
+      }
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('测试短信发送失败: ' + (error.message || '未知错误'))
+    }
+  }
 }
 
 const handleSaveDbSettings = async () => {
@@ -305,10 +434,11 @@ watch(() => dbSettings.type, (newType, oldType) => {
 
 // 页面加载时初始化
 onMounted(() => {
-  applyTheme(themeMode.value);
+  fetchSystemTheme();  // 从后端加载系统默认样式
   fetchAppStatus();
   initDbSettings();
   fetchUploadPath();
+  fetchSmsConfig();
 });
 </script>
 

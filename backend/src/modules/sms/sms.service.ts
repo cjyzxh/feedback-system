@@ -3,24 +3,40 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as crypto from 'crypto';
+import { DatabaseConfigService } from '../config/config.service';
 
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
-  private readonly smsUserId: string; // 用户ID，用于签名
-  private readonly smsCompanyId: string; // 企业ID，用于API请求
-  private readonly smsPassword: string;
-  private readonly smsApiUrl: string;
 
   constructor(
     private configService: ConfigService,
     private httpService: HttpService,
-  ) {
-    this.smsUserId = this.configService.get<string>('SMS_USER_ID', 'cjy01').replace(/^"|"$/g, '');
-    this.smsCompanyId = this.configService.get<string>('SMS_COMPANY_ID', '250').replace(/^"|"$/g, '');
-    // 从环境变量获取密码
-    this.smsPassword = this.configService.get<string>('SMS_PASSWORD', 'Cjysoft_2').replace(/^"|"$/g, '');
-    this.smsApiUrl = this.configService.get<string>('SMS_API_URL', 'https://web.esoftsms.com/v2sms.aspx').replace(/^"|"$/g, '');
+    private dbConfigService: DatabaseConfigService,
+  ) {}
+
+  // 每次发送时动态读取短信配置（优先 database-config.json，回退 .env）
+  private getSmsSettings(): { userId: string; companyId: string; password: string; apiUrl: string } {
+    try {
+      const cfg = this.dbConfigService.getSmsConfig();
+      if (cfg && cfg.userId && cfg.companyId && cfg.password && cfg.apiUrl) {
+        return {
+          userId: String(cfg.userId).replace(/^"|"$/g, ''),
+          companyId: String(cfg.companyId).replace(/^"|"$/g, ''),
+          password: String(cfg.password).replace(/^"|"$/g, ''),
+          apiUrl: String(cfg.apiUrl).replace(/^"|"$/g, ''),
+        };
+      }
+    } catch (e) {
+      this.logger.warn('从配置文件读取短信配置失败，回退到 .env');
+    }
+    // 回退到 .env
+    return {
+      userId: this.configService.get<string>('SMS_USER_ID', 'cjy01').replace(/^"|"$/g, ''),
+      companyId: this.configService.get<string>('SMS_COMPANY_ID', '250').replace(/^"|"$/g, ''),
+      password: this.configService.get<string>('SMS_PASSWORD', 'Cjysoft_2').replace(/^"|"$/g, ''),
+      apiUrl: this.configService.get<string>('SMS_API_URL', 'https://web.esoftsms.com/v2sms.aspx').replace(/^"|"$/g, ''),
+    };
   }
 
   /**
@@ -47,14 +63,18 @@ export class SmsService {
    */
   async sendSms(phone: string, content: string): Promise<boolean> {
     try {
+      // 每次发送时动态读取配置（支持运行时修改后立即生效）
+      const settings = this.getSmsSettings();
+      const { userId: smsUserId, companyId: smsCompanyId, password: smsPassword, apiUrl: smsApiUrl } = settings;
+
       this.logger.log(`=== 开始发送短信 ===`);
       this.logger.log(`手机号: ${phone}`);
       this.logger.log(`内容: ${content}`);
       this.logger.log(`当前环境: ${process.env.NODE_ENV}`);
       
       // 输出配置信息（隐藏密码的部分内容）
-      const maskedPassword = this.smsPassword.substring(0, 3) + '****' + this.smsPassword.substring(this.smsPassword.length - 2);
-      this.logger.log(`配置信息: userId=${this.smsUserId}, companyId=${this.smsCompanyId}, password=${maskedPassword}, apiUrl=${this.smsApiUrl}`);
+      const maskedPassword = smsPassword.substring(0, 3) + '****' + smsPassword.substring(smsPassword.length - 2);
+      this.logger.log(`配置信息: userId=${smsUserId}, companyId=${smsCompanyId}, password=${maskedPassword}, apiUrl=${smsApiUrl}`);
 
       // 生成时间戳，格式为年月日时分秒（14位，符合API文档要求）
       const now = new Date();
@@ -68,7 +88,7 @@ export class SmsService {
       this.logger.log(`生成的时间戳: ${timestamp}`);
 
       // 生成签名：用户ID+密码+时间戳，MD5加密，32位小写（根据成功测试的配置）
-      const signStr = this.smsUserId + this.smsPassword + timestamp;
+      const signStr = smsUserId + smsPassword + timestamp;
       this.logger.log(`签名原始字符串: ${signStr}`);
       const sign = crypto.createHash('md5').update(signStr).digest('hex').toLowerCase();
       this.logger.log(`生成的签名: ${sign}`);
@@ -76,7 +96,7 @@ export class SmsService {
       // 构造表单参数
       const params = new URLSearchParams();
       params.append('action', 'send');
-      params.append('userid', this.smsCompanyId); // API请求中使用企业ID
+      params.append('userid', smsCompanyId); // API请求中使用企业ID
       params.append('timestamp', timestamp);
       params.append('sign', sign);
       params.append('mobile', phone);
@@ -85,7 +105,7 @@ export class SmsService {
       this.logger.log(`完整请求参数: ${params.toString()}`);
 
       // 发送 HTTP 请求
-      this.logger.log(`发送请求到: ${this.smsApiUrl}`);
+      this.logger.log(`发送请求到: ${smsApiUrl}`);
       
       // 使用简单的 HTTP 请求替代，以便更好地捕获错误
       const https = require('https');
@@ -93,7 +113,7 @@ export class SmsService {
       
       const postData = querystring.stringify({
         action: 'send',
-        userid: this.smsCompanyId, // API请求中使用企业ID
+        userid: smsCompanyId, // API请求中使用企业ID
         timestamp: timestamp,
         sign: sign,
         mobile: phone,
@@ -101,8 +121,8 @@ export class SmsService {
       });
       
       const options = {
-        hostname: new URL(this.smsApiUrl).hostname,
-        path: new URL(this.smsApiUrl).pathname,
+        hostname: new URL(smsApiUrl).hostname,
+        path: new URL(smsApiUrl).pathname,
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

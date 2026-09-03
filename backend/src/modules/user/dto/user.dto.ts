@@ -50,6 +50,10 @@ export class CreateUserDto {
   follower?: string; // 跟进人员（客户用户使用）
 
   @IsOptional()
+  @IsString()
+  themeMode?: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(1)
@@ -104,6 +108,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   follower?: string; // 跟进人员（客户用户使用）
+
+  @IsOptional()
+  @IsString()
+  themeMode?: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
 
   @IsOptional()
   @IsNumber()

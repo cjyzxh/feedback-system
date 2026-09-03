@@ -138,4 +138,52 @@ setTimeout(() => {
     const success = this.configService.saveUploadPath(uploadPath);
     return { success, message: success ? '图片上传路径保存成功' : '保存失败' };
   }
+
+  // 获取短信服务配置
+  @Get('sms')
+  getSmsConfig() {
+    this.logger.log('获取短信服务配置');
+    const config = this.configService.getSmsConfig();
+    // 密码不返回明文，返回掩码
+    return {
+      ...config,
+      password: config.password ? '******' : '',
+    };
+  }
+
+  // 保存短信服务配置
+  @Post('sms')
+  saveSmsConfig(@Body() body: any) {
+    this.logger.log('保存短信服务配置:', JSON.stringify({ ...body, password: body.password ? '******' : '' }));
+    // 如果密码是掩码（未修改），从现有配置中读取真实密码
+    let password = body.password;
+    if (password === '******' || !password) {
+      const existing = this.configService.getSmsConfig();
+      password = existing.password || '';
+    }
+    const success = this.configService.saveSmsConfig({
+      userId: body.userId,
+      companyId: body.companyId,
+      password: password,
+      apiUrl: body.apiUrl,
+    });
+    return { success, message: success ? '短信配置保存成功' : '保存失败' };
+  }
+
+  // 获取系统默认界面样式（个人未设置时的兜底）
+  @Get('system-theme')
+  getSystemTheme() {
+    this.logger.log('获取系统默认样式');
+    const theme = this.configService.getSystemTheme();
+    return { theme };
+  }
+
+  // 保存系统默认界面样式
+  @Post('system-theme')
+  saveSystemTheme(@Body() body: any) {
+    const theme = body.theme || 'morandi';
+    this.logger.log('保存系统默认样式:', theme);
+    const success = this.configService.saveSystemTheme(theme);
+    return { success, message: success ? '系统默认样式保存成功' : '保存失败' };
+  }
 }

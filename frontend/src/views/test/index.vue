@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="handle-page">
     <!-- 上部：处理问题表单 -->
     <el-card class="form-card">

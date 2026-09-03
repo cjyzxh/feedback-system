@@ -1,4 +1,4 @@
-/* 清新简约主题 - 青绿色/薄荷绿主色调 */
+﻿/* 清新简约主题 - 青绿色/薄荷绿主色调 */
 :root {
   /* 主色调 - 青绿色 */
   --el-color-primary: #00b894;
@@ -482,7 +482,7 @@ body.theme-dark .el-table__fixed-header-wrapper th.el-table__cell {
 
 /* 深色主题输入框 */
 body.theme-dark .el-input__wrapper {
-  background: #141B28;
+  background: #1A2332;
   box-shadow: 0 0 0 1px #34445F inset;
 }
 body.theme-dark .el-input__wrapper:hover {
@@ -495,7 +495,7 @@ body.theme-dark .el-input__inner {
   color: #E6EDF7;
 }
 body.theme-dark .el-textarea__inner {
-  background: #141B28;
+  background: #1A2332;
   color: #E6EDF7;
   box-shadow: 0 0 0 1px #34445F inset;
 }
@@ -506,12 +506,12 @@ body.theme-dark .el-input__icon {
 }
 
 /* 深色主题按钮 */
-body.theme-dark .el-button {
+body.theme-dark .el-button:not(.morandi-btn) {
   background: #22304A;
   border-color: #34445F;
   color: #C4D0E0;
 }
-body.theme-dark .el-button:hover {
+body.theme-dark .el-button:not(.morandi-btn):hover {
   background: #2A3957;
   border-color: #3B82C4;
   color: #E6EDF7;
@@ -1019,7 +1019,7 @@ body.theme-dark .tab-item:hover {
   color: #7FAEDC;
 }
 body.theme-dark .login-form .el-input__wrapper {
-  background: #141B28 !important;
+  background: #1A2332 !important;
   box-shadow: 0 0 0 1px #34445F inset !important;
 }
 body.theme-dark .login-form .el-input__wrapper:hover {
@@ -1068,4 +1068,1209 @@ body.theme-dark .login-form .el-input__inner::placeholder {
 }
 body.theme-dark .login-form .el-input__prefix {
   color: #5A97D0 !important;
+}
+
+/* ==========================================================================
+   莫兰迪系 Logo 图标调色（默认主题，无 body class）
+   Logo 原图为蓝色(#1E5DA2)+红色点缀，这里通过 CSS filter 降饱和调成莫兰迪柔和色调
+   ========================================================================== */
+.logo-img,
+.login-box .logo-img {
+  /* 已改用绿色logo图片，无需filter */ /* filter: saturate(0.5) brightness(1.08) contrast(0.95) hue-rotate(-8deg); */
+}
+
+/* ==========================================================================
+   浅色系（body.theme-light）：白底 + Logo蓝(#1E5DA2)
+   标题、按钮、主色调统一使用 Logo 蓝色
+   ========================================================================== */
+body.theme-light {
+  /* Element Plus 主色 - Logo蓝 */
+  --el-color-primary: #1E5DA2;
+  --el-color-primary-light-3: #3B7CC0;
+  --el-color-primary-light-5: #5E9BCE;
+  --el-color-primary-light-7: #8FB9DE;
+  --el-color-primary-light-8: #A9C9E7;
+  --el-color-primary-light-9: #E8F0FA;
+  --el-color-primary-dark-2: #174A82;
+  --el-color-success: #1E5DA2;
+  --el-color-success-light-3: #3B7CC0;
+  --el-color-success-light-5: #5E9BCE;
+  --el-color-success-light-7: #8FB9DE;
+  --el-color-success-light-8: #A9C9E7;
+  --el-color-success-light-9: #E8F0FA;
+  --el-color-success-dark-2: #174A82;
+  --el-color-warning: #C58A4A;
+  --el-color-warning-light-3: #D2A370;
+  --el-color-warning-light-5: #DFBC96;
+  --el-color-warning-light-7: #ECD5BB;
+  --el-color-warning-light-8: #F1DFCC;
+  --el-color-warning-light-9: #FAF4EC;
+  --el-color-warning-dark-2: #A06F3A;
+  --el-color-danger: #D65C5C;
+  --el-color-danger-light-3: #E08484;
+  --el-color-danger-light-5: #EAA6A6;
+  --el-color-danger-light-7: #F3C8C8;
+  --el-color-danger-light-8: #F6D7D7;
+  --el-color-danger-light-9: #FCEFEF;
+  --el-color-danger-dark-2: #B84A4A;
+  --el-color-info: #1E5DA2;
+  --el-color-info-light-3: #3B7CC0;
+  --el-color-info-light-5: #5E9BCE;
+  --el-color-info-light-7: #8FB9DE;
+  --el-color-info-light-8: #A9C9E7;
+  --el-color-info-light-9: #E8F0FA;
+  --el-color-info-dark-2: #174A82;
+
+  /* 浅色背景/文字 */
+  --el-bg-color: #FFFFFF;
+  --el-bg-color-page: #F5F7FA;
+  --el-bg-color-overlay: #FFFFFF;
+  --el-fill-color-blank: #FFFFFF;
+  --el-fill-color-light: #F5F7FA;
+  --el-fill-color-lighter: #F8FAFC;
+  --el-fill-color-extra-light: #FAFBFD;
+  --el-fill-color-dark: #E4E7ED;
+  --el-fill-color-darker: #D8DCE4;
+  --el-border-color: #DCDFE6;
+  --el-border-color-light: #E4E7ED;
+  --el-border-color-lighter: #EBEEF5;
+  --el-border-color-extra-light: #F2F3F5;
+  --el-text-color-primary: #1F2D3D;
+  --el-text-color-regular: #5A6B82;
+  --el-text-color-secondary: #8492A6;
+  --el-text-color-placeholder: #B0BCCB;
+  --el-text-color-disabled: #C4CDD8;
+  --el-mask-color: rgba(40, 60, 90, 0.5);
+  --el-box-shadow: 0 4px 12px rgba(30, 93, 162, 0.08);
+  --el-box-shadow-light: 0 2px 8px rgba(30, 93, 162, 0.05);
+  --el-box-shadow-lighter: 0 1px 4px rgba(30, 93, 162, 0.03);
+  --el-box-shadow-dark: 0 8px 20px rgba(30, 93, 162, 0.12);
+}
+
+/* 浅色系全局背景 */
+body.theme-light {
+  background-color: #F5F7FA;
+  color: #1F2D3D;
+}
+body.theme-light .content {
+  background: #F5F7FA;
+}
+body.theme-light .el-card {
+  background: #FFFFFF;
+  border-color: #E4E7ED;
+  box-shadow: 0 2px 8px rgba(30, 93, 162, 0.06);
+}
+body.theme-light .el-card__header {
+  background: #F8FAFC;
+  border-bottom-color: #E4E7ED;
+  color: #1E5DA2;
+}
+body.theme-light .el-card__body {
+  background: #FFFFFF;
+}
+
+/* 浅色系表格 - 蓝色表头 */
+body.theme-light .el-table {
+  background: #FFFFFF;
+  color: #1F2D3D;
+}
+body.theme-light .el-table th.el-table__cell {
+  background: #EDF3FA !important;
+  color: #1E5DA2;
+  font-weight: 600;
+  border-bottom-color: #DCDFE6;
+}
+body.theme-light .el-table tr {
+  background: #FFFFFF;
+}
+body.theme-light .el-table td.el-table__cell {
+  border-bottom-color: #EBEEF5;
+}
+body.theme-light .el-table tr:hover > td.el-table__cell {
+  background: #F0F5FB !important;
+}
+body.theme-light .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #F8FAFC;
+}
+body.theme-light .el-table__empty-block {
+  background: #FFFFFF;
+}
+body.theme-light .el-table__empty-text {
+  color: #B0BCCB;
+}
+body.theme-light .el-table__body-wrapper,
+body.theme-light .el-table__fixed-right,
+body.theme-light .el-table__fixed {
+  background: #FFFFFF;
+}
+body.theme-light .el-table__fixed-header-wrapper th.el-table__cell {
+  background: #EDF3FA !important;
+}
+
+/* 浅色系输入框 - 蓝色聚焦 */
+body.theme-light .el-input__wrapper {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px #DCDFE6 inset;
+}
+body.theme-light .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #1E5DA2 inset;
+}
+body.theme-light .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #1E5DA2 inset, 0 0 8px rgba(30, 93, 162, 0.2);
+}
+body.theme-light .el-input__inner {
+  color: #1F2D3D;
+}
+body.theme-light .el-textarea__inner {
+  background: #FFFFFF;
+  color: #1F2D3D;
+  box-shadow: 0 0 0 1px #DCDFE6 inset;
+}
+body.theme-light .el-input__prefix,
+body.theme-light .el-input__suffix,
+body.theme-light .el-input__icon {
+  color: #8492A6;
+}
+
+/* 浅色系按钮 - Logo蓝 */
+body.theme-light .el-button:not(.morandi-btn) {
+  background: #FFFFFF;
+  border-color: #DCDFE6;
+  color: #5A6B82;
+}
+body.theme-light .el-button:not(.morandi-btn):hover {
+  background: #F0F5FB;
+  border-color: #1E5DA2;
+  color: #1E5DA2;
+}
+body.theme-light .el-button--primary {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%) !important;
+  border: none;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(30, 93, 162, 0.3);
+}
+body.theme-light .el-button--primary:hover {
+  background: linear-gradient(135deg, #3B7CC0 0%, #2E6DB0 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30, 93, 162, 0.4);
+}
+body.theme-light .el-button--primary.is-plain {
+  background: #FFFFFF;
+  border-color: #1E5DA2;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-button--primary.is-plain:hover {
+  background: #EDF3FA;
+  color: #174A82 !important;
+}
+body.theme-light .el-button--success {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .el-button--warning {
+  background: linear-gradient(135deg, #D2A370 0%, #C58A4A 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .el-button--danger {
+  background: linear-gradient(135deg, #E08484 0%, #D65C5C 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .el-button--danger.is-link,
+body.theme-light .el-button--primary.is-link,
+body.theme-light .el-button--success.is-link,
+body.theme-light .el-button--warning.is-link {
+  background: transparent !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-button--danger.is-link:hover,
+body.theme-light .el-button--primary.is-link:hover,
+body.theme-light .el-button--success.is-link:hover,
+body.theme-light .el-button--warning.is-link:hover {
+  background: #EDF3FA !important;
+  color: #174A82 !important;
+}
+
+/* 浅色系莫兰迪按钮 - 映射为Logo蓝系 */
+body.theme-light .morandi-btn {
+  color: #ffffff !important;
+}
+body.theme-light .morandi-green {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%) !important;
+}
+body.theme-light .morandi-green:hover {
+  background: linear-gradient(135deg, #3B7CC0 0%, #2E6DB0 100%) !important;
+}
+body.theme-light .morandi-blue {
+  background: linear-gradient(135deg, #4A7FAE 0%, #3A6890 100%) !important;
+}
+body.theme-light .morandi-blue:hover {
+  background: linear-gradient(135deg, #5A90BF 0%, #4A7FAE 100%) !important;
+}
+body.theme-light .morandi-orange {
+  background: linear-gradient(135deg, #D2A370 0%, #C58A4A 100%) !important;
+}
+body.theme-light .morandi-orange:hover {
+  background: linear-gradient(135deg, #DCB385 0%, #D2A370 100%) !important;
+}
+body.theme-light .morandi-purple {
+  background: linear-gradient(135deg, #7A8FB5 0%, #667899 100%) !important;
+}
+body.theme-light .morandi-purple:hover {
+  background: linear-gradient(135deg, #8AA0C6 0%, #7A8FB5 100%) !important;
+}
+
+/* 浅色系对话框 */
+body.theme-light .el-dialog {
+  background: #FFFFFF;
+  box-shadow: 0 12px 40px rgba(30, 93, 162, 0.15);
+}
+body.theme-light .el-dialog__header {
+  background: #F8FAFC;
+  border-bottom-color: #E4E7ED;
+}
+body.theme-light .el-dialog__title {
+  color: #1E5DA2;
+}
+body.theme-light .el-dialog__body {
+  background: #FFFFFF;
+  color: #1F2D3D;
+}
+body.theme-light .el-dialog__footer {
+  background: #FFFFFF;
+}
+body.theme-light .el-overlay {
+  background-color: rgba(40, 60, 90, 0.4);
+}
+
+/* 浅色系下拉/选择/弹出层 */
+body.theme-light .el-select-dropdown,
+body.theme-light .el-popper,
+body.theme-light .el-dropdown-menu,
+body.theme-light .el-picker-panel,
+body.theme-light .el-date-picker,
+body.theme-light .el-date-range-picker {
+  background: #FFFFFF !important;
+  border-color: #DCDFE6 !important;
+}
+body.theme-light .el-select-dropdown__item {
+  color: #5A6B82 !important;
+}
+body.theme-light .el-select-dropdown__item.selected {
+  color: #1E5DA2 !important;
+  font-weight: 600;
+}
+body.theme-light .el-select-dropdown__item.hover,
+body.theme-light .el-select-dropdown__item:hover {
+  background: #EDF3FA !important;
+}
+body.theme-light .el-popper__arrow::before {
+  background: #FFFFFF !important;
+  border-color: #DCDFE6 !important;
+}
+
+/* 浅色系分页 */
+body.theme-light .el-pagination.is-background .el-pager li {
+  background: #F5F7FA;
+  color: #5A6B82;
+}
+body.theme-light .el-pagination.is-background .el-pager li:not(.disabled).is-active {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  color: #ffffff;
+}
+
+/* 浅色系标签 */
+body.theme-light .el-tag--success {
+  background: #E8F0FA;
+  border-color: #A9C9E7;
+  color: #174A82;
+}
+body.theme-light .el-tag--warning {
+  background: #FAF4EC;
+  border-color: #ECD5BB;
+  color: #A06F3A;
+}
+body.theme-light .el-tag--danger {
+  background: #FCEFEF;
+  border-color: #F6D7D7;
+  color: #B84A4A;
+}
+body.theme-light .el-tag--primary {
+  background: #E8F0FA;
+  border-color: #A9C9E7;
+  color: #174A82;
+}
+body.theme-light .el-tag--info {
+  background: #F0F5FB;
+  border-color: #D8E3F0;
+  color: #3A6890;
+}
+
+/* 浅色系复选框/单选框/开关 */
+body.theme-light .el-checkbox__label {
+  color: #5A6B82;
+}
+body.theme-light .el-checkbox__input.is-checked .el-checkbox__inner {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  border-color: #1E5DA2;
+}
+body.theme-light .el-checkbox__input.is-checked + .el-checkbox__label {
+  color: #1E5DA2;
+}
+body.theme-light .el-radio__label {
+  color: #5A6B82;
+}
+body.theme-light .el-radio__input.is-checked .el-radio__inner {
+  border-color: #1E5DA2;
+  background: #1E5DA2;
+}
+body.theme-light .el-radio__input.is-checked + .el-radio__label {
+  color: #1E5DA2;
+}
+body.theme-light .el-switch.is-checked .el-switch__core {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  border-color: #1E5DA2;
+}
+
+/* 浅色系表单/标签/消息 */
+body.theme-light .el-form-item__label {
+  color: #5A6B82;
+}
+body.theme-light .el-message {
+  background: #FFFFFF;
+  border-color: #DCDFE6;
+  color: #1F2D3D;
+}
+body.theme-light .el-notification {
+  background: #FFFFFF;
+  border-color: #DCDFE6;
+  color: #1F2D3D;
+}
+body.theme-light .el-message-box {
+  background: #FFFFFF;
+  border-color: #DCDFE6;
+}
+body.theme-light .el-message-box__title {
+  color: #1F2D3D;
+}
+body.theme-light .el-message-box__content,
+body.theme-light .el-message-box__message {
+  color: #5A6B82;
+}
+body.theme-light .el-message-box__header {
+  background: #F8FAFC;
+  border-bottom-color: #E4E7ED;
+}
+
+/* 浅色系 tabs/分割线/日期 */
+body.theme-light .el-tabs__item {
+  color: #8492A6;
+}
+body.theme-light .el-tabs__item.is-active {
+  color: #1E5DA2;
+}
+body.theme-light .el-tabs__active-bar {
+  background-color: #1E5DA2;
+}
+body.theme-light .el-divider {
+  border-color: #E4E7ED;
+}
+body.theme-light .el-divider__text {
+  background: #FFFFFF;
+  color: #5A6B82;
+}
+body.theme-light .el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  color: #ffffff;
+}
+body.theme-light .el-date-table td.today .el-date-table-cell__text {
+  color: #1E5DA2;
+}
+body.theme-light .el-date-table td.in-range .el-date-table-cell {
+  background: #EDF3FA;
+}
+
+/* 浅色系滚动条 */
+body.theme-light ::-webkit-scrollbar-track {
+  background: #F5F7FA;
+}
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: #C4CDD8;
+  border-radius: 4px;
+}
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: #A9B7C9;
+}
+
+/* 浅色系 - 布局（sidebar/header/menu） */
+body.theme-light .sidebar {
+  background: #FFFFFF !important;
+  border-right-color: #E4E7ED !important;
+  box-shadow: 2px 0 8px rgba(30, 93, 162, 0.05) !important;
+}
+body.theme-light .logo {
+  background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%) !important;
+  border-bottom-color: #E4E7ED !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .header {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border-bottom-color: #E4E7ED !important;
+  box-shadow: 0 2px 8px rgba(30, 93, 162, 0.06) !important;
+}
+body.theme-light .title {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 50%, #174A82 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+body.theme-light .username-link {
+  color: #1E5DA2 !important;
+}
+body.theme-light .username-link:hover {
+  color: #174A82 !important;
+}
+
+/* 浅色系侧边栏菜单 */
+body.theme-light .el-menu {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border-right-color: #E4E7ED !important;
+}
+body.theme-light .el-menu-item,
+body.theme-light .el-sub-menu__title {
+  color: #5A6B82 !important;
+}
+body.theme-light .el-menu-item:hover,
+body.theme-light .el-sub-menu__title:hover {
+  background: #EDF3FA !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-menu-item.is-active {
+  background: linear-gradient(90deg, #E3ECF7 0%, #F5F9FE 100%) !important;
+  color: #1E5DA2 !important;
+  border-right: 3px solid #1E5DA2;
+}
+body.theme-light .el-sub-menu .el-menu-item {
+  background: #F5F8FC !important;
+  color: #5A6B82 !important;
+}
+body.theme-light .el-sub-menu .el-menu-item:hover {
+  background: #E8F0FA !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-sub-menu .el-menu-item.is-active {
+  background: #E3ECF7 !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-menu-item .el-icon,
+body.theme-light .el-sub-menu__title .el-icon {
+  color: #8492A6 !important;
+}
+body.theme-light .el-menu-item:hover .el-icon,
+body.theme-light .el-sub-menu__title:hover .el-icon,
+body.theme-light .el-menu-item.is-active .el-icon {
+  color: #1E5DA2 !important;
+}
+
+/* 浅色系登录页 */
+body.theme-light .login-container {
+  background: linear-gradient(135deg, #E8F0FA 0%, #FFFFFF 50%, #F5F8FC 100%);
+}
+body.theme-light .login-box {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  box-shadow: 0 20px 60px rgba(30, 93, 162, 0.12), 0 8px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(30, 93, 162, 0.2);
+}
+body.theme-light .login-box .title {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 50%, #174A82 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+body.theme-light .login-box .subtitle {
+  color: #8492A6;
+}
+body.theme-light .login-tabs {
+  border-bottom: 2px solid #E4E7ED;
+}
+body.theme-light .tab-item {
+  color: #8492A6;
+}
+body.theme-light .tab-item.active {
+  color: #1E5DA2;
+  border-bottom: 2px solid #1E5DA2;
+}
+body.theme-light .login-form .el-input__wrapper {
+  background: #FFFFFF !important;
+  box-shadow: 0 0 0 1px #DCDFE6 inset !important;
+}
+body.theme-light .login-form .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #1E5DA2 inset !important;
+}
+body.theme-light .login-form .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #1E5DA2 inset, 0 0 8px rgba(30, 93, 162, 0.2) !important;
+}
+body.theme-light .login-form .el-input__inner {
+  color: #1F2D3D !important;
+}
+body.theme-light .btn-login,
+body.theme-light .btn-clear {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%) !important;
+  box-shadow: 0 2px 8px rgba(30, 93, 162, 0.3) !important;
+}
+body.theme-light .btn-login:hover,
+body.theme-light .btn-clear:hover {
+  background: linear-gradient(135deg, #3B7CC0 0%, #2E6DB0 100%) !important;
+  box-shadow: 0 4px 16px rgba(30, 93, 162, 0.4) !important;
+}
+
+/* 浅色系下 Logo 图标保持原始蓝色（不加莫兰迪 filter） */
+body.theme-light .logo-img,
+body.theme-light .login-box .logo-img {
+  filter: none;
+}
+
+/* 浅色系页面容器背景 */
+body.theme-light .feedback-container,
+body.theme-light .handle-page,
+body.theme-light .check-page,
+body.theme-light .report-container,
+body.theme-light .modify-report-container,
+body.theme-light .discuss-container,
+body.theme-light .user-manage,
+body.theme-light .role-manage,
+body.theme-light .staff-manage,
+body.theme-light .hospital-manage,
+body.theme-light .module-maintenance,
+body.theme-light .form-maintenance,
+body.theme-light .settings-manage {
+  background: #F5F7FA;
+}
+body.theme-light .card-header > span,
+body.theme-light .card-title,
+body.theme-light .section-title,
+body.theme-light .page-title {
+  color: #1E5DA2;
+}
+/* 保险：浅色系卡片头内按钮文字永远白字（避免被 .card-header span 染色） */
+body.theme-light .card-header .el-button > span {
+  color: #ffffff !important;
+}
+html body.theme-light .card-header .el-button > span {
+  color: #ffffff !important;
+}
+body.theme-light .carousel-wrapper {
+  background: #F5F7FA !important;
+}
+body.theme-light .viewer-tip {
+  background: #E8F0FA !important;
+  color: #1E5DA2 !important;
+}
+body.theme-light .el-table .cell {
+  color: #1F2D3D;
+}
+
+/* 深色系下 Logo 图标保持原始蓝色（亮化以适配深底） */
+body.theme-dark .logo-img,
+body.theme-dark .login-box .logo-img {
+  filter: saturate(1.1) brightness(1.15);
+}
+
+/* 浅色系补充覆盖（与深色系对称） */
+body.theme-light .el-button--info {
+  background: linear-gradient(135deg, #3B7CC0 0%, #1E5DA2 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .el-button--info:hover {
+  background: linear-gradient(135deg, #5E9BCE 0%, #3B7CC0 100%);
+  color: #ffffff !important;
+}
+body.theme-light .el-loading-mask {
+  background: rgba(255, 255, 255, 0.85);
+}
+body.theme-light .el-empty__description p {
+  color: #8492A6;
+}
+body.theme-light .el-tabs__item:hover {
+  color: #1E5DA2;
+}
+body.theme-light .el-date-table td.today .el-date-table-cell__text {
+  color: #1E5DA2;
+  font-weight: 700;
+}
+body.theme-light .el-date-range-picker__content,
+body.theme-light .el-date-picker__header,
+body.theme-light .el-picker-panel__footer {
+  background: #FFFFFF;
+}
+body.theme-light .el-picker-panel__icon-btn,
+body.theme-light .el-date-picker__header-label {
+  color: #5A6B82;
+}
+body.theme-light .el-date-table th {
+  color: #8492A6;
+}
+body.theme-light .el-form-item__error {
+  color: #D65C5C;
+}
+body.theme-light .el-alert {
+  background: #FFFFFF;
+  border-color: #DCDFE6;
+}
+body.theme-light .el-link {
+  color: #1E5DA2;
+}
+body.theme-light .el-link:hover {
+  color: #174A82;
+}
+body.theme-light .el-image-viewer__canvas img {
+  background: #FFFFFF;
+}
+body.theme-light .el-table__header th.el-table__cell {
+  background: #EDF3FA !important;
+  color: #1E5DA2;
+}
+body.theme-light .header .el-button--danger {
+  background: linear-gradient(135deg, #E08484 0%, #D65C5C 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .header .el-button--danger:hover {
+  background: linear-gradient(135deg, #EAA6A6 0%, #E08484 100%);
+  color: #ffffff !important;
+}
+body.theme-light .el-message-box__btns .el-button--primary {
+  background: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  border: none;
+  color: #ffffff !important;
+}
+body.theme-light .el-time-spinner__item {
+  color: #5A6B82;
+}
+body.theme-light .el-time-spinner__item:hover:not(.disabled):not(.is-active) {
+  background: #EDF3FA;
+  color: #1E5DA2;
+}
+body.theme-light .el-pagination.is-background .el-pager li:not(.disabled):hover {
+  color: #1E5DA2;
+  background: #EDF3FA;
+}
+
+/* ==========================================================================
+   Logo 红按钮（全局，所有主题统一）
+   Logo 右上角红圈颜色 RGB(209,34,17) = #D12211
+   应用于：删除 / 退出 / 返回 / 查看图片 按钮，字体白色
+   ========================================================================== */
+/* 删除 / 退出按钮（type="danger" 非 link 实心） */
+.el-button--danger:not(.is-link) {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(209, 34, 17, 0.25) !important;
+}
+.el-button--danger:not(.is-link):hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(209, 34, 17, 0.35) !important;
+}
+.el-button--danger:not(.is-link):active {
+  background: linear-gradient(135deg, #C01E10 0%, #A8180E 100%) !important;
+  color: #ffffff !important;
+}
+.el-button--danger:not(.is-link).is-disabled,
+.el-button--danger:not(.is-link):disabled {
+  background: #E8A09A !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* 删除按钮（type="danger" link 文字形态）→ Logo 红字 */
+.el-button--danger.is-link {
+  color: #D07070 !important;
+  background: transparent !important;
+}
+.el-button--danger.is-link:hover {
+  color: #E08888 !important;
+  background: rgba(209, 34, 17, 0.06) !important;
+}
+
+/* 图片预览"返回"按钮（type="info" plain）→ Logo 红 */
+.el-button--info.is-plain {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  border-color: #D07070 !important;
+  color: #ffffff !important;
+}
+.el-button--info.is-plain:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  border-color: #E08888 !important;
+  color: #ffffff !important;
+}
+
+/* "返回"按钮（feedback 查看对话框 morandi-bright-blue）→ Logo 红 */
+.morandi-bright-blue {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+.morandi-bright-blue:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+
+/* "查看图片"按钮（morandi-yellow）→ Logo 红 */
+.morandi-yellow {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+.morandi-yellow:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+.morandi-yellow:disabled,
+.morandi-yellow.is-disabled {
+  background: #E8A09A !important;
+  color: #ffffff !important;
+}
+
+/* 浅色系补充：morandi-pink（返回测试问题）映射为蓝色系白字，保证清晰 */
+body.theme-light .morandi-pink {
+  background: linear-gradient(135deg, #7A8FB5 0%, #667899 100%) !important;
+  color: #ffffff !important;
+}
+body.theme-light .morandi-pink:hover {
+  background: linear-gradient(135deg, #8AA0C6 0%, #7A8FB5 100%) !important;
+  color: #ffffff !important;
+}
+/* 浅色系：查看图片按钮（morandi-yellow）→ Logo 柔和红 */
+body.theme-light .morandi-yellow,
+body.theme-light .morandi-yellow:hover,
+body.theme-light .morandi-yellow:active,
+body.theme-light .morandi-yellow:focus {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+body.theme-light .morandi-yellow:disabled,
+body.theme-light .morandi-yellow.is-disabled {
+  background: #E8C0C0 !important;
+  color: #ffffff !important;
+}
+
+/* ========== 侧边栏收缩按钮 - 三主题适配 ========== */
+body.theme-dark .collapse-btn {
+  color: #5A97D0 !important;
+}
+body.theme-dark .collapse-btn:hover {
+  color: #7BB0E0 !important;
+  background: rgba(59, 130, 196, 0.15) !important;
+}
+body.theme-dark .sidebar.collapsed .logo {
+  background: linear-gradient(135deg, #1E2A40 0%, #1A2332 100%) !important;
+  border-bottom-color: #2A3B52 !important;
+}
+body.theme-light .collapse-btn {
+  color: #8492A6 !important;
+}
+body.theme-light .collapse-btn:hover {
+  color: #1E5DA2 !important;
+  background: #EDF3FA !important;
+}
+
+/* ==========================================================================
+   主题最终加强（html body 前缀 = 最高特异性，确保覆盖 scoped data-v 规则）
+   ========================================================================== */
+
+/* ---------- 浅色系：所有彩色实心按钮强制白字 ---------- */
+html body.theme-light .morandi-btn,
+html body.theme-light .el-button--primary:not(.is-link),
+html body.theme-light .el-button--success:not(.is-link),
+html body.theme-light .el-button--warning:not(.is-link),
+html body.theme-light .el-button--danger:not(.is-link),
+html body.theme-light .el-button--info:not(.is-link) {
+  color: #ffffff !important;
+}
+
+/* ---------- 红色按钮终极强制（删除/退出/返回/查看图片） ---------- */
+/* 删除 / 退出（type=danger 实心） */
+html body .el-button--danger:not(.is-link) {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(209, 34, 17, 0.25) !important;
+}
+html body .el-button--danger:not(.is-link):hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+/* 删除（danger link 文字形态）→ Logo 红字 */
+html body .el-button--danger.is-link {
+  color: #D07070 !important;
+  background: transparent !important;
+}
+html body .el-button--danger.is-link:hover {
+  color: #E08888 !important;
+}
+/* 图片预览返回（info plain）→ Logo 红 */
+html body .el-button--info.is-plain {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  border-color: #D07070 !important;
+  color: #ffffff !important;
+}
+html body .el-button--info.is-plain:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+/* 查看对话框返回（morandi-bright-blue）→ Logo 红 */
+html body .morandi-bright-blue {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+html body .morandi-bright-blue:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+/* 查看图片按钮（morandi-yellow）→ Logo 红 */
+html body .morandi-yellow {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+html body .morandi-yellow:hover {
+  background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important;
+  color: #ffffff !important;
+}
+html body .morandi-yellow.is-disabled,
+html body .morandi-yellow:disabled {
+  background: #E8A09A !important;
+  color: #ffffff !important;
+}
+
+/* ---------- 深色系：确认处理等按钮也强制白字 ---------- */
+html body.theme-dark .morandi-btn {
+  color: #ffffff !important;
+}
+/* ==========================================================================
+   终极保险：morandi 按钮（不依赖 scoped data-v，全局直接生效）
+   用 CSS 变量按主题控制背景，保证按钮永远有背景色 + 白字，不会白底蓝字
+   ========================================================================== */
+:root {
+  --mgreen: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
+  --mblue: linear-gradient(135deg, #7B8FA1 0%, #6A7E90 100%);
+  --mpurple: linear-gradient(135deg, #A69CAC 0%, #958B9B 100%);
+  --morange: linear-gradient(135deg, #C9A87C 0%, #B8976B 100%);
+}
+body.theme-light {
+  --mgreen: linear-gradient(135deg, #2E6DB0 0%, #1E5DA2 100%);
+  --mblue: linear-gradient(135deg, #4A7FAE 0%, #3A6890 100%);
+  --mpurple: linear-gradient(135deg, #7A8FB5 0%, #667899 100%);
+  --morange: linear-gradient(135deg, #D2A370 0%, #C58A4A 100%);
+}
+body.theme-dark {
+  --mgreen: linear-gradient(135deg, #3B82C4 0%, #1E5DA2 100%);
+  --mblue: linear-gradient(135deg, #2E5F8A 0%, #1E4E73 100%);
+  --mpurple: linear-gradient(135deg, #5A6E8A 0%, #4A5C74 100%);
+  --morange: linear-gradient(135deg, #C58A5A 0%, #A96F3F 100%);
+}
+
+/* 白字：所有状态 */
+.morandi-btn,
+.morandi-btn:hover,
+.morandi-btn:active,
+.morandi-btn:focus {
+  color: #ffffff !important;
+}
+/* 背景：按主题变量，hover 提亮 */
+.morandi-green { background: var(--mgreen) !important; }
+.morandi-green:hover { background: var(--mgreen); filter: brightness(1.1); }
+.morandi-blue { background: var(--mblue) !important; }
+.morandi-blue:hover { background: var(--mblue); filter: brightness(1.1); }
+.morandi-purple { background: var(--mpurple) !important; }
+.morandi-purple:hover { background: var(--mpurple); filter: brightness(1.1); }
+.morandi-orange { background: var(--morange) !important; }
+.morandi-orange:hover { background: var(--morange); filter: brightness(1.1); }
+
+/* 查看图片按钮（morandi-yellow）：始终 Logo 红，disabled 淡红 */
+.morandi-yellow,
+.morandi-yellow:hover,
+.morandi-yellow:active,
+.morandi-yellow:focus {
+  background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
+  color: #ffffff !important;
+}
+.morandi-yellow:disabled,
+.morandi-yellow.is-disabled {
+  background: #E8A09A !important;
+  color: #ffffff !important;
+}
+/* ==========================================================================
+   终极按钮白字（浅色系）：覆盖所有彩色按钮，排除白底默认按钮
+   防止 hover 时文字变蓝，确保任何状态按钮文字都是白色
+   ========================================================================== */
+html body.theme-light .el-button--primary:not(.is-link),
+html body.theme-light .el-button--success:not(.is-link),
+html body.theme-light .el-button--warning:not(.is-link),
+html body.theme-light .el-button--danger:not(.is-link),
+html body.theme-light .morandi-btn,
+html body.theme-light .el-button--primary:not(.is-link):hover,
+html body.theme-light .el-button--success:not(.is-link):hover,
+html body.theme-light .el-button--warning:not(.is-link):hover,
+html body.theme-light .el-button--danger:not(.is-link):hover,
+html body.theme-light .morandi-btn:hover,
+html body.theme-light .el-button--primary:not(.is-link):active,
+html body.theme-light .el-button--primary:not(.is-link):focus,
+html body.theme-light .morandi-btn:active,
+html body.theme-light .morandi-btn:focus {
+  color: #ffffff !important;
+}
+/* 深色系终极按钮白字（覆盖 scoped 被主题规则压制的场景） */
+html body.theme-dark .morandi-btn,
+html body.theme-dark .morandi-btn:hover,
+html body.theme-dark .morandi-btn:active,
+html body.theme-dark .morandi-btn:focus {
+  color: #ffffff !important;
+}
+/* ==========================================================================
+   全局莫兰迪按钮（不依赖 scoped，避免浏览器缓存旧组件导致样式失效）
+   与组件 scoped 样式一致；浅色系/深色系映射见上方主题规则
+   ========================================================================== */
+.morandi-btn {
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.morandi-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  color: #ffffff !important;
+}
+.morandi-btn:active { transform: translateY(0); }
+.morandi-btn:disabled,
+.morandi-btn.is-disabled {
+  background: #dcdfe6 !important;
+  color: #909399 !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
+.morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
+.morandi-yellow { background: linear-gradient(135deg, #C9C08F 0%, #B8AF7E 100%) !important; }
+.morandi-yellow:hover { background: linear-gradient(135deg, #D4CC9E 0%, #C9C08F 100%) !important; }
+.morandi-blue { background: linear-gradient(135deg, #7B8FA1 0%, #6A7E90 100%) !important; }
+.morandi-blue:hover { background: linear-gradient(135deg, #8FA3B8 0%, #7B8FA1 100%) !important; }
+.morandi-purple { background: linear-gradient(135deg, #A69CAC 0%, #958B9B 100%) !important; }
+.morandi-purple:hover { background: linear-gradient(135deg, #B5A9B8 0%, #A69CAC 100%) !important; }
+.morandi-orange { background: linear-gradient(135deg, #C9A87C 0%, #B8976B 100%) !important; }
+.morandi-orange:hover { background: linear-gradient(135deg, #D4B58F 0%, #C9A87C 100%) !important; }
+/* ==========================================================================
+   全局登录/清空按钮（不依赖 scoped，避免浏览器缓存旧组件导致样式失效）
+   默认莫兰迪绿；浅色系/深色系背景覆盖见上方主题规则（只覆盖背景不覆盖文字）
+   ========================================================================== */
+.btn-gradient {
+  width: 150px;
+  height: 42px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 2px;
+}
+.btn-login {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
+  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35) !important;
+}
+.btn-login:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
+  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5) !important;
+  transform: translateY(-1px);
+}
+.btn-clear {
+  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
+  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35) !important;
+}
+.btn-clear:hover {
+  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
+  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5) !important;
+  transform: translateY(-1px);
+}
+.btn-gradient:active { transform: translateY(0); }
+.btn-icon { margin-right: 4px; font-size: 15px; }
+/* 卡片标题区内的按钮强制白字（避免跟随卡片标题染色）最高优先级 */
+html body .el-card__header .el-button,
+html body .el-card__header .morandi-btn {
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   深色主题控件终极保险（覆盖 scoped/默认 白底）—— 深色模式下所有控件背景统一深色
+   ========================================================================== */
+body.theme-dark .el-card,
+body.theme-dark .el-card__body,
+body.theme-dark .el-card.is-always-shadow {
+  background: #1A2332 !important;
+  border-color: #2E3D57 !important;
+}
+body.theme-dark .el-card__header {
+  background: #1E2A40 !important;
+  border-bottom-color: #2E3D57 !important;
+  color: #E6EDF7 !important;
+}
+body.theme-dark .el-input__wrapper,
+body.theme-dark .el-textarea__inner,
+body.theme-dark .el-select__wrapper {
+  background: #1A2332 !important;
+}
+body.theme-dark .el-input__wrapper {
+  box-shadow: 0 0 0 1px #34445F inset !important;
+}
+body.theme-dark .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #3B82C4 inset, 0 0 8px rgba(59, 130, 196, 0.3) !important;
+}
+body.theme-dark .el-input__inner,
+body.theme-dark .el-textarea__inner {
+  color: #E6EDF7 !important;
+}
+body.theme-dark .el-input__inner::placeholder,
+body.theme-dark .el-textarea__inner::placeholder {
+  color: #6B7E97 !important;
+}
+body.theme-dark .el-select-dropdown,
+body.theme-dark .el-popper,
+body.theme-dark .el-dropdown-menu,
+body.theme-dark .el-picker-panel,
+body.theme-dark .el-date-picker,
+body.theme-dark .el-date-range-picker {
+  background: #22304A !important;
+  border-color: #34445F !important;
+}
+body.theme-dark .el-select-dropdown__item {
+  color: #C4D0E0 !important;
+}
+body.theme-dark .el-select-dropdown__item.selected,
+body.theme-dark .el-select-dropdown__item.hover,
+body.theme-dark .el-select-dropdown__item:hover {
+  background: #2A3957 !important;
+  color: #E6EDF7 !important;
+}
+body.theme-dark .el-table {
+  background: #1A2332 !important;
+}
+body.theme-dark .el-table th.el-table__cell {
+  background: #1E2A40 !important;
+}
+body.theme-dark .el-table td.el-table__cell,
+body.theme-dark .el-table tr {
+  background: #1A2332 !important;
+}
+body.theme-dark .el-table tr:hover > td.el-table__cell {
+  background: #22304A !important;
+}
+body.theme-dark .el-dialog {
+  background: #1A2332 !important;
+}
+body.theme-dark .el-dialog__header {
+  background: #1E2A40 !important;
+}
+body.theme-dark .el-checkbox__inner,
+body.theme-dark .el-radio__inner {
+  background: #141B28 !important;
+  border-color: #34445F !important;
+}
+body.theme-dark .el-checkbox__label,
+body.theme-dark .el-radio__label {
+  color: #C4D0E0 !important;
+}
+body.theme-dark .el-date-editor .el-range-input {
+  background: #1A2332 !important;
+  color: #E6EDF7 !important;
+}
+body.theme-dark .el-form-item__label {
+  color: #C4D0E0 !important;
+}
+
+/* 深色模式：问题详情信息卡片（组件 scoped 白底 #fff / #f8f9fa 覆盖） */
+body.theme-dark .info-item,
+body.theme-dark .info-item.small,
+body.theme-dark .info-item.large {
+  background: #1A2332 !important;
+  border-color: #2E3D57 !important;
+}
+body.theme-dark .info-label,
+body.theme-dark .info-label.big {
+  color: #93A5BD !important;
+}
+body.theme-dark .info-value,
+body.theme-dark .info-value.large-text,
+body.theme-dark .info-value.textarea {
+  color: #E6EDF7 !important;
+}
+body.theme-dark .test-return-info,
+body.theme-dark .test-result-box {
+  background: #3A2A2A !important;
+  border-color: #5C3A3A !important;
+}
+
+/* 按钮无效状态：保证文字可读（覆盖白字）—— 中灰底+深灰字 */
+html body .morandi-btn:disabled,
+html body .morandi-btn.is-disabled,
+html body.theme-light .morandi-btn:disabled,
+html body.theme-light .morandi-btn.is-disabled {
+  background: #C8CDD4 !important;
+  color: #4A5568 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+/* 深色模式下无效按钮：深底+浅灰字 */
+html body.theme-dark .morandi-btn:disabled,
+html body.theme-dark .morandi-btn.is-disabled {
+  background: #2E3D57 !important;
+  color: #93A5BD !important;
+  border-color: #34445F !important;
+}
+
+/* 深色模式：登录窗体输入框深色（覆盖 login scoped 浅绿白渐变）最高优先级 */
+html body.theme-dark .login-form .el-input__wrapper,
+html body.theme-dark .login-form .el-select__wrapper {
+  background: #1A2332 !important;
+  box-shadow: 0 0 0 1px #34445F inset !important;
+}
+html body.theme-dark .login-form .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #3B82C4 inset !important;
+}
+html body.theme-dark .login-form .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #3B82C4 inset, 0 0 8px rgba(59, 130, 196, 0.3) !important;
+}
+html body.theme-dark .login-form .el-input__inner {
+  color: #E6EDF7 !important;
+}
+html body.theme-dark .login-form .el-input__inner::placeholder {
+  color: #6B7E97 !important;
+}
+html body.theme-dark .login-form .el-input__prefix {
+  color: #93A5BD !important;
+}
+
+/* 浅色系复选框：边框/勾选为系统蓝（覆盖组件 scoped 浅绿 #00b894） */
+body.theme-light .el-checkbox__inner {
+  border: 2px solid #1E5DA2 !important;
+  background-color: #ffffff !important;
+}
+body.theme-light .el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: #1E5DA2 !important;
+  border-color: #1E5DA2 !important;
+}
+body.theme-light .el-checkbox__input.is-checked .el-checkbox__inner::after {
+  border-color: #ffffff !important;
 }

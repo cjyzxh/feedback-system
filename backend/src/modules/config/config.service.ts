@@ -230,4 +230,73 @@ export class DatabaseConfigService {
       return false;
     }
   }
+
+  // 获取短信服务配置
+  getSmsConfig(): any {
+    try {
+      const configs = this.getAllConfigs();
+      if (configs.sms) {
+        return {
+          userId: configs.sms.userId || '',
+          companyId: configs.sms.companyId || '',
+          password: configs.sms.password || '',
+          apiUrl: configs.sms.apiUrl || '',
+        };
+      }
+      // 配置文件中没有时，回退到 .env 中的值
+      return {
+        userId: this.nestConfigService.get<string>('SMS_USER_ID', '') || '',
+        companyId: this.nestConfigService.get<string>('SMS_COMPANY_ID', '') || '',
+        password: this.nestConfigService.get<string>('SMS_PASSWORD', '') || '',
+        apiUrl: this.nestConfigService.get<string>('SMS_API_URL', '') || '',
+      };
+    } catch (error) {
+      this.logger.error('获取短信配置失败:', error);
+      return { userId: '', companyId: '', password: '', apiUrl: '' };
+    }
+  }
+
+  // 保存短信服务配置
+  saveSmsConfig(config: any): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.sms = {
+        userId: config.userId || '',
+        companyId: config.companyId || '',
+        password: config.password || '',
+        apiUrl: config.apiUrl || '',
+      };
+      this.saveAllConfigs(configs);
+      this.logger.log('短信服务配置已保存');
+      return true;
+    } catch (error) {
+      this.logger.error('保存短信配置失败:', error);
+      return false;
+    }
+  }
+
+  // 获取系统默认界面样式（个人未设置时的兜底）
+  getSystemTheme(): string {
+    try {
+      const configs = this.getAllConfigs();
+      return configs.systemTheme || 'morandi';
+    } catch (error) {
+      this.logger.error('获取系统默认样式失败:', error);
+      return 'morandi';
+    }
+  }
+
+  // 保存系统默认界面样式
+  saveSystemTheme(theme: string): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.systemTheme = theme || 'morandi';
+      this.saveAllConfigs(configs);
+      this.logger.log('系统默认样式已保存:', theme);
+      return true;
+    } catch (error) {
+      this.logger.error('保存系统默认样式失败:', error);
+      return false;
+    }
+  }
 }

@@ -1,4 +1,4 @@
-﻿<!-- Sat Mar 21 16:31:58 CST 2026 -->
+<!-- Sat Mar 21 16:31:58 CST 2026 -->
 <template>
   <div class="feedback-container">
     <el-card class="main-card" shadow="hover">
@@ -73,9 +73,9 @@
           <el-col :span="18">
             <el-form-item label="紧急程度" prop="jingjicd">
               <div class="priority-box">
-                <el-button :type="form.jingjicd === '紧急' ? 'danger' : 'default'" @click="form.jingjicd = '紧急'" :class="{ active: form.jingjicd === '紧急'}">紧急</el-button>
-                <el-button :type="form.jingjicd === '急' ? 'warning' : 'default'" @click="form.jingjicd = '急'" :class="{ active: form.jingjicd === '急'}">急</el-button>
-                <el-button :type="form.jingjicd === '一般' ? 'info' : 'default'" @click="form.jingjicd = '一般'" :class="{ active: form.jingjicd === '一般'}">一般</el-button>
+                <el-button :class="['priority-btn', { active: form.jingjicd === '紧急', danger: form.jingjicd === '紧急'}]" @click="form.jingjicd = '紧急'">紧急</el-button>
+                <el-button :class="['priority-btn', { active: form.jingjicd === '急', warning: form.jingjicd === '急'}]" @click="form.jingjicd = '急'">急</el-button>
+                <el-button :class="['priority-btn', { active: form.jingjicd === '一般', info: form.jingjicd === '一般'}]" @click="form.jingjicd = '一般'">一般</el-button>
               </div>
             </el-form-item>
           </el-col>
@@ -518,6 +518,22 @@ onMounted(() => { loadDicts(); loadData() })
 .priority-box { display: flex; gap: 10px; }
 .priority-box .el-button { min-width: 80px; font-weight: bold; }
 .priority-box .el-button.active { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+/* 紧急程度选中状态背景色（不依赖 Element Plus type，避免被全局主题覆盖） */
+.priority-box .el-button.priority-btn.danger.active {
+  background: linear-gradient(135deg, #E08484 0%, #D65C5C 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.priority-box .el-button.priority-btn.warning.active {
+  background: linear-gradient(135deg, #E8C87A 0%, #D4A84A 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.priority-box .el-button.priority-btn.info.active {
+  background: linear-gradient(135deg, #9AA0A6 0%, #7A8086 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
 .upload-area { width: 100%; }
 .upload-icon { font-size: 28px; color: #999; }
 .upload-text { font-size: 12px; color: #999; margin-top: 8px; text-align: center; line-height: 1.6; }

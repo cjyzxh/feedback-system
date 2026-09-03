@@ -5,6 +5,82 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>问题反馈系统</title>
+    <style>
+      /* ===== 界面主题关键修复（内联于 HTML，避免 CSS 缓存导致按钮样式失效）===== */
+      html body .morandi-btn, html body .morandi-btn:hover,
+      html body .morandi-btn:active, html body .morandi-btn:focus,
+      html body.theme-light .morandi-btn, html body.theme-dark .morandi-btn {
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 500;
+      }
+      html body .morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
+      html body .morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
+      html body .morandi-blue { background: linear-gradient(135deg, #7B8FA1 0%, #6A7E90 100%) !important; }
+      html body .morandi-blue:hover { background: linear-gradient(135deg, #8FA3B8 0%, #7B8FA1 100%) !important; }
+      html body .morandi-purple { background: linear-gradient(135deg, #A69CAC 0%, #958B9B 100%) !important; }
+      html body .morandi-purple:hover { background: linear-gradient(135deg, #B5A9B8 0%, #A69CAC 100%) !important; }
+      html body .morandi-orange { background: linear-gradient(135deg, #C9A87C 0%, #B8976B 100%) !important; }
+      html body .morandi-orange:hover { background: linear-gradient(135deg, #D4B58F 0%, #C9A87C 100%) !important; }
+      html body .morandi-yellow { background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important; }
+      html body .morandi-yellow:hover { background: linear-gradient(135deg, #EAA0A0 0%, #E08888 100%) !important; }
+      html body .morandi-btn:disabled, html body .morandi-btn.is-disabled { background: #dcdfe6 !important; color: #909399 !important; }
+      /* 卡片标题区内的按钮强制白字（避免跟随卡片标题染色）最高优先级 */
+      html body .el-card__header .el-button,
+      html body .el-card__header .morandi-btn {
+        color: #ffffff !important;
+      }
+      /* 保险：卡片头按钮文字 span 强制白字（直接命中 span，避免被 .card-header span 染色） */
+      html body .card-header .el-button > span,
+      html body .el-card__header .el-button > span {
+        color: #ffffff !important;
+      }
+      /* 浅色系下按钮文字强制白色（覆盖旧主题规则） */
+      html body.theme-light .el-button:not(.morandi-btn), html body.theme-dark .el-button:not(.morandi-btn) { }
+      /* 登录窗体深色模式下输入框深色（内联确保加载，避免 CSS 缓存失效） */
+      html body.theme-dark .login-form .el-input__wrapper,
+      html body.theme-dark .login-form .el-select__wrapper {
+        background: #1A2332 !important;
+        box-shadow: 0 0 0 1px #34445F inset !important;
+      }
+      html body.theme-dark .login-form .el-input__wrapper:hover {
+        box-shadow: 0 0 0 1px #3B82C4 inset !important;
+      }
+      html body.theme-dark .login-form .el-input__wrapper.is-focus {
+        box-shadow: 0 0 0 1px #3B82C4 inset, 0 0 8px rgba(59, 130, 196, 0.3) !important;
+      }
+      html body.theme-dark .login-form .el-input__inner {
+        color: #E6EDF7 !important;
+      }
+      html body.theme-dark .login-form .el-input__inner::placeholder {
+        color: #6B7E97 !important;
+      }
+      html body.theme-dark .login-form .el-input__prefix {
+        color: #93A5BD !important;
+      }
+      /* 登录输入框 hover/聚焦/自动填充也保持深蓝 */
+      html body.theme-dark .login-form .el-input__wrapper:hover,
+      html body.theme-dark .login-form .el-input__wrapper.is-focus {
+        background: #22304A !important;
+        box-shadow: 0 0 0 1px #3B82C4 inset !important;
+      }
+      html body.theme-dark .login-form .el-input__inner:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0 1000px #1A2332 inset !important;
+        -webkit-text-fill-color: #E6EDF7 !important;
+      }      /* 深色模式登录输入框 CSS 变量（login scoped 直接读取） */
+      html body.theme-dark {
+        --wtfk-input-bg: #1A2332;
+        --wtfk-input-bg-hover: #22304A;
+        --wtfk-input-bg-focus: #22304A;
+        --wtfk-input-border: #34445F;
+        --wtfk-input-border-hover: #3B82C4;
+        --wtfk-input-border-focus: #3B82C4;
+        --wtfk-input-text: #E6EDF7;
+        --wtfk-input-placeholder: #6B7E97;
+        --wtfk-input-prefix: #93A5BD;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

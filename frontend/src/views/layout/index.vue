@@ -76,7 +76,6 @@
       <div class="header">
         <div class="header-left"></div>
         <div class="header-title">
-          <img src="@/assets/logo.jpg" alt="logo" class="header-logo-img" />
           <span class="title">{{ route.meta?.title || '' }}</span>
         </div>
         <div class="user-info">
@@ -856,13 +855,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-}
-.header-logo-img {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  border-radius: 5px;
 }
 .title { 
   flex: 1;

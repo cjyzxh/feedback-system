@@ -60,7 +60,11 @@ export class DictService {
   }
 
   async updateModule(id: number, moduleData: { banben: string; mokuaimc: string }) {
-    await this.moduleRepository.update(id, moduleData);
+    // 显式构建更新字段，避免前端误传 id 等额外字段导致 TypeORM 报错
+    await this.moduleRepository.update(id, {
+      banben: moduleData.banben,
+      mokuaimc: moduleData.mokuaimc
+    });
     return { success: true };
   }
 
@@ -69,13 +73,16 @@ export class DictService {
     return { success: true };
   }
 
-  async getForms(moduleName?: string) {
-    this.logger.log('getForms called, moduleName: [' + moduleName + ']');
+  async getForms(moduleName?: string, banben?: string) {
+    this.logger.log('getForms called, moduleName: [' + moduleName + '], banben: [' + banben + ']');
     
     try {
       const where: any = {};
       if (moduleName) {
         where.mokuai = moduleName;
+      }
+      if (banben) {
+        where.banbenh = banben;
       }
       
       const forms = await this.formRepository.find({
@@ -85,6 +92,7 @@ export class DictService {
       
       const result = forms.map((f) => ({ 
         id: f.id, 
+        banben: f.banbenh,
         mokuai: f.mokuai, 
         chuangtimc: f.chuangtimc,
         value: f.chuangtimc,
@@ -217,26 +225,32 @@ export class DictService {
     }
   }
 
-  async createForm(formData: { mokuai: string; chuangtimc: string }) {
-    const maxIdResult = await this.formRepository.query(
-      'SELECT ISNULL(MAX(ID), 0) + 1 as nextId FROM zd_chuangti'
-    );
-    const nextId = maxIdResult[0]?.nextId || 1;
+  async createForm(formData: { banben: string; mokuai: string; chuangtimc: string }) {
+    // 用 raw query 插入，确保中文正常保存（MSSQL 需要 N 前缀）
+    const banben = formData.banben || '';
+    const mokuai = formData.mokuai;
+    const chuangtimc = formData.chuangtimc;
     
-    const form = this.formRepository.create({
-      id: nextId,
-      banbenh: '',
-      mokuai: formData.mokuai,
-      chuangtidm: 0,
-      chuangtimc: formData.chuangtimc,
-    });
+    const sql = `INSERT INTO zd_chuangti (banbenh, mokuai, chuangtidm, chuangtimc) 
+                 VALUES (N'${banben}', N'${mokuai}', 0, N'${chuangtimc}');
+                 SELECT SCOPE_IDENTITY() as id;`;
     
-    await this.formRepository.save(form);
-    return { success: true };
+    const result = await this.formRepository.query(sql);
+    const newId = result[0]?.id || result[0]?.[0]?.id || 0;
+    
+    return { success: true, id: newId };
   }
 
-  async updateForm(id: number, formData: { mokuai: string; chuangtimc: string }) {
-    await this.formRepository.update(id, formData);
+  async updateForm(id: number, formData: { banben?: string; mokuai: string; chuangtimc: string }) {
+    // 显式构建更新字段，banben 需映射到实体列 banbenh（TypeORM 无法识别 banben 属性）
+    const updateData: any = {
+      mokuai: formData.mokuai,
+      chuangtimc: formData.chuangtimc
+    };
+    if (formData.banben !== undefined && formData.banben !== null) {
+      updateData.banbenh = formData.banben;
+    }
+    await this.formRepository.update(id, updateData);
     return { success: true };
   }
 

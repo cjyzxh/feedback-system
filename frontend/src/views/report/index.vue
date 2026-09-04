@@ -20,8 +20,8 @@
           <el-checkbox v-model="viewAll">查询所有人员</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
+          <el-button class="btn-reset" @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
       

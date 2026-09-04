@@ -33,18 +33,18 @@ export class DictController {
   }
 
   @Get("forms")
-  getForms(@Query('module') module: string) {
-    this.logger.log('getForms called with module: ' + module);
-    return this.wrapResponse(this.dictService.getForms(module));
+  getForms(@Query('module') module: string, @Query('banben') banben: string) {
+    this.logger.log('getForms called with module: ' + module + ', banben: ' + banben);
+    return this.wrapResponse(this.dictService.getForms(module, banben));
   }
 
   @Post("forms")
-  createForm(@Body() formData: { mokuai: string; chuangtimc: string }) {
+  createForm(@Body() formData: { banben: string; mokuai: string; chuangtimc: string }) {
     return this.wrapResponse(this.dictService.createForm(formData));
   }
 
   @Put("forms/:id")
-  updateForm(@Param('id') id: number, @Body() formData: { mokuai: string; chuangtimc: string }) {
+  updateForm(@Param('id') id: number, @Body() formData: { banben?: string; mokuai: string; chuangtimc: string }) {
     return this.wrapResponse(this.dictService.updateForm(id, formData));
   }
 

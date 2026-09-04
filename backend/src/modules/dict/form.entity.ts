@@ -5,15 +5,15 @@ export class Form {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'banbenh', length: 20, nullable: true })
+  @Column({ name: 'banbenh', type: 'nvarchar', length: 20, nullable: true })
   banbenh: string;
 
-  @Column({ name: 'mokuai', length: 100, nullable: true })
+  @Column({ name: 'mokuai', type: 'nvarchar', length: 100, nullable: true })
   mokuai: string;
 
   @Column({ name: 'chuangtidm', type: 'int', nullable: true })
   chuangtidm: number;
 
-  @Column({ name: 'chuangtimc', length: 100, nullable: true })
+  @Column({ name: 'chuangtimc', type: 'nvarchar', length: 100, nullable: true })
   chuangtimc: string;
 }

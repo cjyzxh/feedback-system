@@ -4,35 +4,64 @@
       <template #header>
         <div class="card-header">
           <span>窗体维护</span>
-          <el-button type="primary" @click="handleAdd">新增</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleAdd">新增</el-button>
         </div>
       </template>
-      
-      <el-table v-loading="loading" :data="forms" style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="mokuai" label="模块" width="180" />
-        <el-table-column prop="chuangtimc" label="窗体名称" min-width="200" />
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div class="pagination-container" v-if="total > 0">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
+
+      <div class="main-body">
+        <!-- 左侧树形结构：版本 → 模块 → 窗体 -->
+        <div class="tree-panel">
+          <el-input
+            v-model="treeKeyword"
+            placeholder="搜索版本/模块/窗体"
+            clearable
+            size="small"
+            class="tree-search"
+            @input="handleTreeSearch"
+          />
+          <el-tree
+            ref="treeRef"
+            :data="treeData"
+            :props="{ label: 'label', children: 'children' }"
+            node-key="id"
+            highlight-current
+            :default-expanded-keys="['all']"
+            :expand-on-click-node="false"
+            :filter-node-method="filterNode"
+            @node-click="handleNodeClick"
+            class="dict-tree"
+          />
+        </div>
+
+        <!-- 右侧表格 -->
+        <div class="table-panel">
+          <el-table v-loading="loading" :data="forms" style="width: 100%">
+            <el-table-column prop="banben" label="版本" width="110" />
+            <el-table-column prop="mokuai" label="模块" width="180" />
+            <el-table-column prop="chuangtimc" label="窗体名称" min-width="200" />
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="scope">
+                <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pagination-container" v-if="total > 0">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </div>
       </div>
     </el-card>
-    
+
     <!-- 新增/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
@@ -58,8 +87,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -72,7 +101,8 @@ import axios from 'axios';
 import { ElMessage } from 'element-plus';
 
 const loading = ref(false);
-const forms = ref<any[]>([]);
+const allForms = ref<any[]>([]);  // 全量窗体数据
+const forms = ref<any[]>([]);     // 显示（按树过滤后）
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -87,6 +117,12 @@ const formData = ref({
 });
 
 const modules = ref<any[]>([]);
+
+// 树形结构
+const treeRef = ref<any>(null);
+const treeKeyword = ref('');
+const treeData = ref<any[]>([]);
+const treeFilter = ref<{ banben?: string; mokuai?: string; chuangtimc?: string }>({});
 
 // 根据版本加载模块
 const loadModulesByVersion = async (banben: string) => {
@@ -109,19 +145,86 @@ const handleVersionChange = (val: string) => {
   loadModulesByVersion(val);
 };
 
+// 构建树形结构：版本 → 模块 → 窗体
+const buildTree = () => {
+  const versions = [...new Set(modules.value.map((m: any) => m.banben).filter(Boolean))];
+  treeData.value = [
+    {
+      id: 'all',
+      label: '全部窗体',
+      type: 'all',
+      children: versions.map((v: string) => ({
+        id: 'v-' + v,
+        label: v,
+        type: 'version',
+        children: modules.value
+          .filter((mo: any) => mo.banben === v)
+          .map((mo: any) => ({
+            id: 'm-' + mo.id,
+            label: mo.mokuaimc,
+            type: 'module',
+            children: allForms.value
+              .filter((f: any) => f.mokuai === mo.mokuaimc)
+              .map((f: any) => ({
+                id: 'f-' + f.id,
+                label: f.chuangtimc,
+                type: 'form'
+              }))
+          }))
+      }))
+    }
+  ];
+};
+
+// 应用树过滤
+const applyFilter = () => {
+  forms.value = allForms.value.filter((f: any) => {
+    if (treeFilter.value.banben && f.banben !== treeFilter.value.banben) return false;
+    if (treeFilter.value.mokuai && f.mokuai !== treeFilter.value.mokuai) return false;
+    if (treeFilter.value.chuangtimc && f.chuangtimc !== treeFilter.value.chuangtimc) return false;
+    return true;
+  });
+  total.value = forms.value.length;
+  currentPage.value = 1;
+};
+
+// 点击树节点
+const handleNodeClick = (data: any) => {
+  if (data.type === 'all') {
+    treeFilter.value = {};
+  } else if (data.type === 'version') {
+    treeFilter.value = { banben: data.label };
+  } else if (data.type === 'module') {
+    treeFilter.value = { mokuai: data.label };
+  } else if (data.type === 'form') {
+    treeFilter.value = { chuangtimc: data.label };
+  }
+  applyFilter();
+};
+
+// 树搜索
+const filterNode = (value: string, data: any) => {
+  if (!value) return true;
+  return data.label.includes(value);
+};
+const handleTreeSearch = () => {
+  treeRef.value?.filter(treeKeyword.value);
+};
+
 // 加载窗体数据
 const loadForms = async () => {
   loading.value = true;
   try {
     const res = await axios.get('/api/dict/forms');
-    console.log('窗体数据:', res.data);
     // 处理后端返回的数据结构，将 label 和 module 映射到 chuangtimc 和 mokuai
-    forms.value = (res.data?.data || []).map((item: any) => ({
+    allForms.value = (res.data?.data || []).map((item: any) => ({
       id: item.id,
+      banben: item.banben,
       mokuai: item.module || item.mokuai,
       chuangtimc: item.label || item.chuangtimc
     }));
-    total.value = forms.value.length;
+    applyFilter();
+    buildTree();
   } catch (error) {
     ElMessage.error('加载窗体数据失败');
     console.error('加载窗体数据失败:', error);
@@ -179,13 +282,18 @@ const handleSubmit = async () => {
     ElMessage.warning('请填写完整信息');
     return;
   }
-  
+
   try {
     if (dialogType.value === 'add') {
       await axios.post('/api/dict/forms', formData.value);
       ElMessage.success('新增成功');
     } else {
-      await axios.put(`/api/dict/forms/${formData.value.id}`, formData.value);
+      // 编辑只提交有效字段，避免 id 等多余字段导致后端报错
+      await axios.put(`/api/dict/forms/${formData.value.id}`, {
+        banben: formData.value.banben,
+        mokuai: formData.value.mokuai,
+        chuangtimc: formData.value.chuangtimc
+      });
       ElMessage.success('编辑成功');
     }
     dialogVisible.value = false;
@@ -199,12 +307,10 @@ const handleSubmit = async () => {
 // 分页
 const handleSizeChange = (size: number) => {
   pageSize.value = size;
-  loadForms();
 };
 
 const handleCurrentChange = (current: number) => {
   currentPage.value = current;
-  loadForms();
 };
 
 // 加载模块数据
@@ -212,6 +318,7 @@ const loadModules = async () => {
   try {
     const res = await axios.get('/api/dict/modules');
     modules.value = res.data?.data || [];
+    buildTree();
   } catch (error) {
     console.error('加载模块数据失败:', error);
   }
@@ -248,7 +355,42 @@ onMounted(() => {
 .el-card__body {
   flex: 1;
   overflow: hidden;
-  padding: 20px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+
+.tree-panel {
+  width: 240px;
+  flex-shrink: 0;
+  border: 1px solid var(--el-border-color-lighter, #e4e7ed);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tree-search {
+  margin-bottom: 8px;
+}
+
+.dict-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.table-panel {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -263,7 +405,7 @@ onMounted(() => {
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 12px;
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;

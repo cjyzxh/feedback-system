@@ -45,10 +45,12 @@ import { ConfigModule } from './modules/config/config.module';
         if (isMssql) {
           config.extra = {
             trustServerCertificate: true,
+            charset: 'UTF8',
           };
           config.options = {
             encrypt: false,
             trustServerCertificate: true,
+            useUTC: false,
           };
         }
 

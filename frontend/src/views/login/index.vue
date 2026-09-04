@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="login-container">
     <!-- 背景装饰 -->
     <div class="bg-decoration">
@@ -79,11 +79,10 @@
               @keyup.enter="handleLogin"
             />
             <el-button 
-              type="primary" 
+              class="morandi-btn morandi-blue code-button" 
               size="large" 
               :disabled="countdown > 0"
               @click="sendCode"
-              class="code-button"
             >
               {{ countdown > 0 ? `${countdown}秒后重试` : '获取验证码' }}
             </el-button>
@@ -106,6 +105,7 @@
     
     <div class="footer">
       <p>北京创佳益软件有限公司 版权所有(2004-2026)</p>
+      <p class="version-text">版本 v{{ appVersion }}</p>
     </div>
   </div>
 </template>
@@ -116,8 +116,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Iphone, Message, Monitor, Delete } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { APP_VERSION } from '../../version'
 
 const router = useRouter()
+const appVersion = APP_VERSION
 const loading = ref(false)
 const loginType = ref('account')
 const countdown = ref(0)
@@ -388,7 +390,7 @@ const handleLogin = async () => {
   justify-content: center; 
   align-items: center; 
   min-height: 100vh; 
-  background: linear-gradient(135deg, #e8f5f0 0%, #f0f7f4 30%, #f5f9f7 60%, #eaf4ef 100%);
+  background: linear-gradient(135deg, var(--el-color-primary-light-9) 0%, var(--el-color-primary-light-9) 30%, var(--el-color-primary-light-9) 60%, var(--el-color-primary-light-9) 100%);
   overflow: hidden;
 }
 
@@ -405,7 +407,7 @@ const handleLogin = async () => {
 .circle {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(143, 175, 143, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--el-color-primary-rgb), 0.25) 0%, transparent 70%);
   animation: float 8s ease-in-out infinite;
 }
 
@@ -415,7 +417,7 @@ const handleLogin = async () => {
   top: -100px;
   left: -100px;
   animation-delay: 0s;
-  background: radial-gradient(circle, rgba(143, 175, 143, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--el-color-primary-rgb), 0.3) 0%, transparent 70%);
 }
 
 .circle-2 {
@@ -448,8 +450,8 @@ const handleLogin = async () => {
   width: 100%;
   height: 100%;
   background-image: 
-    linear-gradient(rgba(143, 175, 143, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(143, 175, 143, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(var(--el-color-primary-rgb), 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--el-color-primary-rgb), 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -458,11 +460,11 @@ const handleLogin = async () => {
   z-index: 10;
   width: 440px; 
   padding: 40px; 
-  background: linear-gradient(180deg, #ffffff 0%, #f8fffd 50%, #f5fcf9 100%);
+  background: linear-gradient(180deg, #ffffff 0%, var(--el-color-primary-light-9) 50%, var(--el-color-primary-light-9) 100%);
   border-radius: 16px; 
-  box-shadow: 0 20px 60px rgba(143, 175, 143, 0.15), 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 20px 60px rgba(var(--el-color-primary-rgb), 0.15), 0 8px 24px rgba(0, 0, 0, 0.06);
   animation: slideUp 0.6s ease-out;
-  border: 1px solid rgba(143, 175, 143, 0.25);
+  border: 1px solid rgba(var(--el-color-primary-rgb), 0.25);
 }
 
 @keyframes slideUp {
@@ -497,14 +499,14 @@ const handleLogin = async () => {
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 8px 24px rgba(143, 175, 143, 0.35); }
-  50% { box-shadow: 0 8px 32px rgba(143, 175, 143, 0.55); }
+  0%, 100% { box-shadow: 0 8px 24px rgba(var(--el-color-primary-rgb), 0.35); }
+  50% { box-shadow: 0 8px 32px rgba(var(--el-color-primary-rgb), 0.55); }
 }
 
 .title { 
   font-size: 26px; 
   font-weight: 600; 
-  background: linear-gradient(135deg, #00b894 0%, #00a884 50%, #009376 100%);
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, var(--el-color-primary-dark-2) 50%, var(--el-color-primary-dark-2) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -535,13 +537,13 @@ const handleLogin = async () => {
 }
 
 .tab-item.active { 
-  color: #00b894; 
-  border-bottom: 2px solid #00b894; 
+  color: var(--el-color-primary); 
+  border-bottom: 2px solid var(--el-color-primary); 
   font-weight: 500; 
 }
 
 .tab-item:hover { 
-  color: #00b894; 
+  color: var(--el-color-primary); 
 }
 
 .login-form { 
@@ -550,19 +552,19 @@ const handleLogin = async () => {
 
 /* 输入框样式 - 默认浅青绿背景，深色模式跟随主题变量（--wtfk-input-*） */
 .login-form :deep(.el-input__wrapper) {
-  background: var(--wtfk-input-bg, linear-gradient(135deg, #f8fffd 0%, #f5fcf9 100%));
+  background: var(--wtfk-input-bg, linear-gradient(135deg, var(--el-color-primary-light-9) 0%, var(--el-color-primary-light-9) 100%));
   border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--wtfk-input-border, #d4e8e0) inset;
+  box-shadow: 0 0 0 1px var(--wtfk-input-border, var(--el-color-primary-light-8)) inset;
   transition: all 0.3s;
 }
 
 .login-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px var(--wtfk-input-border-hover, #8FAF8F) inset;
-  background: var(--wtfk-input-bg-hover, linear-gradient(135deg, #ffffff 0%, #f8fffd 100%));
+  box-shadow: 0 0 0 1px var(--wtfk-input-border-hover, var(--el-color-primary-light-3)) inset;
+  background: var(--wtfk-input-bg-hover, linear-gradient(135deg, #ffffff 0%, var(--el-color-primary-light-9) 100%));
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--wtfk-input-border-focus, #00b894) inset, 0 0 10px rgba(0, 184, 148, 0.15);
+  box-shadow: 0 0 0 1px var(--wtfk-input-border-focus, var(--el-color-primary)) inset, 0 0 10px rgba(var(--el-color-primary-rgb), 0.15);
   background: var(--wtfk-input-bg-focus, linear-gradient(135deg, #ffffff 0%, #f0fffb 100%));
 }
 
@@ -576,7 +578,7 @@ const handleLogin = async () => {
 }
 
 .login-form :deep(.el-input__prefix) {
-  color: var(--wtfk-input-prefix, #8FAF8F);
+  color: var(--wtfk-input-prefix, var(--el-color-primary-light-3));
 }
 
 
@@ -619,25 +621,25 @@ const handleLogin = async () => {
 
 /* 登录按钮 - 莫兰迪绿 */
 .btn-login {
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
-  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35);
+  background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary) 100%);
+  box-shadow: 0 2px 8px rgba(var(--el-color-primary-rgb), 0.35);
 }
 
 .btn-login:hover {
-  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%);
-  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5);
+  background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary-light-3) 100%);
+  box-shadow: 0 4px 16px rgba(var(--el-color-primary-rgb), 0.5);
   transform: translateY(-1px);
 }
 
 /* 清空按钮 - 莫兰迪绿（与登录按钮一致） */
 .btn-clear {
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%);
-  box-shadow: 0 2px 8px rgba(143, 175, 143, 0.35);
+  background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary) 100%);
+  box-shadow: 0 2px 8px rgba(var(--el-color-primary-rgb), 0.35);
 }
 
 .btn-clear:hover {
-  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%);
-  box-shadow: 0 4px 16px rgba(143, 175, 143, 0.5);
+  background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary-light-3) 100%);
+  box-shadow: 0 4px 16px rgba(var(--el-color-primary-rgb), 0.5);
   transform: translateY(-1px);
 }
 
@@ -680,6 +682,10 @@ const handleLogin = async () => {
 
 .footer p {
   margin: 0;
+}
+.footer .version-text {
+  margin-top: 4px;
+  font-size: 12px;
 }
 </style>
 

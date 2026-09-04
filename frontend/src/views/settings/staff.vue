@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="staff-manage">
     <el-card>
       <template #header>
@@ -11,7 +11,7 @@
         </div>
       </template>
       
-      <el-button type="primary" @click="handleAdd" style="margin-bottom: 15px">
+      <el-button class="morandi-btn morandi-blue" @click="handleAdd" style="margin-bottom: 15px">
         新增人员
       </el-button>
       
@@ -92,8 +92,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>

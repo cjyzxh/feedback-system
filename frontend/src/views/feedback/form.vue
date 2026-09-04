@@ -1,11 +1,11 @@
-<!-- Sat Mar 21 16:31:58 CST 2026 -->
+﻿<!-- Sat Mar 21 16:31:58 CST 2026 -->
 <template>
   <div class="feedback-container">
     <el-card class="main-card" shadow="hover">
       <template #header>
         <div class="card-header">
           <span>问题反馈</span>
-          <el-button type="primary" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
@@ -20,8 +20,8 @@
           <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
-          <el-button @click="handleResetSearch">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
+          <el-button class="btn-reset" @click="handleResetSearch">重置</el-button>
           <el-button type="success" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
         </el-form-item>
       </el-form>
@@ -84,7 +84,7 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="软件版本" prop="banben">
-              <el-select v-model="form.banben" placeholder="请选择" class="full-width">
+              <el-select v-model="form.banben" placeholder="请选择" class="full-width" @change="onVersionChange">
                 <el-option label="HIS问题" value="HIS问题" />
                 <el-option label="医保接口" value="医保接口" />
                 <el-option label="其它问题" value="其它问题" />
@@ -115,7 +115,16 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="窗体" prop="chuangtimc">
-              <el-select v-model="form.chuangtimc" placeholder="请选择" class="full-width" :disabled="!form.mokuai">
+              <el-select 
+                v-model="form.chuangtimc" 
+                placeholder="请选择或输入" 
+                class="full-width" 
+                :disabled="!form.mokuai"
+                filterable
+                allow-create
+                default-first-option
+                @keyup.enter="handleFormChange"
+              >
                 <el-option v-for="f in forms" :key="f.id" :label="f.chuangtimc" :value="f.chuangtimc" />
               </el-select>
             </el-form-item>
@@ -159,7 +168,7 @@
       
             <template #footer>
         <div style="text-align: center; width: 100%;">
-          <el-button class="morandi-btn morandi-gray" @click="dialogVisible = false">取消</el-button>
+          <el-button class="morandi-btn morandi-gray btn-cancel" @click="dialogVisible = false">取消</el-button>
           <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting">保存</el-button>
         </div>
       </template>
@@ -258,6 +267,7 @@ const forms = ref<any[]>([])
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
 
+
 const searchForm = reactive({ yiyuanmc: '', mokuai: '', id: '' })
 const form = reactive({
   id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: ''
@@ -328,18 +338,59 @@ const filterHospital = (query: string, option: any) => {
   return false
 }
 
+const onVersionChange = async (banben: string) => {
+  form.mokuai = ''
+  form.chuangtimc = ''
+  forms.value = []
+  if (!banben) return
+  try {
+    const res = await api.get(`/dict/forms?module=&banben=${encodeURIComponent(banben)}`)
+    forms.value = (res?.data?.data || res?.data || res || []).map((item: any) => ({
+      id: item.id,
+      chuangtimc: item.chuangtimc || item.label
+    }))
+  } catch (err) { console.error('加载窗体失败:', err) }
+}
+
 const onModuleChange = async (module: string) => {
   form.chuangtimc = ''
   forms.value = []
   if (!module) return
   try { 
-    const res = await api.get(`/dict/forms?module=${module}`)
+    const res = await api.get(`/dict/forms?module=${module}&banben=${encodeURIComponent(form.banben || '')}`)
     // 处理后端返回的数据结构，确保字段名正确
     forms.value = (res?.data?.data || res?.data || res || []).map((item: any) => ({
       id: item.id,
       chuangtimc: item.chuangtimc || item.label
     }))
   } catch (err) { console.error('加载窗体失败:', err) }
+}
+
+// 窗体变化：如果是手动输入的新窗体，保存前先验证当前版本及模块下是否已存在
+// 窗体变化：仅手动录入后按回车才保存新窗体；从列表选择已有项不保存
+const handleFormChange = async () => {
+  const value = form.chuangtimc
+  if (!value || !form.mokuai) return
+  // 验证当前版本 + 当前模块下是否已存在相同窗体（forms 列表就是按版本+模块加载的）
+  const exists = forms.value.some((f: any) => f.chuangtimc === value)
+  if (exists) {
+    ElMessage.info('窗体「' + value + '」在【' + form.banben + ' / ' + form.mokuai + '】下已存在')
+    return
+  }
+  try {
+    await api.post('/dict/forms', {
+      banben: form.banben,
+      mokuai: form.mokuai,
+      chuangtimc: value
+    })
+    ElMessage.success('新窗体「' + value + '」已保存到【' + form.banben + ' / ' + form.mokuai + '】')
+    console.log('新窗体已保存:', value)
+    await onModuleChange(form.mokuai)
+    form.chuangtimc = value
+  } catch (err) {
+    console.error('保存窗体失败:', err)
+    ElMessage.error('保存窗体失败')
+  }
 }
 
 const handleAdd = async () => {
@@ -500,6 +551,7 @@ onMounted(() => { loadDicts(); loadData() })
 .search-form { margin-bottom: 20px; }
 .full-width { width: 100%; }
 
+
 /* 对话框 footer 按钮右对齐 */
 :deep(.el-dialog__footer) { text-align: right; }
 .dialog-footer-right { float: right; display: flex; gap: 10px; }
@@ -508,11 +560,7 @@ onMounted(() => { loadDicts(); loadData() })
 /* 莫兰迪色系按钮 */
 .morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 .morandi-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); color: #ffffff !important; }
-.morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
-.morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
-.morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
-.morandi-gray { background: linear-gradient(135deg, #A8A8A8 0%, #969696 100%) !important; }
-.morandi-gray:hover { background: linear-gradient(135deg, #B8B8B8 0%, #A8A8A8 100%) !important; }
+.morandi-btn:disabled { background: #909399 !important; color: #ffffff !important; cursor: not-allowed; transform: none; box-shadow: none; }
 .lsh-box :deep(.el-input__wrapper) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .lsh-box :deep(.el-input__inner) { color: white; font-weight: bold; }
 .priority-box { display: flex; gap: 10px; }
@@ -547,11 +595,11 @@ onMounted(() => { loadDicts(); loadData() })
 .carousel-wrapper { display: flex; align-items: center; justify-content: center; min-height: 450px; background: #f5f7fa; border-radius: 8px; overflow: hidden; }
 .carousel-image { max-width: 100%; max-height: 500px; object-fit: contain; }
 .carousel-controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; }
-.carousel-indicator { font-size: 16px; font-weight: 600; color: #409eff; min-width: 60px; }
+.carousel-indicator { font-size: 16px; font-weight: 600; color: var(--el-color-primary); min-width: 60px; }
 .carousel-thumbnails { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
 .thumbnail { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; }
-.thumbnail:hover { border-color: #409eff; }
-.thumbnail.active { border-color: #409eff; box-shadow: 0 0 8px rgba(64, 158, 255, 0.5); }
+.thumbnail:hover { border-color: var(--el-color-primary); }
+.thumbnail.active { border-color: var(--el-color-primary); box-shadow: 0 0 8px rgba(var(--el-color-primary-rgb), 0.5); }
 .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
 .carousel-actions { margin-top: 20px; }
 

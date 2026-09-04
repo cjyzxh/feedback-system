@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="layout-container">
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
@@ -146,8 +146,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="profileDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveProfile">保存</el-button>
+        <el-button class="btn-cancel" @click="profileDialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="saveProfile">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -904,7 +904,7 @@ onUnmounted(() => {
   font-weight: 600; 
   text-align: center; 
   border-bottom: 1px solid #f0f2f5; 
-  color: #00b894; 
+  color: var(--el-color-primary); 
   letter-spacing: 1px;
   background: linear-gradient(135deg, #f0fffb 0%, #ffffff 100%);
   white-space: nowrap;
@@ -921,18 +921,18 @@ onUnmounted(() => {
 .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .header { 
   height: 60px; 
-  background: linear-gradient(135deg, #ffffff 0%, #f8fffd 100%);
+  background: linear-gradient(135deg, #ffffff 0%, var(--el-color-primary-light-9) 100%);
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 0 24px; 
   border-bottom: 1px solid #e4e7ed; 
-  box-shadow: 0 2px 8px rgba(0, 184, 148, 0.08);
+  box-shadow: 0 2px 8px rgba(var(--el-color-primary-rgb), 0.08);
   position: relative;
 }
 .header-left { flex: 1; display: flex; align-items: center; }
 .collapse-btn { color: #909399; padding: 6px; border-radius: 6px; }
-.collapse-btn:hover { color: #00b894; background: #e8f5f0 !important; }
+.collapse-btn:hover { color: var(--el-color-primary); background: var(--el-color-primary-light-9) !important; }
 .header-title { 
   flex: 1;
   display: flex;
@@ -944,13 +944,13 @@ onUnmounted(() => {
   font-size: 22px; 
   font-weight: 600; 
   text-align: center;
-  background: linear-gradient(135deg, #00b894 0%, #00a884 50%, #009376 100%);
+  background: linear-gradient(135deg, var(--el-color-primary) 0%, var(--el-color-primary-dark-2) 50%, var(--el-color-primary-dark-2) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 3px;
-  text-shadow: 0 2px 4px rgba(0, 184, 148, 0.1);
+  text-shadow: 0 2px 4px rgba(var(--el-color-primary-rgb), 0.1);
   /* 考虑左侧导航栏宽度(210px)，让标题在整个页面居中 */
   /* 左侧导航栏占用210px，所以标题需要向左偏移105px（导航栏宽度的一半） */
   position: relative;
@@ -963,12 +963,12 @@ onUnmounted(() => {
   gap: 12px; 
   justify-content: flex-end;
 }
-.username-link { cursor: pointer; color: #00b894; font-weight: 500; }
-.username-link:hover { text-decoration: underline; color: #00a884; }
+.username-link { cursor: pointer; color: var(--el-color-primary); font-weight: 500; }
+.username-link:hover { text-decoration: underline; color: var(--el-color-primary-dark-2); }
 .content { flex: 1; padding: 0; overflow-y: auto; background: #f5f7fa; }
 
 /* 浅色侧边栏菜单样式 - 清新简约 */
-:deep(.el-menu) { border-right: 1px solid #e8f5f0; background: linear-gradient(180deg, #f5fcf9 0%, #f0f7f4 100%); }
+:deep(.el-menu) { border-right: 1px solid var(--el-color-primary-light-9); background: linear-gradient(180deg, var(--el-color-primary-light-9) 0%, var(--el-color-primary-light-9) 100%); }
 /* 收缩（大图标）模式菜单 */
 :deep(.el-menu--collapse) { width: 64px !important; }
 :deep(.el-menu--collapse .el-menu-item),
@@ -996,18 +996,18 @@ onUnmounted(() => {
 }
 :deep(.el-menu-item:hover),
 :deep(.el-sub-menu__title:hover) {
-  background: #e8f5f0 !important;
-  color: #00b894 !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, #d4f5e9 0%, #f5fcf9 100%) !important;
-  color: #00b894 !important;
+  background: linear-gradient(90deg, var(--el-color-primary-light-9) 0%, var(--el-color-primary-light-9) 100%) !important;
+  color: var(--el-color-primary) !important;
   font-weight: 600;
-  border-right: 3px solid #00b894;
+  border-right: 3px solid var(--el-color-primary);
 }
 /* 子菜单样式 */
 :deep(.el-sub-menu .el-menu-item) {
-  background: #edf6f2 !important;
+  background: var(--el-color-primary-light-9) !important;
   color: #606266 !important;
   font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
   height: 46px;
@@ -1015,12 +1015,12 @@ onUnmounted(() => {
   font-size: 15px;
 }
 :deep(.el-sub-menu .el-menu-item:hover) {
-  background: #e0f2eb !important;
-  color: #00b894 !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 :deep(.el-sub-menu .el-menu-item.is-active) {
-  background: #d4f5e9 !important;
-  color: #00b894 !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
   font-weight: 600;
 }
 /* 菜单图标颜色 */
@@ -1032,7 +1032,7 @@ onUnmounted(() => {
 :deep(.el-menu-item:hover .el-icon),
 :deep(.el-sub-menu__title:hover .el-icon),
 :deep(.el-menu-item.is-active .el-icon) {
-  color: #00b894 !important;
+  color: var(--el-color-primary) !important;
 }
 /* 退出按钮样式 */
 :deep(.el-button--danger) {

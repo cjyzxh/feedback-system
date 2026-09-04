@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="hospital-manage">
     <el-card class="main-card" shadow="hover">
       <template #header>
         <div class="card-header">
           <span>医院维护</span>
-          <el-button type="primary" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
@@ -13,7 +13,7 @@
           <el-input v-model="searchForm.keyword" placeholder="搜索医院" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch">搜索</el-button>
           <el-button type="success" @click="handleAdd">新增医院</el-button>
         </el-form-item>
       </el-form>
@@ -98,8 +98,8 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
+        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="handleSubmit" :loading="submitting">保存</el-button>
       </template>
     </el-dialog>
   </div>

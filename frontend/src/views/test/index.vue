@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="handle-page">
     <!-- 上部：处理问题表单 -->
     <el-card class="form-card">
@@ -129,18 +129,18 @@
             />
             <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待修改问题</el-checkbox>
             <el-checkbox v-model="viewTaolun" @change="loadList">查询待讨论</el-checkbox>
-            <el-button type="primary" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新</el-button>
+            <el-button class="morandi-btn morandi-blue" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新列表</el-button>
           </div>
           <div class="header-actions">
-            <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting" :disabled="!selected">
+            <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting">
               <el-icon><Check /></el-icon> 确认处理
             </el-button>
             <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
               <el-icon><Picture /></el-icon> 查看图片
             </el-button>
-            <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改人</el-button>
-            <el-button class="morandi-btn morandi-purple" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进人</el-button>
-            <el-button class="morandi-btn morandi-orange" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
+            <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改</el-button>
+            <el-button class="morandi-btn morandi-blue" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进</el-button>
+            <el-button class="morandi-btn morandi-red" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
           </div>
         </div>
       </template>
@@ -233,8 +233,8 @@
         <el-option v-for="u in yanfaList" :key="u.id" :label="u.xingming" :value="u.xingming" />
       </el-select>
       <template #footer>
-        <el-button @click="showDevSelect=false">取消</el-button>
-        <el-button type="primary" @click="confirmAssign">确认</el-button>
+        <el-button class="btn-cancel" @click="showDevSelect=false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="confirmAssign">确认</el-button>
       </template>
     </el-dialog>
     <!-- 分配跟进人弹窗 -->
@@ -243,8 +243,8 @@
         <el-option v-for="u in shishiList" :key="u.id" :label="u.xingming" :value="u.xingming" />
       </el-select>
       <template #footer>
-        <el-button @click="showFollowerSelect=false">取消</el-button>
-        <el-button type="primary" @click="confirmAssignFollower">确认</el-button>
+        <el-button class="btn-cancel" @click="showFollowerSelect=false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="confirmAssignFollower">确认</el-button>
       </template>
     </el-dialog>
   </div>
@@ -449,6 +449,7 @@ const viewImages = async (row: any) => {
 }
 
 const handleSubmit = async () => {
+  if (!selected.value) { ElMessage.warning('请先选择要处理的问题'); return }
   if (!form.gongcscs) { ElMessage.warning('请填写处理意见'); return }
   try {
     await ElMessageBox.confirm('确定要确认处理该问题吗？确认后问题将进入待测试状态。', '确认处理', {
@@ -537,14 +538,14 @@ onMounted(() => { loadList() })
 
 /* 复选框样式：显眼的边框和背景 */
 :deep(.el-checkbox__inner) {
-  border: 2px solid #00b894 !important;
-  background-color: #f0faf7 !important;
+  border: 2px solid var(--el-color-primary) !important;
+  background-color: var(--el-color-primary-light-9) !important;
   width: 16px !important;
   height: 16px !important;
 }
 :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background-color: #00b894 !important;
-  border-color: #00b894 !important;
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
 }
 :deep(.el-checkbox__input.is-checked .el-checkbox__inner::after) {
   border-color: #ffffff !important;
@@ -582,53 +583,18 @@ onMounted(() => { loadList() })
 }
 .morandi-btn:disabled,
 .morandi-btn.is-disabled {
-  background: #dcdfe6 !important;
-  color: #909399 !important;
+  background: #909399 !important;
+  color: #ffffff !important;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 /* 确认处理 - 莫兰迪绿（柔和、沉稳，表示完成确认） */
-.morandi-green {
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
-}
-.morandi-green:hover {
-  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
-}
-
 /* 查看图片 - 莫兰迪黄（柔和、温暖，表示查看浏览） */
-.morandi-yellow {
-  background: linear-gradient(135deg, #C9C08F 0%, #B8AF7E 100%) !important;
-}
-.morandi-yellow:hover {
-  background: linear-gradient(135deg, #D4CC9E 0%, #C9C08F 100%) !important;
-}
-
 /* 分配修改人 - 莫兰迪蓝（沉稳、专业，表示分配任务） */
-.morandi-blue {
-  background: linear-gradient(135deg, #7B8FA1 0%, #6A7E90 100%) !important;
-}
-.morandi-blue:hover {
-  background: linear-gradient(135deg, #8FA3B8 0%, #7B8FA1 100%) !important;
-}
-
 /* 分配跟进人 - 莫兰迪紫（优雅、协作，表示跟进配合） */
-.morandi-purple {
-  background: linear-gradient(135deg, #A69CAC 0%, #958B9B 100%) !important;
-}
-.morandi-purple:hover {
-  background: linear-gradient(135deg, #B5A9B8 0%, #A69CAC 100%) !important;
-}
-
 /* 待讨论 - 莫兰迪橙（温暖、活跃，表示讨论待处理） */
-.morandi-orange {
-  background: linear-gradient(135deg, #C9A87C 0%, #B8976B 100%) !important;
-}
-.morandi-orange:hover {
-  background: linear-gradient(135deg, #D4B58F 0%, #C9A87C 100%) !important;
-}
-
 .action-buttons { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; white-space: nowrap; }
 .action-buttons .el-button { flex-shrink: 0; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
@@ -670,8 +636,8 @@ onMounted(() => { loadList() })
 .carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .carousel-controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 16px; flex-shrink: 0; }
 .carousel-actions { display: flex; justify-content: center; gap: 1px; flex-shrink: 0; }
-.indicator { font-weight: 600; color: #409eff; min-width: 60px; }
-.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: #409eff; border-radius: 4px; font-size: 12px; text-align: center; flex-shrink: 0; }
+.indicator { font-weight: 600; color: var(--el-color-primary); min-width: 60px; }
+.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: var(--el-color-primary); border-radius: 4px; font-size: 12px; text-align: center; flex-shrink: 0; }
 
 /* 图片预览对话框：固定尺寸 */
 .preview-dialog :deep(.el-dialog) { width: 960px !important; height: 760px !important; display: flex; flex-direction: column; }

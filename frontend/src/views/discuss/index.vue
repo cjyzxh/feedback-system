@@ -20,8 +20,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
-          <el-button @click="handleResetSearch">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
+          <el-button class="btn-reset" @click="handleResetSearch">重置</el-button>
         </el-form-item>
       </el-form>
       

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="check-page">
     <!-- 上部：测试问题表单 -->
     <el-card class="form-card">
@@ -128,14 +128,14 @@
               style="width: 140px"
             />
             <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待测试问题</el-checkbox>
-            <el-button type="primary" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新</el-button>
+            <el-button class="morandi-btn morandi-blue" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新列表</el-button>
           </div>
           <div class="header-actions">
             <el-button class="morandi-btn morandi-green" @click="handleConfirm" :loading="submitting">
-              <el-icon><Check /></el-icon> 确认测试问题
+              <el-icon><Check /></el-icon> 确认问题
             </el-button>
-            <el-button class="morandi-btn morandi-pink" @click="handleReset">
-              <el-icon><RefreshLeft /></el-icon> 返回测试问题
+            <el-button class="morandi-btn morandi-red" @click="handleReset">
+              <el-icon><RefreshLeft /></el-icon> 返回问题
             </el-button>
             <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
               <el-icon><Picture /></el-icon> 查看图片
@@ -460,14 +460,14 @@ onMounted(() => { loadList() })
 
 /* 复选框样式：显眼的边框和背景 */
 :deep(.el-checkbox__inner) {
-  border: 2px solid #00b894 !important;
-  background-color: #f0faf7 !important;
+  border: 2px solid var(--el-color-primary) !important;
+  background-color: var(--el-color-primary-light-9) !important;
   width: 16px !important;
   height: 16px !important;
 }
 :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background-color: #00b894 !important;
-  border-color: #00b894 !important;
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
 }
 :deep(.el-checkbox__input.is-checked .el-checkbox__inner::after) {
   border-color: #ffffff !important;
@@ -500,37 +500,16 @@ onMounted(() => { loadList() })
 }
 .morandi-btn:disabled,
 .morandi-btn.is-disabled {
-  background: #dcdfe6 !important;
-  color: #909399 !important;
+  background: #909399 !important;
+  color: #ffffff !important;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 /* 确认测试问题 - 莫兰迪绿（柔和、沉稳，表示确认完成） */
-.morandi-green {
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
-}
-.morandi-green:hover {
-  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
-}
-
 /* 返回测试问题 - 莫兰迪粉（柔和、温暖，表示退回返回） */
-.morandi-pink {
-  background: linear-gradient(135deg, #C9A9A6 0%, #B89895 100%) !important;
-}
-.morandi-pink:hover {
-  background: linear-gradient(135deg, #D4B5B0 0%, #C9A9A6 100%) !important;
-}
-
 /* 查看图片 - 莫兰迪黄（柔和、温暖，表示查看浏览） */
-.morandi-yellow {
-  background: linear-gradient(135deg, #C9C08F 0%, #B8AF7E 100%) !important;
-}
-.morandi-yellow:hover {
-  background: linear-gradient(135deg, #D4CC9E 0%, #C9C08F 100%) !important;
-}
-
 .header-right { display: flex; align-items: center; gap: 12px; }
 .card-header span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .form-card { flex-shrink: 0; margin: 0; }
@@ -557,7 +536,7 @@ onMounted(() => { loadList() })
 .carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .carousel-controls { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .indicator { font-size: 14px; color: #606266; }
-.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: #409eff; border-radius: 4px; font-size: 12px; text-align: center; flex-shrink: 0; }
+.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: var(--el-color-primary); border-radius: 4px; font-size: 12px; text-align: center; flex-shrink: 0; }
 .carousel-actions { display: flex; justify-content: center; gap: 1px; flex-shrink: 0; }
 
 /* 图片预览对话框：固定尺寸 */

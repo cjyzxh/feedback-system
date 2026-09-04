@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="user-manage">
     <el-card>
       <template #header>
         <div class="card-header">
           <span>用户管理</span>
-          <el-button type="primary" @click="handleAdd">新增用户</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleAdd">新增用户</el-button>
         </div>
       </template>
 
@@ -27,8 +27,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="loadData">查询</el-button>
+          <el-button class="btn-reset" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -143,8 +143,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>

@@ -18,8 +18,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
-          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" :icon="Search" @click="handleSearch">搜索</el-button>
+          <el-button class="btn-reset" :icon="Refresh" @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -30,7 +30,7 @@
         <div class="card-header">
           <span>用户列表</span>
           <div class="header-actions">
-            <el-button type="primary" :icon="Plus" @click="handleAdd">新增用户</el-button>
+            <el-button class="morandi-btn morandi-blue" :icon="Plus" @click="handleAdd">新增用户</el-button>
             <el-button 
               type="danger" 
               :icon="Delete" 
@@ -142,8 +142,8 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" :loading="submitLoading" @click="handleSubmit">
           {{ isEdit ? '更新' : '创建' }}
         </el-button>
       </template>

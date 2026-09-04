@@ -50,9 +50,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
-          <el-button class="morandi-btn morandi-gray" @click="handleResetSearch">重置</el-button>
-          <el-button class="morandi-btn morandi-green" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询问题</el-button>
+          <el-button class="morandi-btn morandi-gray btn-reset" @click="handleResetSearch">重置条件</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
         </el-form-item>
       </el-form>
       
@@ -187,7 +187,16 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="窗体" prop="chuangtimc">
-              <el-select v-model="form.chuangtimc" placeholder="请选择" class="full-width" :disabled="!form.mokuai">
+              <el-select 
+                v-model="form.chuangtimc" 
+                placeholder="请选择或输入" 
+                class="full-width" 
+                :disabled="!form.mokuai"
+                filterable
+                allow-create
+                default-first-option
+                @keyup.enter="handleFormChange"
+              >
                 <el-option v-for="f in forms" :key="f.id" :label="f.label" :value="f.label" />
               </el-select>
             </el-form-item>
@@ -264,9 +273,9 @@
         <el-form-item label-width="0" style="margin: 0; padding: 0;">
           <div style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 3px; width: 100%; text-align: center;">
             <el-button class="morandi-btn morandi-green" style="min-width: 110px; height: 42px; padding: 0 20px;" @click="handleSubmit" :loading="submitting">
-              <el-icon><Check /></el-icon> {{ isEdit ? '更新' : '保存' }}
+              <el-icon><Check /></el-icon> {{ isEdit ? '更新问题' : '保存问题' }}
             </el-button>
-            <el-button class="morandi-btn morandi-gray" style="min-width: 110px; height: 42px; padding: 0 20px;" @click="dialogVisible = false">取消</el-button>
+            <el-button class="morandi-btn morandi-gray btn-cancel" style="min-width: 110px; height: 42px; padding: 0 20px;" @click="dialogVisible = false">返回列表</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -395,8 +404,8 @@
         </el-form-item>
         
         <div class="view-dialog-actions">
-          <el-button class="morandi-btn morandi-bright-blue" @click="viewDialogVisible = false">
-            <el-icon><Close /></el-icon> 关 闭
+          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
+            <el-icon><Back /></el-icon> 返回列表
           </el-button>
         </div>
       </el-form>
@@ -415,7 +424,7 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="nextImage"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0">
-          <el-button type="primary" @click="openImageViewer">
+          <el-button class="morandi-btn morandi-blue" @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
           </el-button>
           <el-button type="danger" @click="deleteCurrentImage">
@@ -503,6 +512,7 @@ const forms = ref<any[]>([])
 const hospitalLoading = ref(false)
 const tableData = ref<any[]>([])
 const uploadFileList = ref<any[]>([])
+
 
 // 当前登录者信息
 const currentUserName = ref('')
@@ -796,8 +806,33 @@ const onModuleChange = async (moduleName: any) => {
   form.chuangtimc = ''
   forms.value = []
   if (!moduleName) return
-  try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(moduleName)}`); forms.value = res.data.data || [] } 
+  try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(moduleName)}&banben=${encodeURIComponent(form.banben || '')}`); forms.value = res.data.data || [] } 
   catch (err) { console.error('加载窗体失败:', err) }
+}
+
+// 窗体变化：手写新窗体时，保存前验证当前版本及模块下是否已存在
+// 窗体变化：仅手动录入后按回车才保存新窗体；从列表选择已有项不保存
+const handleFormChange = async () => {
+  const value = form.chuangtimc
+  if (!value || !form.mokuai) return
+  const exists = forms.value.some((f: any) => (f.label || f.chuangtimc || '') === value)
+  if (exists) {
+    ElMessage.info('窗体「' + value + '」在【' + form.banben + ' / ' + form.mokuai + '】下已存在，无需重复添加')
+    return
+  }
+  try {
+    await axios.post('/api/dict/forms', { 
+      banben: form.banben,
+      mokuai: form.mokuai, 
+      chuangtimc: value 
+    })
+    ElMessage.success('新窗体「' + value + '」已保存到【' + form.banben + ' / ' + form.mokuai + '】')
+    await onModuleChange(form.mokuai)
+    form.chuangtimc = value
+  } catch (err) { 
+    console.error('保存窗体失败:', err) 
+    ElMessage.error('保存窗体失败')
+  }
 }
 
 // 版本变化：加载对应版本的模块，并清空模块和窗体
@@ -1117,6 +1152,7 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .search-form { margin-bottom: 20px; }
 .full-width { width: 100%; }
 
+
 /* 表格内容不换行，超出显示省略号 */
 :deep(.el-table .cell) {
   white-space: nowrap !important;
@@ -1128,13 +1164,6 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }
 .morandi-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); color: #ffffff !important; }
 .morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
-.morandi-green { background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important; }
-.morandi-green:hover { background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important; }
-.morandi-blue { background: linear-gradient(135deg, #8FA5AF 0%, #7A94A0 100%) !important; }
-.morandi-blue:hover { background: linear-gradient(135deg, #9DB3BD 0%, #8FA5AF 100%) !important; }
-.morandi-gray { background: linear-gradient(135deg, #A8A8A8 0%, #969696 100%) !important; }
-.morandi-gray:hover { background: linear-gradient(135deg, #B8B8B8 0%, #A8A8A8 100%) !important; }
-
 /* 紧急程度和售后到期日同一行，左右分布 */
 .priority-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 .priority-box { display: flex; gap: 8px; }
@@ -1162,14 +1191,11 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 /* 售后到期日显示 */
 .shouhou-date { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; height: 24px; box-sizing: border-box; line-height: 20px; }
 .shouhou-date.expired { background: #fef0f0; color: #f56c6c; border: 1px solid #fbc4c4; }
-.shouhou-date.valid { background: #ecf5ff; color: #409eff; border: 1px solid #b3d8ff; }
+.shouhou-date.valid { background: #ecf5ff; color: var(--el-color-primary); border: 1px solid #b3d8ff; }
 .view-dialog-actions { display: flex; justify-content: center; align-items: center; margin-top: 20px; width: 100%; text-align: center; }
 .view-dialog-actions .el-button { padding: 11px 36px !important; font-size: 14px !important; height: auto; line-height: 1.5; }
 
 /* 淡黄色按钮 */
-.morandi-bright-blue { background: linear-gradient(135deg, #E8D8A8 0%, #D4C08A 100%) !important; color: #5a4a2a !important; }
-.morandi-bright-blue:hover { background: linear-gradient(135deg, #F0E0B0 0%, #E0CC96 100%) !important; color: #5a4a2a !important; }
-
 .lsh-box :deep(.el-input__wrapper) { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 .lsh-box :deep(.el-input__inner) { color: white; font-weight: bold; }
 .priority-box { display: flex; gap: 8px; }
@@ -1179,7 +1205,7 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .upload-area { width: 100%; }
 .upload-icon { font-size: 28px; color: #999; }
 .upload-text { font-size: 12px; color: #999; margin-top: 8px; text-align: center; line-height: 1.6; }
-.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: #409eff; border-radius: 4px; font-size: 12px; text-align: center; }
+.viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: var(--el-color-primary); border-radius: 4px; font-size: 12px; text-align: center; }
 
 /* 测试后返回的问题行颜色：淡淡的红色 */
 :deep(.test-returned-row) {
@@ -1191,7 +1217,7 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .carousel-wrapper { display: flex; align-items: center; justify-content: center; height: 560px; background: #f5f7fa; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
 .carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .carousel-controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; flex-shrink: 0; }
-.carousel-indicator { font-size: 16px; font-weight: 600; color: #409eff; min-width: 60px; }
+.carousel-indicator { font-size: 16px; font-weight: 600; color: var(--el-color-primary); min-width: 60px; }
 .carousel-actions { margin-top: 20px; flex-shrink: 0; display: flex; justify-content: center; gap: 1px; }
 .carousel-back { margin-top: 12px; flex-shrink: 0; }
 

@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="role-manage">
     <el-card>
       <template #header>
         <div class="card-header">
           <span>角色权限管理</span>
-          <el-button type="primary" @click="handleAdd">新增角色</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleAdd">新增角色</el-button>
         </div>
       </template>
 
@@ -87,8 +87,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
+        <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>

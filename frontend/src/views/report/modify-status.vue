@@ -20,8 +20,8 @@
           <el-checkbox v-model="viewAll">查询所有人员</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
+          <el-button class="btn-reset" @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
       
@@ -63,7 +63,7 @@
         </el-table-column>
         <el-table-column label="操作" width="120" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="viewEngineerProblems(row)">查看问题</el-button>
+            <el-button class="morandi-btn morandi-blue" size="small" @click="viewEngineerProblems(row)">查看问题</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -102,7 +102,7 @@
             </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button type="primary" size="small" @click="viewProblemDetail(row)">问题详情</el-button>
+                <el-button class="morandi-btn morandi-blue" size="small" @click="viewProblemDetail(row)">问题详情</el-button>
               </template>
             </el-table-column>
           </el-table>

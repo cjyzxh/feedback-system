@@ -515,34 +515,14 @@ onMounted(() => {
 }
 .morandi-btn:disabled,
 .morandi-btn.is-disabled {
-  background: #dcdfe6 !important;
-  color: #909399 !important;
+  background: #909399 !important;
+  color: #ffffff !important;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 /* 保存 - 莫兰迪绿（柔和、沉稳，表示确认完成） */
-.morandi-green {
-  background: linear-gradient(135deg, #8FAF8F 0%, #7A9E7A 100%) !important;
-}
-.morandi-green:hover {
-  background: linear-gradient(135deg, #9DBB9D 0%, #8FAF8F 100%) !important;
-}
-
 /* 测试连接 - 莫兰迪蓝（柔和、沉稳，表示测试连接） */
-.morandi-blue {
-  background: linear-gradient(135deg, #8FA5AF 0%, #7A94A0 100%) !important;
-}
-.morandi-blue:hover {
-  background: linear-gradient(135deg, #9DB3BD 0%, #8FA5AF 100%) !important;
-}
-
 /* 重启服务 - 莫兰迪橙（柔和、温暖，表示操作提醒） */
-.morandi-orange {
-  background: linear-gradient(135deg, #C9B896 0%, #B8A57E 100%) !important;
-}
-.morandi-orange:hover {
-  background: linear-gradient(135deg, #D4C5A5 0%, #C9B896 100%) !important;
-}
 </style>

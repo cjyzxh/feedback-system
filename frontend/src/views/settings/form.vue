@@ -39,8 +39,9 @@
             <el-table-column prop="banben" label="版本" width="110" />
             <el-table-column prop="mokuai" label="模块" width="180" />
             <el-table-column prop="chuangtimc" label="窗体名称" min-width="200" />
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="220" fixed="right">
               <template #default="scope">
+                <el-button size="small" type="primary" @click="handleAdd()">新增</el-button>
                 <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
                 <el-button size="small" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
               </template>
@@ -162,12 +163,15 @@ const buildTree = () => {
           .map((mo: any) => ({
             id: 'm-' + mo.id,
             label: mo.mokuaimc,
+            banben: v,
             type: 'module',
             children: allForms.value
               .filter((f: any) => f.mokuai === mo.mokuaimc)
               .map((f: any) => ({
                 id: 'f-' + f.id,
                 label: f.chuangtimc,
+                banben: v,
+                mokuai: mo.mokuaimc,
                 type: 'form'
               }))
           }))
@@ -189,7 +193,7 @@ const applyFilter = () => {
 };
 
 // 点击树节点
-const handleNodeClick = (data: any) => {
+const handleNodeClick = async (data: any) => {
   if (data.type === 'all') {
     treeFilter.value = {};
   } else if (data.type === 'version') {
@@ -199,7 +203,12 @@ const handleNodeClick = (data: any) => {
   } else if (data.type === 'form') {
     treeFilter.value = { chuangtimc: data.label };
   }
-  applyFilter();
+  // 进入页面默认不查询列表，点击树节点时若尚未加载则加载
+  if (allForms.value.length === 0) {
+    await loadForms();
+  } else {
+    applyFilter();
+  }
 };
 
 // 树搜索
@@ -233,16 +242,25 @@ const loadForms = async () => {
   }
 };
 
-// 新增
+// 新增（版本/模块默认取当前所选树节点）
 const handleAdd = () => {
   dialogType.value = 'add';
-  formData.value = {
-    id: 0,
-    banben: 'HIS问题',
-    mokuai: '',
-    chuangtimc: ''
-  };
-  loadModulesByVersion('HIS问题');
+  const node = treeRef.value?.getCurrentNode() || null;
+  let banben = 'HIS问题';
+  let mokuai = '';
+  if (node) {
+    if (node.type === 'version') {
+      banben = node.label;
+    } else if (node.type === 'module') {
+      banben = node.banben || '';
+      mokuai = node.label;
+    } else if (node.type === 'form') {
+      banben = node.banben || '';
+      mokuai = node.mokuai || '';
+    }
+  }
+  formData.value = { id: 0, banben, mokuai, chuangtimc: '' };
+  if (banben) loadModulesByVersion(banben);
   dialogVisible.value = true;
 };
 
@@ -324,9 +342,8 @@ const loadModules = async () => {
   }
 };
 
-// 初始化
+// 初始化：默认不查询列表，仅构建树；点击树节点时才加载窗体列表
 onMounted(() => {
-  loadForms();
   loadModules();
 });
 </script>

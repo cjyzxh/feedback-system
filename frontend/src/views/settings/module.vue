@@ -38,8 +38,9 @@
           <el-table v-loading="loading" :data="modules" style="width: 100%">
             <el-table-column prop="banben" label="版本" width="120" />
             <el-table-column prop="mokuaimc" label="模块名称" min-width="200" />
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="220" fixed="right">
               <template #default="scope">
+                <el-button size="small" type="primary" @click="handleAdd()">新增</el-button>
                 <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
                 <el-button size="small" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
               </template>
@@ -132,6 +133,7 @@ const buildTree = () => {
           .map((m: any) => ({
             id: 'm-' + m.id,
             label: m.mokuaimc,
+            banben: v,
             type: 'module'
           }))
       }))
@@ -151,7 +153,7 @@ const applyFilter = () => {
 };
 
 // 点击树节点
-const handleNodeClick = (data: any) => {
+const handleNodeClick = async (data: any) => {
   if (data.type === 'all') {
     treeFilter.value = {};
   } else if (data.type === 'version') {
@@ -159,7 +161,12 @@ const handleNodeClick = (data: any) => {
   } else if (data.type === 'module') {
     treeFilter.value = { mokuaimc: data.label };
   }
-  applyFilter();
+  // 进入页面默认不查询列表，点击树节点时若尚未加载则加载
+  if (allModules.value.length === 0) {
+    await loadModules(true);
+  } else {
+    applyFilter();
+  }
 };
 
 // 树搜索
@@ -172,12 +179,12 @@ const handleTreeSearch = () => {
 };
 
 // 加载模块数据
-const loadModules = async () => {
+const loadModules = async (showList = true) => {
   loading.value = true;
   try {
     const res = await axios.get('/api/dict/modules');
     allModules.value = res.data?.data || [];
-    applyFilter();
+    if (showList) applyFilter();
     buildTree();
   } catch (error) {
     ElMessage.error('加载模块数据失败');
@@ -187,14 +194,19 @@ const loadModules = async () => {
   }
 };
 
-// 新增
+// 新增（版本默认取当前所选树节点）
 const handleAdd = () => {
   dialogType.value = 'add';
-  formData.value = {
-    id: 0,
-    banben: 'HIS问题',
-    mokuaimc: ''
-  };
+  const node = treeRef.value?.getCurrentNode() || null;
+  let banben = 'HIS问题';
+  if (node) {
+    if (node.type === 'version') {
+      banben = node.label;
+    } else if (node.type === 'module') {
+      banben = node.banben || 'HIS问题';
+    }
+  }
+  formData.value = { id: 0, banben, mokuaimc: '' };
   dialogVisible.value = true;
 };
 
@@ -257,9 +269,9 @@ const handleCurrentChange = (current: number) => {
   currentPage.value = current;
 };
 
-// 初始化
+// 初始化：默认不查询列表，仅构建树；点击树节点时才加载模块列表
 onMounted(() => {
-  loadModules();
+  loadModules(false);
 });
 </script>
 

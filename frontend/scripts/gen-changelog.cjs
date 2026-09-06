@@ -9,7 +9,8 @@ const path = require('path');
 
 const root = path.join(__dirname, '..', '..'); // 项目根 New_wtfk
 const stateFile = path.join(root, 'changelog-state.json');
-const outDir = path.join(root, 'changelog');
+// 归档规则：变更清单/升级记录统一输出到 docs/文档（用户约定，见项目根 AGENTS.md）
+const outDir = path.join(root, 'docs', '文档');
 
 // 当前版本号
 const vFile = path.join(__dirname, '..', 'src', 'version.ts');
@@ -60,8 +61,8 @@ if (fs.existsSync(historyFile)) {
   history = fs.readFileSync(historyFile, 'utf8');
 }
 
-// 该版本已记录则不重复追加（防止重复编译/测试时重复写入）
-if (!history.includes(`## v${ver}（${dateStr}`)) {
+// 该版本已记录则不重复追加（按版本号判断，防止重复编译/测试时重复写入）
+if (!history.includes(`## v${ver}（`)) {
   const entry = `## v${ver}（${dateStr}）\n\n` +
     `- 编译时间：${time}\n` +
     `- 变更文件数：${nameOnly.length}\n` +

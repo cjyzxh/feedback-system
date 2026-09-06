@@ -458,17 +458,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 
-const loading = ref(false)
-const submitting = ref(false)
-const dialogVisible = ref(false)
-const viewDialogVisible = ref(false)
-const detailImages = ref<string[]>([])
-const previewVisible = ref(false)
-const previewImages = ref<string[]>([])
-const currentIndex = ref(0)
-const isEdit = ref(false)
-const imageViewerVisible = ref(false)  // 全屏图片查看器状态
+// ============ 页面状态变量（类比 VB6 的窗体级变量） ============
+const loading = ref(false)          // 列表加载中（控制转圈动画）
+const submitting = ref(false)       // 保存提交中（防止连点两次重复提交）
+const dialogVisible = ref(false)    // 新增/编辑 对话框是否显示
+const viewDialogVisible = ref(false)// 查看 对话框是否显示
+const detailImages = ref<string[]>([])  // 查看详情里显示的图片地址列表
+const previewVisible = ref(false)   // 图片轮播预览窗口是否显示
+const previewImages = ref<string[]>([]) // 轮播预览的图片数组
+const currentIndex = ref(0)         // 轮播当前是第几张（0 起）
+const isEdit = ref(false)           // true=编辑模式，false=新增模式
+const imageViewerVisible = ref(false)  // 全屏图片查看器状态（Element Plus 自带查看器）
 
+// 轮播：上一张 / 下一张（类比 VB6 里改数组下标后重画 PictureBox）
 const prevImage = () => {
   if (currentIndex.value > 0) currentIndex.value--
 }
@@ -500,25 +502,29 @@ const deleteCurrentImage = async () => {
     if (e !== 'cancel') ElMessage.error(e.message || '删除失败')
   }
 }
+// formRef = 新增/编辑表单的引用（调用 .validate() 做必填校验）
+// uploadRef = 上传组件的引用
 const formRef = ref()
 const uploadRef = ref()
 
-const hospitals = ref<any[]>([])
-const engineers = ref<any[]>([])
-const shishiList = ref<any[]>([])
-const yanfaList = ref<any[]>([])
-const modules = ref<any[]>([])
-const forms = ref<any[]>([])
-const hospitalLoading = ref(false)
-const tableData = ref<any[]>([])
-const uploadFileList = ref<any[]>([])
+// ============ 下拉字典数据（从后端 /api/dict 加载） ============
+const hospitals = ref<any[]>([])   // 医院列表（拼音码可搜索）
+const engineers = ref<any[]>([])   // 工程师列表（字典里的工程师）
+const shishiList = ref<any[]>([])  // 实施人员列表
+const yanfaList = ref<any[]>([])   // 研发人员列表
+const modules = ref<any[]>([])     // 模块列表（随版本联动）
+const forms = ref<any[]>([])       // 窗体列表（随版本+模块联动）
+const hospitalLoading = ref(false) // 医院下拉加载中
+const tableData = ref<any[]>([])   // 列表表格数据
+const uploadFileList = ref<any[]>([]) // 图片上传列表（含已存在+待上传）
 
 
-// 当前登录者信息
-const currentUserName = ref('')
-const isAdmin = ref(false)
+// ============ 当前登录者信息（登录成功后存在 localStorage，这里读出来用） ============
+// localStorage 类比 VB6 的 SaveSetting 注册表保存：浏览器关闭再打开仍在
+const currentUserName = ref('')  // 当前登录者姓名
+const isAdmin = ref(false)       // 是否管理员
 
-// 初始化当前登录者信息
+// 从 localStorage 的 user 对象里解析出姓名和管理员标志
 const initCurrentUser = () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
@@ -536,7 +542,9 @@ const initCurrentUser = () => {
   }
 }
 
-// 判断是否可以编辑：只有待修改状态（gongchengsbz='N' shouhoubz='N' taolunbz='N'）可以编辑
+// 权限判断（类比 VB6 里按钮 .Enabled = False 的控制）
+// 可以编辑的条件：问题还在"待修改"状态（三个处理标志都还没被置 Y）
+// gongchengsbz=工程师处理标志，shouhoubz=售后/测试完成标志，taolunbz=待讨论标志
 const canEdit = (row: any) => {
   return row.gongchengsbz !== 'Y' && row.shouhoubz !== 'Y' && row.taolunbz !== 'Y'
 }
@@ -553,14 +561,15 @@ const canDelete = (row: any) => {
   return isAdmin.value || row.szcsgcs === currentUserName.value
 }
 
-// 初始化默认日期范围：一个月前到当前日期
+// 查询条件：默认查最近一个月的数据（今天是 end，一个月前是 start）
 const getDefaultDateRange = () => {
   const end = new Date()
   const start = new Date()
   start.setMonth(start.getMonth() - 1)
+  // 把 Date 对象格式化成 YYYY-MM-DD 字符串（类比 VB6 的 Format(Now, "yyyy-mm-dd")）
   const formatDate = (d: Date) => {
     const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0') // padStart 补零：1 -> "01"
     const day = String(d.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
@@ -568,18 +577,20 @@ const getDefaultDateRange = () => {
 }
 
 const defaultRange = getDefaultDateRange()
+// 列表页的查询条件（对应页面上方的搜索栏）
+// reactive = 响应式对象：改了它，页面上绑定的输入框/下拉自动跟着变（类比 VB6 文本框的 Change 联动）
 const searchForm = reactive({ 
-  yiyuanmc: '', 
-  mokuai: '', 
-  id: '', 
-  zhuangtai: '',
-  startDate: defaultRange.startDate,
-  endDate: defaultRange.endDate
+  yiyuanmc: '',      // 医院名称
+  mokuai: '',        // 模块
+  id: '',            // 问题ID
+  zhuangtai: '',     // 问题状态（待修改/待测试/已修改/待讨论）
+  startDate: defaultRange.startDate,  // 录入日期起
+  endDate: defaultRange.endDate       // 录入日期止
 })
-// 日期范围选择器的绑定值
+// 日期范围选择器的绑定值（Element Plus 的日期区间控件要一个数组）
 const dateRange = ref([defaultRange.startDate, defaultRange.endDate])
 
-// 日期范围变化处理
+// 日期范围变化：同步到 searchForm 并立即重新查询
 const handleDateChange = (val: any) => {
   if (val && val.length === 2) {
     searchForm.startDate = val[0]
@@ -590,47 +601,66 @@ const handleDateChange = (val: any) => {
   }
   handleSearch()
 }
-const viewAll = ref(false)  // 查看所有问题，默认false（只查自己跟进的）
-const selectedShishiry = ref('')  // 选中的跟进人员（查看所有问题时可用）
+const viewAll = ref(false)  // "查看所有问题"复选框：默认false（只查自己跟进的）
+const selectedShishiry = ref('')  // 勾选查看所有后，可再选一个跟进人员来筛
 
-// 判断当前用户是否有"查看非本人数据"权限
+// computed = 计算属性：依赖的值变了它自动重算（类比 VB6 里由其它控件事件刷新的 Label）
+// 判断当前用户是否有"查看非本人数据"权限（角色表里的 viewOthers 字段）
 const canViewOthers = computed(() => {
   return parseInt(localStorage.getItem('viewOthers') || '0') === 1
 })
 
-// 判断当前用户是否是客户用户（基于userType字段）
+// ============ 客户用户相关（客户=医院端操作员，用户管理里绑定了医院和跟进人） ============
+// 判断当前用户是否是客户用户（userType 字段 = '客户'）
 const isCustomerUser = computed(() => {
   const u = JSON.parse(localStorage.getItem('user') || '{}')
   return u.userType === '客户'
 })
 
-// 获取客户用户的医院名称
+// 客户绑定的医院名称（新增问题时自动填进"医院名称"，且不允许改）
 const customerHospital = computed(() => {
   const u = JSON.parse(localStorage.getItem('user') || '{}')
   return u.hospital || ''
 })
 
-// 获取客户用户的跟进人员
+// 客户绑定的跟进人员（新增问题时自动填进"跟进人员"，且不允许改）
 const customerFollower = computed(() => {
   const u = JSON.parse(localStorage.getItem('user') || '{}')
   return u.follower || ''
 })
 
+// ============ 新增/编辑问题的表单数据 ============
+// 字段与数据库 feedback 表一一对应（拼音缩写是历史遗留命名，见下）
 const form = reactive({
-  id: 0, banben: 'HIS问题', yiyuanmc: '', shishiry: '', mokuai: '', chuangtimc: '', xggcs: '', jingjicd: '一般', wentism: '', shouzhongcs: '', shouhoucs: '', shcsgcs: '', cssj: null as any, lvrusj: null as any, xgsj: null as any
+  id: 0,               // 问题ID（0=还没保存过）
+  banben: 'HIS问题',   // 软件版本：HIS问题/医保接口/其它问题
+  yiyuanmc: '',        // 医院名称
+  shishiry: '',        // 跟进人员（实施人员）
+  mokuai: '',          // 模块
+  chuangtimc: '',      // 窗体名称
+  xggcs: '',           // 工程师（修改人员）
+  jingjicd: '一般',    // 紧急程度：一般/急/紧急
+  wentism: '',         // 问题说明
+  shouzhongcs: '',     // 售后（测试）说明
+  shouhoucs: '',       // 处理意见（售后处理）
+  shcsgcs: '',         // 反馈人（提交问题的人）
+  cssj: null as any,   // 测试时间
+  lvrusj: null as any, // 录入时间
+  xgsj: null as any    // 修改时间
 })
 
-// 售后到期日
-const shouhouDaoqiRi = ref('')
-const isShouhouExpired = computed(() => {
+// ============ 售后到期日（xt_ConfigServer 表的 SYQ 字段） ============
+// 选择医院后显示：未过期=蓝字，已过期=红字
+const shouhouDaoqiRi = ref('')   // 当前选中医院的售后到期日（yyyy-MM-dd）
+const isShouhouExpired = computed(() => {  // 是否已过期（今天 0 点与到期日比）
   if (!shouhouDaoqiRi.value) return false
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)   // 只保留日期，时间清零，避免时分干扰比较
   const expireDate = new Date(shouhouDaoqiRi.value)
-  return expireDate < today
+  return expireDate < today    // 到期日 < 今天 => 已过期
 })
 
-// 医院选择变化时查询售后到期日
+// 医院下拉变化 -> 查询该医院售后到期日（encodeURIComponent 把中文转成URL安全编码）
 const onHospitalChange = async (val: string) => {
   if (!val) {
     shouhouDaoqiRi.value = ''
@@ -650,6 +680,9 @@ const onHospitalChange = async (val: string) => {
   }
 }
 
+// ============ 表单必填校验规则（Element Plus 表单校验） ============
+// trigger: 'change'=下拉改变时校验；'blur'=输入框失去焦点时校验
+// 类比 VB6：保存前逐个 If 判断必填项，这里声明式写在 rules 里
 const rules = {
   banben: [{ required: true, message: '请选择软件版本', trigger: 'change' }],
   yiyuanmc: [{ required: true, message: '请选择医院', trigger: 'change' }],
@@ -663,7 +696,8 @@ const rules = {
 
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
-// 格式化日期
+// 格式化日期为 yyyy-MM-dd HH:mm:ss（类比 VB6 的 Format(Now, "yyyy-MM-dd hh:mm:ss")）
+// 数据库存的时间是 ISO 字符串，前端展示统一转成这个格式
 const formatDate = (date: any) => {
   if (!date) return '-'
   const d = new Date(date)
@@ -676,11 +710,11 @@ const formatDate = (date: any) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-// 计算问题状态
-// 待修改: gongchengsbz='N' shouhoubz='N' taolunbz='N'
-// 待测试: gongchengsbz='Y' shouhoubz='N' taolunbz='N'
-// 已修改: gongchengsbz='Y' shouhoubz='Y' taolunbz='N'
-// 待讨论: taolunbz='Y'
+// 计算问题状态：由三个标志位组合推导（Y=是，N=否）
+//   待修改: 工程师未处理(工程=Y 测试完成(售后=Y 讨论=Y 即待讨论
+//   待测试: 工程师已改(gongchengsbz='Y')，但还没测试(shouhoubz='N')
+//   已修改: 工程师已改(gongchengsbz='Y') 且测试已完成(shouhoubz='Y')
+//   待讨论: 标记了讨论(taolunbz='Y')，优先级最高
 const getProblemStatus = (row: any) => {
   if (row.taolunbz === 'Y') return '待讨论'
   if (row.gongchengsbz === 'Y' && row.shouhoubz === 'Y') return '已修改'
@@ -700,7 +734,7 @@ const getStatusType = (status: string) => {
   }
 }
 
-// 行颜色：测试后返回的问题（gongchengsbz='N' 且 cssj 不为空）显示为淡淡的红色
+// 行颜色：测试后"打回"的问题（工程师标志被重置为 N 且有过测试时间）整行淡红色，提醒处理人
 const getTableRowClassName = ({ row }: { row: any }) => {
   if (row.gongchengsbz === 'N' && row.cssj) {
     return 'test-returned-row'
@@ -708,6 +742,7 @@ const getTableRowClassName = ({ row }: { row: any }) => {
   return ''
 }
 
+// 医院下拉远程搜索（输入关键词才请求，支持拼音码）
 const searchHospitals = async (query: string) => {
   if (!query) return
   hospitalLoading.value = true
@@ -718,6 +753,7 @@ const searchHospitals = async (query: string) => {
   finally { hospitalLoading.value = false }
 }
 
+// 一次性加载全部医院（用于编辑时回显下拉）
 const loadHospitals = async () => {
   if (hospitals.value.length > 0) return
   try {
@@ -726,6 +762,8 @@ const loadHospitals = async () => {
   } catch (err) { console.error('加载医院失败:', err) }
 }
 
+// 并行加载四个下拉字典（Promise.all = 同时发4个请求，等全部完成）
+// 类比 VB6：相当于同时开了4个异步请求，全部返回后才继续
 const loadDicts = async () => {
   try {
     const [e, m, s, y] = await Promise.all([
@@ -742,30 +780,34 @@ const loadDicts = async () => {
   } catch (err) { console.error('字典加载失败:', err) }
 }
 
+// ============ 核心：加载问题列表 ============
+// 关键：不同身份的人查到的数据范围不同（客户只看自己，员工看自己跟进的）
 const loadData = async () => {
   loading.value = true
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
-  const currentUserType = user?.userType || '内部员工'
-  const currentUserHospital = user?.hospital || ''
+  const currentUserType = user?.userType || '内部员工'   // 身份：客户 / 内部员工
+  const currentUserHospital = user?.hospital || ''       // 客户绑定的医院
   
+  // 组装查询参数：undefined 的字段后端会忽略（不参与过滤）
   const params: any = { 
     page: pagination.page, 
     pageSize: pagination.pageSize, 
     yiyuanmc: searchForm.yiyuanmc || undefined, 
     mokuai: searchForm.mokuai || undefined, 
     id: searchForm.id || undefined,
-    startDate: searchForm.startDate || undefined,
-    endDate: searchForm.endDate || undefined,
-    zhuangtai: searchForm.zhuangtai || undefined
+    startDate: searchForm.startDate || undefined,   // 录入日期起
+    endDate: searchForm.endDate || undefined,       // 录入日期止
+    zhuangtai: searchForm.zhuangtai || undefined    // 问题状态
   }
   
-  // 客户用户：只查询该客户的问题（yiyuanmc = 当前用户的hospital）
+  // ① 客户用户：强制只查本医院的问题（医院的查询条件被覆盖，客户改不了）
   if (currentUserType === '客户' && currentUserHospital) {
     params.yiyuanmc = currentUserHospital
   } else {
-    // 内部员工：不勾选"查看所有问题"时，只查询当前操作员跟进的问题（shishiry=当前登录者）
-    // 勾选"查看所有问题"时，如果选择了跟进人员则查询所选人员，否则查询全部
+    // ② 内部员工：
+    //   不勾"查看所有问题" -> 只查自己跟进的问题（shishiry=当前登录者）
+    //   勾了"查看所有问题" -> 可选跟进人员过滤；不选就是全部
     if (!viewAll.value) {
       params.shishiry = currentUserName
     } else if (selectedShishiry.value) {
@@ -775,19 +817,22 @@ const loadData = async () => {
   
   try {
     const res = await axios.get('/api/feedback', { params })
-    const data = res.data?.data || res.data || res
+    const data = res.data?.data || res.data || res  // 兼容不同返回结构
+    // 兼容字段别名：后端可能返回 hospital/module/engineer，前端统一成 yiyuanmc/mokuai/xggcs
     tableData.value = (data?.list || []).map((item: any) => ({
       ...item,
       yiyuanmc: item.yiyuanmc || item.hospital,
       mokuai: item.mokuai || item.module,
       xggcs: item.xggcs || item.engineer
     }))
-    pagination.total = data?.total || 0
+    pagination.total = data?.total || 0  // 总条数（分页用）
   } catch (err) { console.error('加载列表失败:', err) }
   finally { loading.value = false }
 }
 
+// 点"查询"：回到第一页再加载
 const handleSearch = () => { pagination.page = 1; loadData() }
+// 点"重置条件"：把搜索栏清回默认（日期=最近一个月，其余为空）
 const handleResetSearch = () => { 
   const defaultRange = getDefaultDateRange()
   searchForm.yiyuanmc = ''
@@ -802,24 +847,28 @@ const handleResetSearch = () => {
   handleSearch()
 }
 
+// 模块下拉变化 -> 按 [版本+模块] 加载对应的窗体列表（联动）
 const onModuleChange = async (moduleName: any) => {
-  form.chuangtimc = ''
+  form.chuangtimc = ''   // 清空已选的窗体
   forms.value = []
   if (!moduleName) return
   try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(moduleName)}&banben=${encodeURIComponent(form.banben || '')}`); forms.value = res.data.data || [] } 
   catch (err) { console.error('加载窗体失败:', err) }
 }
 
-// 窗体变化：手写新窗体时，保存前验证当前版本及模块下是否已存在
-// 窗体变化：仅手动录入后按回车才保存新窗体；从列表选择已有项不保存
+// 窗体输入变化处理：支持"手写新窗体"功能
+// 关键点：只有手动录入新名字（列表里不存在）时才会触发保存到数据库；
+//         从下拉列表选择已有项不会重复添加（change 事件不区分，靠 exists 判断拦截）
 const handleFormChange = async () => {
   const value = form.chuangtimc
   if (!value || !form.mokuai) return
+  // 判断当前输入的名字在本版本+模块下是否已存在
   const exists = forms.value.some((f: any) => (f.label || f.chuangtimc || '') === value)
   if (exists) {
     ElMessage.info('窗体「' + value + '」在【' + form.banben + ' / ' + form.mokuai + '】下已存在，无需重复添加')
     return
   }
+  // 不存在 -> 保存为新窗体（写进窗体表，下次下拉就能直接选了）
   try {
     await axios.post('/api/dict/forms', { 
       banben: form.banben,
@@ -827,7 +876,7 @@ const handleFormChange = async () => {
       chuangtimc: value 
     })
     ElMessage.success('新窗体「' + value + '」已保存到【' + form.banben + ' / ' + form.mokuai + '】')
-    await onModuleChange(form.mokuai)
+    await onModuleChange(form.mokuai)  // 刷新窗体下拉（新项出现在列表里）
     form.chuangtimc = value
   } catch (err) { 
     console.error('保存窗体失败:', err) 
@@ -835,7 +884,8 @@ const handleFormChange = async () => {
   }
 }
 
-// 版本变化：加载对应版本的模块，并清空模块和窗体
+// 版本下拉变化 -> 加载该版本下的模块列表，同时清空已选的模块/窗体
+// 形成三级联动：版本 -> 模块 -> 窗体
 const onVersionChange = async (banben: string) => {
   form.mokuai = ''
   form.chuangtimc = ''
@@ -848,9 +898,10 @@ const onVersionChange = async (banben: string) => {
   } catch (err) { console.error('加载模块失败:', err) }
 }
 
+// 点击"新增问题"：打开空表单，并按登录者身份自动填默认值
 const handleAdd = async () => {
-  isEdit.value = false
-  // 获取当前登录者信息
+  isEdit.value = false  // 标记为新增模式
+  // 获取当前登录者信息（姓名/医院/跟进人/身份）
   const userStr = localStorage.getItem('user')
   let currentUser = ''
   let userHospital = ''
@@ -870,22 +921,24 @@ const handleAdd = async () => {
     currentUser = localStorage.getItem('username') || ''
   }
   
+  // 重置表单为初始值
   form.id = 0
-  form.banben = 'HIS问题'
+  form.banben = 'HIS问题'   // 版本默认 HIS问题
   shouhouDaoqiRi.value = ''  // 清空售后到期日
-  // 如果是客户用户（userType === '客户'），自动填充医院、跟进人员、工程师，并设为只读
+  // 客户用户：医院/跟进人/工程师 全部取用户管理里绑定的值（页面里这几个下拉是只读的）
   if (userType === '客户') {
     form.yiyuanmc = userHospital
     form.shishiry = userFollower
-    form.xggcs = userFollower  // 工程师默认绑定为跟进人员
+    form.xggcs = userFollower  // 工程师默认绑定为跟进人员（客户不用自己选工程师）
   } else {
+    // 内部员工：跟进人员默认为当前登录者本人
     form.yiyuanmc = ''
     form.shishiry = currentUser  // 跟进人员默认为当前登录者
     form.xggcs = ''
   }
   form.mokuai = ''
   form.chuangtimc = ''
-  form.jingjicd = '一般'
+  form.jingjicd = '一般'   // 紧急程度默认"一般"
   form.wentism = ''
   form.shouzhongcs = ''
   form.shouhoucs = ''
@@ -893,30 +946,33 @@ const handleAdd = async () => {
   form.cssj = null
   uploadFileList.value = []
   forms.value = []
-  dialogVisible.value = true
+  dialogVisible.value = true  // 弹出新增对话框
   
   // 加载默认版本对应的模块
   onVersionChange('HIS问题')
 }
 
+// 查看问题详情：把整行数据塞进 form（只读展示），再加载该问题的图片
 const handleView = async (row: any) => {
+  // JSON 深拷贝：避免直接改表格行数据影响列表
   const rowCopy = JSON.parse(JSON.stringify(row))
-  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
+  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital  // 字段名兼容
   rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
   rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
-  Object.assign(form, rowCopy)
+  Object.assign(form, rowCopy)  // 把行的所有字段复制到 form
   detailImages.value = []
   try {
     const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
+      // 兼容字符串数组和对象数组，统一转成可访问的图片URL
       detailImages.value = imgs.map((img: any) => {
         const name = typeof img === 'string' ? img : (img.filename || img.name)
         return `/api/feedback/uploads/${name}`
       })
     }
   } catch (err) { console.error('加载图片失败:', err) }
-  viewDialogVisible.value = true
+  viewDialogVisible.value = true  // 打开查看对话框
 }
 
 const handleViewImage = (url: string) => {
@@ -931,6 +987,7 @@ const getJingjiType = (level: string) => {
   return 'info'
 }
 
+// 编辑问题：先校验权限（只有待修改状态可编辑），再填充表单
 const handleEdit = async (row: any) => {
   // 权限验证：只有待修改状态的问题才能编辑
   if (!canEdit(row)) {
@@ -987,6 +1044,7 @@ const handleEdit = async (row: any) => {
   dialogVisible.value = true
 }
 
+// 删除问题：二次确认（ElMessageBox.confirm 弹窗）后再调后端接口
 const handleDelete = async (row: any) => {
   // 权限验证：只有待修改状态且是反馈人本人或管理员才能删除
   if (!canDelete(row)) {
@@ -1001,13 +1059,14 @@ const handleDelete = async (row: any) => {
   } catch (err: any) { if (err !== 'cancel') ElMessage.error(err.message || '删除失败') }
 }
 
-// 编辑对话框中预览图片 - 使用轮播
+// ============ 图片相关操作 ============
+// 编辑对话框中点预览：把所有图片放进轮播，定位到当前张
 const handlePreview = (file: any) => {
   previewImages.value = uploadFileList.value.map(f => f.url)
   currentIndex.value = previewImages.value.findIndex(url => url === file.url)
   previewVisible.value = true
 }
-// 编辑对话框中删除单张图片 - 带确认提示
+// 编辑对话框中删除单张图片 - 带确认提示（先删后端文件，再删本地列表项）
 const handleRemove = async (file: any, fileList: any) => {
   try {
     await ElMessageBox.confirm('确定要删除当前图片吗？', '提示', { type: 'warning' })
@@ -1025,7 +1084,7 @@ const handleRemove = async (file: any, fileList: any) => {
   }
 }
 
-// 粘贴图片
+// 支持 Ctrl+V 直接粘贴剪贴板里的图片到上传列表
 const handlePaste = (event: ClipboardEvent) => {
   const items = event.clipboardData?.items
   if (!items) return
@@ -1040,7 +1099,7 @@ const handlePaste = (event: ClipboardEvent) => {
   }
 }
 
-// 查看图片
+// 列表里点"查看图片"图标：加载该问题的所有图片并打开轮播
 const viewImages = async (row: any) => {
   try {
     const res = await axios.get(`/api/feedback/images/${row.id}`)
@@ -1057,19 +1116,21 @@ const viewImages = async (row: any) => {
   previewVisible.value = true
 }
 
+// ============ 核心：保存（新增或更新） ============
 const handleSubmit = async () => {
   try {
-    await formRef.value.validate()
+    await formRef.value.validate()  // 先过必填校验，不过直接抛错到 catch
     submitting.value = true
     
-    const data = { ...form }
+    const data = { ...form }  // 浅拷贝表单（避免直接改 form）
     if (!isEdit.value) {
-      data.shouzhongbz = 'Y'
-      data.gongchengsbz = 'N'
+      // 新增时才初始化这些状态字段（编辑时保持数据库里的原值不动）
+      data.shouzhongbz = 'Y'    // 售后标志：先置Y（问题已受理）
+      data.gongchengsbz = 'N'   // 工程师处理标志：初始未处理
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : null
-      data.szcsgcs = user?.realName || user?.username || localStorage.getItem('username') || ''
-      data.FanKuiQD = user?.userType || '内部员工'
+      data.szcsgcs = user?.realName || user?.username || localStorage.getItem('username') || ''  // 反馈人=当前登录者
+      data.FanKuiQD = user?.userType || '内部员工'  // 反馈渠道=登录者的用户类型
     }
     
     let savedFeedback = null

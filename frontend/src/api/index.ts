@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { getToken, clearToken } from '@/utils/auth'
 
 // 创建 axios 实例
 // 类似于 VB6 的 WinHTTP 或 XMLHTTP 对象
@@ -12,8 +13,8 @@ const instance: AxiosInstance = axios.create({
 // ========== 请求拦截器 ==========
 // 发送请求前自动添加 Token
 instance.interceptors.request.use((config) => {
-  // 从 localStorage 获取 token
-  const token = localStorage.getItem('token')
+  // 读取 token（sessionStorage 优先，其次 localStorage）
+  const token = getToken()
   // 如果有 token，添加到请求头 Authorization 中
   if (token) { config.headers.Authorization = 'Bearer ' + token }
   return config
@@ -25,7 +26,7 @@ instance.interceptors.response.use((response) => response, (error) => {
   // 如果是 401 未授权（Token过期或无效），并且当前不在登录页
   if (error.response?.status === 401 && router.currentRoute.value.path !== '/login') {
     // 清除本地存储的 token 和用户信息
-    localStorage.removeItem('token')
+    clearToken()
     localStorage.removeItem('user')
     // 提示用户重新登录
     ElMessage.warning('登录已过期，请重新登录')
@@ -35,7 +36,8 @@ instance.interceptors.response.use((response) => response, (error) => {
   return Promise.reject(error)
 })
 
-// 基础 HTTP 请求方法封装
+// 基础 HTTP 请求方法封装（页面里所有 axios.get/post/put/delete 实际都走这里）
+// 统一自动带 token、统一处理 401，页面代码不用重复写
 const api = {
   get(url: string, config?: AxiosRequestConfig): Promise<any> { return instance.get(url, config) },
   post(url: string, data?: any, config?: AxiosRequestConfig): Promise<any> { return instance.post(url, data, config) },
@@ -43,7 +45,7 @@ const api = {
   delete(url: string, config?: AxiosRequestConfig): Promise<any> { return instance.delete(url, config) }
 }
 
-// ========== 认证相关 API ==========
+// ========== 认证相关 API（登录/退出/取用户信息） ==========
 export const authApi = {
   // 用户登录
   login(data: any): Promise<any> { return api.post('/auth/login', data) },
@@ -53,7 +55,7 @@ export const authApi = {
   getUserInfo(): Promise<any> { return api.get('/auth/userInfo') }
 }
 
-// ========== 用户管理 API ==========
+// ========== 用户管理 API（对应后端 /api/user 接口） ==========
 export const userApi = {
   // 获取用户列表
   getList(params: any): Promise<any> { return api.get('/user', { params }) },
@@ -67,7 +69,7 @@ export const userApi = {
   delete(id: number): Promise<any> { return api.delete('/user/' + id) }
 }
 
-// ========== 角色管理 API ==========
+// ========== 角色管理 API（对应后端 /api/roles 接口） ==========
 export const roleApi = {
   // 获取角色列表
   getList(params: any): Promise<any> { return api.get('/roles', { params }) },

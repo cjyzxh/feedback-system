@@ -7,15 +7,20 @@ import { Feedback } from './feedback.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
 
+// 业务服务层（类比 VB6 的业务类 .cls：Controller 负责接请求，Service 负责干实事）
 @Injectable()
 export class FeedbackService {
   constructor(
+    // @InjectRepository 注入操作 yw_wentilb 表的"仓库对象"
+    // Repository = TypeORM 的数据访问层，类比 VB6 里封装好的 ADODB.Recordset 操作类
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
-    private configService: DatabaseConfigService,
+    private configService: DatabaseConfigService,  // 读上传目录配置等
   ) {}
 
-  // 创建问题反馈 - ID自增，以ID为准
+  // 创建问题反馈（POST /api/feedback）
+  // create() = 在内存里组装一条新记录，save() = 真正写库
+  // 注意：lvrusj（录入时间）在这里统一用 new Date() 后端生成，不让前端传
   async create(dto: CreateFeedbackDto): Promise<Feedback> {
     try {
       const feedback = this.feedbackRepository.create({
@@ -85,11 +90,12 @@ export class FeedbackService {
         where.xggcs = eng;
       }
       
-      // 按状态筛选（优先级高于单个字段筛选）
-      // 待修改: gongchengsbz='N' shouhoubz='N' taolunbz='N'
-      // 待测试: gongchengsbz='Y' shouhoubz='N' taolunbz='N'
-      // 已修改: gongchengsbz='Y' shouhoubz='Y' taolunbz='N'
-      // 待讨论: taolunbz='Y'
+      // ===== 按"状态"筛选（选了状态下拉时，这里优先，单字段条件全部跳过） =====
+      // 状态的本质是三个标志位(Y/N)的组合：
+      //   待修改: 工程师未处理(gongchengsbz='N') + 未测试(shouhoubz='N') + 非讨论(taolunbz='N')
+      //   待测试: 工程师已改(gongchengsbz='Y') + 未测试(shouhoubz='N') + 非讨论
+      //   已修改: 工程师已改(gongchengsbz='Y') + 测试完成(shouhoubz='Y') + 非讨论
+      //   待讨论: taolunbz='Y'（最高优先级，只看这一个标志）
       if (zhuangtai) {
         switch (zhuangtai) {
           case 'daixiugai':
@@ -126,24 +132,30 @@ export class FeedbackService {
         }
       }
 
-      // 时间范围查询（默认按 lvrusj 录入时间，可通过 dateField 指定为 xgsj 处理时间）
+      // ===== 时间范围查询 =====
+      // dateField 决定按哪个时间字段过滤：
+      //   问题列表/问题处理页 -> lvrusj（录入时间）
+      //   问题测试页           -> xgsj（处理时间）
+      // Between(a, b) = SQL 的 BETWEEN 范围查询
       const queryDateField = dateField || 'lvrusj';
       if (startDate && endDate) {
         const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
+        start.setHours(0, 0, 0, 0);        // 起：当天 0 点
         const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+        end.setHours(23, 59, 59, 999);     // 止：当天 23:59:59.999（含全天）
         where[queryDateField] = Between(start, end);
       } else if (startDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
-        where[queryDateField] = Between(start, new Date());
+        where[queryDateField] = Between(start, new Date());  // 只有开始日期：到今天
       } else if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        where[queryDateField] = Between(new Date('1900-01-01'), end);
+        where[queryDateField] = Between(new Date('1900-01-01'), end);  // 只有结束日期：从最早到今天
       }
       
+      // findAndCount = 查列表 + 同时数总数（一次出两个结果，分页用）
+      // order id DESC = 新问题排前面；skip/take = SQL 的 OFFSET/FETCH 分页
       const [list, total] = await this.feedbackRepository.findAndCount({
         where,
         order: { id: 'DESC' },
@@ -193,7 +205,8 @@ export class FeedbackService {
         throw new NotFoundException(`问题 ID ${id} 不存在`);
       }
       
-      // 直接合并字段并保存，避免update方法的类型问题
+      // 直接合并字段并保存（dto 里传了哪个字段就改哪个，没传的不动）
+      // 这样处理页只传 {gongchengsbz:'Y'} 就能只改状态位，不影响其它字段
       if (dto.banben !== undefined) feedback.banben = dto.banben;
       if (dto.yiyuanmc || dto.hospital) feedback.yiyuanmc = dto.yiyuanmc || dto.hospital;
       if (dto.shishiry !== undefined) feedback.shishiry = dto.shishiry;
@@ -213,7 +226,7 @@ export class FeedbackService {
       if (dto.shcsgcs !== undefined) feedback.shcsgcs = dto.shcsgcs;
       if (dto.cssj !== undefined) feedback.cssj = dto.cssj;
       
-      feedback.xgsj = new Date();
+      feedback.xgsj = new Date();  // 每次更新自动刷新"修改时间"
       
       const saved = await this.feedbackRepository.save(feedback);
       console.log('更新成功 ID:', saved.id);
@@ -264,10 +277,14 @@ export class FeedbackService {
     }
   }
 
-  // 获取待处理、待测试和测试返回问题数量（用于消息提醒）
+  // 获取待处理/待测试/测试返回问题数量（前端每10秒轮询一次，右下角弹提醒用）
+  // 三种提醒：
+  //   待处理(pending)   : 分给当前工程师处理的问题
+  //   待测试(test)      : 分给当前操作员测试的问题
+  //   测试返回(returned): 测试不过退回工程师的问题（红色特别提醒）
   async getReminderCount(currentUser: string): Promise<{ pendingCount: number; testCount: number; returnedCount: number; pendingList: any[]; testList: any[]; returnedList: any[] }> {
     try {
-      // 待处理问题：gongchengsbz='N' 且 xggcs=当前登录者
+      // 待处理问题：gongchengsbz='N' 且 xggcs=当前登录者（我的待办）
       const pendingList = await this.feedbackRepository.find({
         where: { gongchengsbz: 'N', xggcs: currentUser },
         order: { lvrusj: 'DESC' },
@@ -281,8 +298,9 @@ export class FeedbackService {
         take: 10
       });
 
-      // 测试后返回的问题：gongchengsbz='N' 且 xggcs=当前登录者 且 有测试记录（shouhoucs有值或cssj有值）
-      // 这类问题是测试不通过被返回给工程师重新处理的，需要特别提醒（红色）
+      // 测试后返回的问题：从待处理里再筛出"被测试打回过"的
+      // 判断依据：有测试结果(shouhoucs) 或 有测试时间(cssj) 或 有测试人(shcsgcs)
+      // 这类问题需要红色特别提醒
       const returnedList = pendingList.filter((item: any) => {
         return (item.shouhoucs && item.shouhoucs.trim() !== '') || 
                (item.cssj && item.cssj !== null) ||

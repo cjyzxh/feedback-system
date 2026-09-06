@@ -229,31 +229,34 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 
-const list = ref<any[]>([])
-const selected = ref<any>(null)
-const submitting = ref(false)
-const viewAll = ref(false)  // 查询所有待测试问题，默认false（只查自己的）
+// ============ 页面状态变量 ============
+const list = ref<any[]>([])      // 待测试问题列表
+const selected = ref<any>(null)  // 当前选中的问题行
+const submitting = ref(false)    // 提交中（防重复点击）
+const viewAll = ref(false)  // "查看所有问题"复选框：默认false（只查自己跟进负责测试的）
 
-// 时间条件：默认开始日期为一年前，结束日期为当前日期
+// 时间条件：默认查最近一年（测试页按处理时间 xgsj 过滤）
 const getDefaultStartDate = () => {
   const date = new Date()
   date.setFullYear(date.getFullYear() - 1)
-  return date.toISOString().split('T')[0]
+  return date.toISOString().split('T')[0]  // 去年今天
 }
 const getDefaultEndDate = () => {
-  return new Date().toISOString().split('T')[0]
+  return new Date().toISOString().split('T')[0]  // 今天
 }
 
 const startDate = ref(getDefaultStartDate())
 const endDate = ref(getDefaultEndDate())
 
-// 判断当前用户是否有"查看非本人数据"权限
+// 判断当前用户是否有"查看非本人数据"权限（角色表 viewOthers）
 const canViewOthers = computed(() => {
   return parseInt(localStorage.getItem('viewOthers') || '0') === 1
 })
 
+// 选中行高亮（淡蓝）
 const getRowClass = ({ row }: { row: any }) => selected.value?.id === row.id ? 'selected-row' : ''
 
+// 紧急程度 -> 标签颜色（danger=红，warning=橙，info=灰）
 const getJingjiType = (type: string) => {
   if (type === '紧急') return 'danger'
   if (type === '急') return 'warning'
@@ -272,16 +275,20 @@ const formatDate = (date: any) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
+// ============ 上方详情表单（点击列表行后填充） ============
+// shouhoucs = 测试结果（测试员填写：通过内容 或 返回原因）
 const form = reactive({
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any
 })
 
+// ============ 核心：加载待测试问题列表 ============
+// 本页显示"待测试"的问题：工程师已处理完(gongchengsbz='Y') 但还没测试(shouhoubz='N')
 const loadList = async () => {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
-  const params: any = { gongchengsbz: 'Y', shouhoubz: 'N' }  // 处理=是，售后=否（待测试）
+  const params: any = { gongchengsbz: 'Y', shouhoubz: 'N' }  // 固定条件：处理=是，售后=否
   
-  // 时间范围条件（问题测试页按 xgsj 处理时间查询）
+  // 时间范围条件（问题测试页按 xgsj 修改/处理时间查询，与处理页的 lvrusj 不同）
   if (startDate.value) params.startDate = startDate.value
   if (endDate.value) params.endDate = endDate.value
   params.dateField = 'xgsj'
@@ -289,7 +296,7 @@ const loadList = async () => {
   // 获取当前登录者名称
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
   
-  // 不打勾：只查询跟进人员为当前登录者的待测试数据
+  // 不打勾"查看所有"：只查跟进人员（shishiry）=当前登录者的待测试数据
   if (!viewAll.value && currentUserName) {
     params.shishiry = currentUserName
   }
@@ -302,7 +309,7 @@ const loadList = async () => {
   } catch (err) { console.error('加载列表失败', err) }
 }
 
-// 刷新：清空上面表单数据，重新加载列表
+// 刷新：清空上方表单（只清界面文本，不动数据库）并重新加载列表
 const handleRefresh = () => {
   selected.value = null
   Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null })
@@ -310,9 +317,10 @@ const handleRefresh = () => {
   loadList()
 }
 
+// 点击列表行 -> 把问题数据填到上方表单，并查有无图片
 const handleRowClick = async (row: any) => {
   selected.value = row
-  const rowCopy = JSON.parse(JSON.stringify(row))
+  const rowCopy = JSON.parse(JSON.stringify(row))  // 深拷贝
   Object.assign(form, rowCopy)
   // 查询该问题是否有图片
   try {
@@ -325,11 +333,12 @@ const handleRowClick = async (row: any) => {
   }
 }
 
-const previewVisible = ref(false)
-const previewImages = ref<string[]>([])
-const currentIndex = ref(0)
+// ============ 图片查看 ============
+const previewVisible = ref(false)  // 轮播预览窗口是否显示
+const previewImages = ref<string[]>([])  // 轮播图片数组
+const currentIndex = ref(0)        // 当前第几张
 const imageViewerVisible = ref(false)  // 全屏图片查看器状态
-const hasImages = ref(false)  // 当前选中问题是否有图片
+const hasImages = ref(false)  // 当前选中问题是否有图片（控制查看图片按钮可用性）
 
 // 打开全屏图片查看器（支持鼠标滚轮缩放、拖拽、全屏）
 const openImageViewer = () => {
@@ -350,7 +359,8 @@ const viewImages = async (row: any) => {
   } catch (err) { console.error("加载图片失败", err) }
 }
 
-// 确认测试问题
+// ============ 核心：确认测试（测试通过） ============
+// 成功后：shouhoubz='Y'（测试完成）=> 问题状态变为"已修改"，从本页消失
 const handleConfirm = async () => {
   if (submitting.value) return  // 防止重复点击
   if (!form.id) { ElMessage.warning('请先从下方列表选择一条记录'); return }
@@ -374,7 +384,8 @@ const handleConfirm = async () => {
     const user = userStr ? JSON.parse(userStr) : null
     const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
     
-    // 保存测试结果到shouhoucs，修改shouhoubz=Y，修改shcsgcs=当前操作员，保存cssj=当前时间
+    // 保存的内容：测试结果=shouhoucs、测试完成标志=shouhoubz='Y'、
+    //           测试人=shcsgcs（当前操作员）、测试时间=cssj（当前时间）
     const updateData: any = {
       shouhoucs: form.shouhoucs,
       shouhoubz: 'Y',
@@ -384,17 +395,18 @@ const handleConfirm = async () => {
     
     await axios.put('/api/feedback/' + form.id, updateData)
     ElMessage.success('测试确认成功')
-    handleReset()
+    handleReset()  // 清空表单
     loadList()
   } catch (err) { ElMessage.error('提交失败') }
   finally { submitting.value = false }
 }
 
-// 返回测试问题（退回工程师重新处理）
+// ============ 核心：返回测试（测试不过，退回工程师） ============
+// 关键：只改 gongchengsbz='N' 让问题回到"待修改"；shouzhongcs（测试说明）保留数据库原值
 const handleReset = async () => {
   if (submitting.value) return  // 防止重复点击
   if (!form.id) {
-    // 没有选中记录，直接重置表单
+    // 没有选中记录：本函数兼当"清空表单"用（确认测试成功后也调它）
     selected.value = null
     Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null })
     return
@@ -402,7 +414,7 @@ const handleReset = async () => {
   
   submitting.value = true  // 立即设置提交状态，防止重复点击
   
-  // 返回问题前必须填写测试结果
+  // 返回问题前必须填写测试结果（也就是返回原因，方便工程师看到为什么被打回）
   if (!form.shouhoucs || !form.shouhoucs.trim()) {
     ElMessage.warning('请先填写测试结果（返回原因）')
     submitting.value = false
@@ -426,8 +438,9 @@ const handleReset = async () => {
     const user = userStr ? JSON.parse(userStr) : null
     const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
     
-    // 返回测试问题：gongchengsbz=N（退回工程师），shouhoucs=测试结果（返回原因），shcsgcs=当前操作员，cssj=当前时间
-    // 注意：shouzhongcs（测试说明）保留数据库中的值，只清空界面显示
+    // 返回：gongchengsbz='N'（问题回到工程师待处理）、shouhoucs=返回原因、
+    //       shcsgcs=当前操作员、cssj=当前时间（记录这次测试打回）
+    // 注意：shouzhongcs（测试说明）数据库值不动，只清界面显示
     const updateData: any = {
       gongchengsbz: 'N',
       shouhoucs: form.shouhoucs || '',

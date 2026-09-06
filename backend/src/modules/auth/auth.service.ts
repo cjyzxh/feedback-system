@@ -26,6 +26,60 @@ export class AuthService {
   // 类似于 VB6 的全局变量或 Dictionary 对象
   private codeStore: Map<string, { code: string; expireTime: number }> = new Map();
 
+  // 存储图片验证码的临时容器（codeId -> 验证码内容 + 过期时间）
+  private captchaStore: Map<string, { code: string; expireTime: number }> = new Map();
+
+  // 生成4位随机图片验证码（去掉易混淆字符 I/O/0/1，保证清晰可辨）
+  private generateCaptchaCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  // 生成 SVG 图片验证码（不依赖第三方包，手写 SVG 渲染）
+  createCaptcha(): { codeId: string; svg: string } {
+    const code = this.generateCaptchaCode();
+    const codeId = 'cap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    // 5 分钟后过期
+    this.captchaStore.set(codeId, { code, expireTime: Date.now() + 5 * 60 * 1000 });
+
+    const width = 120;
+    const height = 40;
+    const colors = ['#409eff', '#f56c6c', '#67c23a', '#e6a23c', '#8a5cf6'];
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+    // 背景
+    svg += `<rect width="${width}" height="${height}" fill="#f2f3f5"/>`;
+    // 干扰线（5条）
+    for (let i = 0; i < 5; i++) {
+      const x1 = (Math.random() * width).toFixed(0);
+      const y1 = (Math.random() * height).toFixed(0);
+      const x2 = (Math.random() * width).toFixed(0);
+      const y2 = (Math.random() * height).toFixed(0);
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#c9cdd4" stroke-width="1"/>`;
+    }
+    // 噪点（25个）
+    for (let i = 0; i < 25; i++) {
+      const x = (Math.random() * width).toFixed(0);
+      const y = (Math.random() * height).toFixed(0);
+      svg += `<circle cx="${x}" cy="${y}" r="1" fill="#909399"/>`;
+    }
+    // 4个字符（随机颜色、随机上下偏移、随机旋转）
+    for (let i = 0; i < code.length; i++) {
+      const x = 16 + i * 26;
+      const y = 22 + Math.floor(Math.random() * 10);
+      const rotate = (Math.random() * 40 - 20).toFixed(0);
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      svg += `<text x="${x}" y="${y}" fill="${color}" font-size="24" font-weight="bold" font-family="Arial, sans-serif" transform="rotate(${rotate} ${x} ${y})">${code[i]}</text>`;
+    }
+    svg += '</svg>';
+
+    return { codeId, svg };
+  }
+
   // 用户名/密码登录
   async login(loginDto: LoginDto): Promise<{ token: string; user: Omit<User, 'password'> }> {
     const { username, password } = loginDto;
@@ -80,7 +134,26 @@ export class AuthService {
 
   // 发送短信验证码
   async sendCode(sendCodeDto: SendCodeDto): Promise<void> {
-    const { phone } = sendCodeDto;
+    const { phone, codeId, captchaCode } = sendCodeDto;
+    
+    // 0. 校验图片验证码（必须先通过，才能发短信）
+    if (!codeId || !captchaCode) {
+      throw new UnauthorizedException('请输入图片验证码');
+    }
+    const captchaInfo = this.captchaStore.get(codeId);
+    if (!captchaInfo) {
+      throw new UnauthorizedException('图片验证码不存在或已过期');
+    }
+    if (captchaInfo.expireTime < Date.now()) {
+      this.captchaStore.delete(codeId);
+      throw new UnauthorizedException('图片验证码已过期，请刷新后重试');
+    }
+    // 不区分大小写比对
+    if (captchaInfo.code.toUpperCase() !== captchaCode.trim().toUpperCase()) {
+      throw new UnauthorizedException('图片验证码错误');
+    }
+    // 验证通过后立即作废（一次性）
+    this.captchaStore.delete(codeId);
     
     // 1. 验证手机号格式
     const phoneReg = /^1[3-9]\d{9}$/;
@@ -180,9 +253,9 @@ export class AuthService {
     // 6. 清除已使用的验证码
     this.codeStore.delete(phone);
     
-    // 7. 生成 JWT Token
+    // 7. 生成 JWT Token（手机号登录有效期为6小时，与前端约定一致）
     const payload = { sub: user.id, username: user.username, role: user.role };
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, { expiresIn: '6h' });
     
     // 8. 返回用户信息（不含密码）
     const { password: _, ...userInfo } = user;

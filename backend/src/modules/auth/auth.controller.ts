@@ -46,6 +46,21 @@ export class AuthController {
   }
 
   // ======================================================
+  // 获取图片验证码（获取短信验证码前必须先通过它）
+  // 地址：GET /api/auth/captcha
+  // 返回：codeId（验证码标识）+ svg（图片内容）
+  // ======================================================
+  @Get('captcha')
+  async getCaptcha() {
+    const result = this.authService.createCaptcha();
+    return {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
+  }
+
+  // ======================================================
   // 发送短信验证码
   // 地址：POST /api/auth/send-code
   // ======================================================

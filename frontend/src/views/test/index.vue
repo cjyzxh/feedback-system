@@ -256,25 +256,28 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 
-const list = ref<any[]>([])
-const selected = ref<any>(null)
-const submitting = ref(false)
-const viewAll = ref(false)  // 查询所有待修改问题，默认false（只查自己的）
-const viewTaolun = ref(false)  // 查询待讨论，默认false（查taolunbz=N）
+// ============ 页面状态变量 ============
+const list = ref<any[]>([])      // 待处理问题列表
+const selected = ref<any>(null)  // 当前选中的问题行（点行选中）
+const submitting = ref(false)    // 提交处理中（防重复点击）
+const viewAll = ref(false)  // "查看所有问题"复选框：默认false（只查当前工程师的）
+const viewTaolun = ref(false)  // "查看待讨论"复选框：默认false（只查 taolunbz=N 的）
 
-// 时间条件：默认开始日期为一年前，结束日期为当前日期
+// 时间条件：默认查最近一年（处理页按录入时间 lvrusj 过滤）
+// toISOString().split('T')[0] = 把 Date 转成 "2025-09-06" 这种日期字符串（取T前面的部分）
 const getDefaultStartDate = () => {
   const date = new Date()
-  date.setFullYear(date.getFullYear() - 1)
+  date.setFullYear(date.getFullYear() - 1)  // 去年今天
   return date.toISOString().split('T')[0]
 }
 const getDefaultEndDate = () => {
-  return new Date().toISOString().split('T')[0]
+  return new Date().toISOString().split('T')[0]  // 今天
 }
 const startDate = ref(getDefaultStartDate())
 const endDate = ref(getDefaultEndDate())
 
-// 判断当前用户是否有"查看非本人数据"权限
+// 判断当前用户是否有"查看非本人数据"权限（角色表 viewOthers 字段）
+// 这里暂未用于强制过滤（列表权限主要在 loadList 里按 xggcs 控制）
 const canViewOthers = computed(() => {
   return parseInt(localStorage.getItem('viewOthers') || '0') === 1
 })
@@ -292,10 +295,10 @@ const formatDate = (date: any) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-// 行颜色：选中行蓝色，测试后返回的问题淡淡的红色
+// 行颜色：选中行=淡蓝；测试打回的问题=淡红（提醒工程师重新处理）
 const getRowClass = ({ row }: { row: any }) => {
   if (selected.value?.id === row.id) return 'selected-row'
-  // 测试后返回的问题：gongchengsbz='N' 且 cssj 不为空
+  // 测试后返回的问题：工程师标志被重置为 N 且有过测试时间
   if (row.gongchengsbz === 'N' && row.cssj) return 'test-returned-row'
   return ''
 }
@@ -306,32 +309,36 @@ const getJingjiType = (type: string) => {
   return 'info'
 }
 
+// ============ 上方详情表单（点击列表行后填充） ============
+// gongcscs = 工程师处理意见（处理人填写的核心字段）
 const form = reactive({
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, lvrusj: null as any
 })
 
-// 空表单模板，用于刷新时清空
+// 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, lvrusj: null
 }
 
+// ============ 核心：加载待处理问题列表 ============
+// 本页只显示"待处理"的问题：gongchengsbz='N'（工程师还没处理完）
 const loadList = async () => {
   const userStr = localStorage.getItem('user')
   const user = userStr ? JSON.parse(userStr) : null
-  const params: any = { gongchengsbz: 'N' }
+  const params: any = { gongchengsbz: 'N' }  // 固定条件：未处理
   
-  // 待讨论查询条件：打勾查taolunbz='Y'，否则查taolunbz='N'
+  // 待讨论查询：打勾查 taolunbz='Y'（待讨论的问题）；不打勾查 taolunbz='N'（正常待处理）
   params.taolunbz = viewTaolun.value ? 'Y' : 'N'
   
   // 时间范围条件（问题处理页按 lvrusj 录入时间查询）
   if (startDate.value) params.startDate = startDate.value
   if (endDate.value) params.endDate = endDate.value
-  params.dateField = 'lvrusj'
+  params.dateField = 'lvrusj'  // 告诉后端按哪个时间字段过滤
   
   // 获取当前登录者名称（多种方式兜底）
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
   
-  // 不打勾：只查询研发人员为当前登录者的数据
+  // 不打勾"查看所有"：只查工程师（xggcs）=当前登录者的数据（每人只看到分给自己的问题）
   if (!viewAll.value && currentUserName) {
     params.xggcs = currentUserName
   }
@@ -344,19 +351,20 @@ const loadList = async () => {
   } catch (err) { console.error('加载列表失败', err) }
 }
 
-// 刷新：清空上面表单数据，重新加载列表
+// 刷新：清空上方详情表单和选中状态，重新加载列表
 const handleRefresh = () => {
   selected.value = null
-  Object.assign(form, emptyForm)
+  Object.assign(form, emptyForm)  // 表单恢复初始值（只清界面，不动数据库）
   hasImages.value = false
   loadList()
 }
 
+// 点击列表行 -> 把该问题数据填到上方表单（详情区），并查有无图片
 const handleRowClick = async (row: any) => {
   selected.value = row
-  const rowCopy = JSON.parse(JSON.stringify(row))
-  Object.assign(form, rowCopy)
-  // 查询该问题是否有图片
+  const rowCopy = JSON.parse(JSON.stringify(row))  // 深拷贝，避免改到列表行
+  Object.assign(form, rowCopy)  // 整行字段复制进 form（模板上自动显示）
+  // 查询该问题是否有图片（决定"查看图片"按钮是否可用）
   try {
     const res = await axios.get("/api/feedback/images/" + row.id)
     const imgs = res.data
@@ -371,31 +379,36 @@ const previewVisible = ref(false)
 const hasImages = ref(false)  // 当前选中问题是否有图片
 
 
+// ============ 分配修改人 / 分配跟进人 ============
 const userList = ref([])
-const yanfaList = ref([])  // 研发人员列表
-const shishiList = ref([])  // 实施人员列表
-const showDevSelect = ref(false)
-const selectedDev = ref('')
-const showFollowerSelect = ref(false)  // 分配跟进人弹窗
-const selectedFollower = ref('')  // 选中的跟进人
+const yanfaList = ref([])   // 研发人员列表（category 含 '1'）——"分配修改"选人用
+const shishiList = ref([])  // 实施人员列表（category 含 '0'）——"分配跟进"选人用
+const showDevSelect = ref(false)       // 分配修改人弹窗是否显示
+const selectedDev = ref('')            // 选中的研发人员
+const showFollowerSelect = ref(false)  // 分配跟进人弹窗是否显示
+const selectedFollower = ref('')       // 选中的跟进人
 
+// 加载员工列表，并按 category 拆成研发/实施两组
 const loadUsers = async () => {
   try {
     const res = await axios.get('/api/staff')
     userList.value = res.data?.data?.list || []
-    // category字段: 包含"1"=研发人员, 包含"0"=实施人员
+    // category 字段（字符串）：包含 '1' = 研发人员；包含 '0' = 实施人员
+    // filter 类比 VB6 的 For 循环 + If 判断，把满足条件的项挑出来
     yanfaList.value = userList.value.filter((u: any) => String(u.category || '').includes('1'))
     shishiList.value = userList.value.filter((u: any) => String(u.category || '').includes('0'))
   } catch(e) { console.error(e) }
 }
 
+// 点"分配修改"：打开研发人员选择弹窗（默认带出当前工程师）
 const handleAssign = async () => {
   if (!selected.value) { alert("请选择一个问题"); return; }
-  if (yanfaList.value.length === 0) await loadUsers()
+  if (yanfaList.value.length === 0) await loadUsers()  // 首次打开先加载人员
   selectedDev.value = selected.value.xggcs || ''
   showDevSelect.value = true
 }
 
+// 确认分配修改人：调专用接口 /assign-dev 更新工程师字段
 const confirmAssign = async () => {
   if (!selectedDev.value) { alert("请选择研发人员"); return; }
   axios.put("/api/feedback/" + selected.value.id + "/assign-dev", {xggcs: selectedDev.value})
@@ -403,7 +416,7 @@ const confirmAssign = async () => {
     .catch(() => alert("分配失败"))
 }
 
-// 分配跟进人（完善功能）
+// 点"分配跟进"：打开跟进人员选择弹窗（默认带出当前跟进人）
 const handleAssignFollower = async () => {
   if (!selected.value) { ElMessage.warning('请先选择一个问题'); return }
   if (shishiList.value.length === 0) await loadUsers()
@@ -411,7 +424,7 @@ const handleAssignFollower = async () => {
   showFollowerSelect.value = true
 }
 
-// 确认分配跟进人
+// 确认分配跟进人：普通更新接口，只改 shishiry 字段
 const confirmAssignFollower = async () => {
   if (!selectedFollower.value) { alert("请选择实施人员"); return; }
   try {
@@ -425,6 +438,7 @@ const confirmAssignFollower = async () => {
 }
 
 
+// ============ 图片查看 ============
 const previewImages = ref<string[]>([])
 const currentIndex = ref(0)
 const imageViewerVisible = ref(false)  // 全屏图片查看器状态
@@ -448,6 +462,8 @@ const viewImages = async (row: any) => {
   } catch (err) { console.error("加载图片失败", err) }
 }
 
+// ============ 核心：确认处理（工程师填完处理意见后提交） ============
+// 成功后该问题 gongchengsbz 置 'Y'，从本页列表消失、进入"待测试"
 const handleSubmit = async () => {
   if (!selected.value) { ElMessage.warning('请先选择要处理的问题'); return }
   if (!form.gongcscs) { ElMessage.warning('请填写处理意见'); return }
@@ -474,7 +490,7 @@ const handleSubmit = async () => {
   finally { submitting.value = false }
 }
 
-// 待讨论（确认后修改taolunbz为Y）
+// 放入待讨论：把问题的 taolunbz 置为 'Y'（工程师觉得要开会讨论）
 const handleDiscuss = () => {
   if (!selected.value) { ElMessage.warning('请先选择一个问题'); return }
   ElMessageBox.confirm('确定要把该问题放入待讨论中吗？', '待讨论确认', {
@@ -492,7 +508,7 @@ const handleDiscuss = () => {
   }).catch(() => {})
 }
 
-// 返回待处理：将 gongchengsbz 修改为 N，将 taolunbz 修改为 N
+// 返回待处理：把 gongchengsbz 和 taolunbz 都置 N（重新回到工程师待处理状态）
 const handleReturnToPending = async (row: any) => {
   try {
     await ElMessageBox.confirm('确定要将该问题返回待处理吗？返回后工程师可以重新处理。', '返回待处理', {

@@ -160,6 +160,7 @@ import { ElMessage, ElNotification } from 'element-plus'
 import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFilled, Position, Grid, Document, Key, Bell, TrendCharts, Fold, Expand } from '@element-plus/icons-vue'
 import { authApi } from '@/api'
 import axios from 'axios'
+import { clearToken } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -858,7 +859,7 @@ const handleMenuSelect = (index: string) => {
 }
 
 const logout = () => {
-  localStorage.removeItem('token')
+  clearToken()  // 清除 token（sessionStorage + localStorage 两处都清）
   localStorage.removeItem('username')
   localStorage.removeItem('roleName')
   localStorage.removeItem('user')

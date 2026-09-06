@@ -37,16 +37,19 @@
       <el-form ref="formRef" :model="loginForm" class="login-form">
         <el-form-item v-if="loginType === 'account'">
           <el-input 
+            ref="usernameInputRef"
             v-model="loginForm.username" 
             placeholder="请输入用户名或ID号" 
             size="large" 
             :prefix-icon="User"
             clearable
+            @keyup.enter="handleUsernameEnter"
           />
         </el-form-item>
         
         <el-form-item v-if="loginType === 'account'">
           <el-input 
+            ref="passwordInputRef"
             v-model="loginForm.password" 
             type="password" 
             placeholder="请输入密码" 
@@ -59,23 +62,48 @@
         
         <el-form-item v-if="loginType === 'sms'">
           <el-input 
+            ref="phoneInputRef"
             v-model="loginForm.phone" 
             placeholder="请输入手机号" 
             size="large" 
             :prefix-icon="Iphone"
             maxlength="11"
             clearable
+            @keyup.enter="handlePhoneEnter"
           />
+        </el-form-item>
+        
+        <el-form-item v-if="loginType === 'sms'">
+          <div class="captcha-wrapper">
+            <el-input 
+              ref="captchaInputRef"
+              v-model="loginForm.captcha" 
+              placeholder="请输入图片验证码" 
+              size="large" 
+              maxlength="4"
+              @input="onCaptchaInput"
+              @keyup.enter="sendCode"
+            />
+            <img 
+              :src="captchaImg" 
+              alt="图片验证码" 
+              class="captcha-img" 
+              title="看不清？点击刷新" 
+              @click="loadCaptcha" 
+            />
+          </div>
         </el-form-item>
         
         <el-form-item v-if="loginType === 'sms'">
           <div class="code-input-wrapper">
             <el-input 
+              ref="codeInputRef"
               v-model="loginForm.code" 
               placeholder="请输入验证码" 
               size="large" 
               :prefix-icon="Message"
               maxlength="6"
+              :disabled="!captchaVerified"
               @keyup.enter="handleLogin"
             />
             <el-button 
@@ -111,12 +139,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Iphone, Message, Monitor, Delete } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { APP_VERSION } from '../../version'
+import { setToken, clearToken } from '@/utils/auth'
 
 const router = useRouter()
 const appVersion = APP_VERSION
@@ -125,12 +154,53 @@ const loginType = ref('account')
 const countdown = ref(0)
 const timer = ref(null)
 const hasSentCode = ref(false)
+
+// 输入框引用（用于回车后焦点跳转）
+const usernameInputRef = ref(null)
+const passwordInputRef = ref(null)
+const phoneInputRef = ref(null)
+const captchaInputRef = ref(null)
+const codeInputRef = ref(null)
 const loginForm = reactive({
   username: '',
   password: '',
   phone: '',
-  code: ''
+  code: '',
+  captcha: ''   // 图片验证码（获取短信验证码前必须填写）
 })
+
+// 图片验证码：codeId 是后端标识，captchaImg 是图片地址（点击可刷新）
+const captchaId = ref('')
+const captchaImg = ref('')
+// 图片验证码是否已验证通过：false 时短信验证码输入框锁定
+// 点【获取验证码】时先验证图片验证码，通过后置 true 并解锁
+const captchaVerified = ref(false)
+
+// 加载图片验证码（进入验证码登录/发送失败后自动刷新）
+const loadCaptcha = async () => {
+  try {
+    const res = await fetch('/api/auth/captcha')
+    if (res.ok) {
+      const data = await res.json()
+      if (data.code === 200 && data.data) {
+        captchaId.value = data.data.codeId
+        // SVG 字符串转 data URL 显示
+        captchaImg.value = 'data:image/svg+xml;base64,' + btoa(data.data.svg)
+      }
+    }
+  } catch (e) {
+    console.warn('加载图片验证码失败:', e)
+  }
+  // 换了新图片 = 未验证，短信验证码输入框重新锁定
+  captchaVerified.value = false
+}
+
+// 用户修改图片验证码内容时：若之前已验证，视为重新未验证（重新锁定）
+const onCaptchaInput = () => {
+  if (captchaVerified.value) {
+    captchaVerified.value = false
+  }
+}
 
 // Logo 图片：莫兰迪模式用绿色 logo，浅色/深色模式用原蓝色 logo
 const logoSrc = computed(() => {
@@ -157,7 +227,36 @@ const switchLoginType = (type) => {
   loginForm.password = ''
   loginForm.phone = ''
   loginForm.code = ''
+  loginForm.captcha = ''
   hasSentCode.value = false
+  captchaVerified.value = false
+  // 切到验证码登录时，自动加载图片验证码
+  if (type === 'sms') {
+    loadCaptcha()
+  }
+}
+
+// 账号登录：用户名回车 → 校验非空 → 密码框获得焦点
+const handleUsernameEnter = () => {
+  if (!loginForm.username.trim()) {
+    ElMessage.warning('请输入用户名')
+    return
+  }
+  passwordInputRef.value?.focus()
+}
+
+// 验证码登录：手机号回车 → 校验格式 → 图片验证码框获得焦点
+const handlePhoneEnter = () => {
+  if (!loginForm.phone) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  const phoneReg = /^1[3-9]\d{9}$/
+  if (!phoneReg.test(loginForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
+  captchaInputRef.value?.focus()
 }
 
 const handleClear = () => {
@@ -167,7 +266,9 @@ const handleClear = () => {
   } else {
     loginForm.phone = ''
     loginForm.code = ''
+    loginForm.captcha = ''
     hasSentCode.value = false
+    captchaVerified.value = false
     if (timer.value) {
       clearInterval(timer.value)
       timer.value = null
@@ -189,13 +290,27 @@ const sendCode = async () => {
     return
   }
   
+  // 图片验证码：必须有标识且已输入内容
+  if (!captchaId.value || !loginForm.captcha) {
+    ElMessage.warning('请输入图片验证码')
+    return
+  }
+  if (loginForm.captcha.trim().length !== 4) {
+    ElMessage.warning('图片验证码为4位字符')
+    return
+  }
+  
   try {
       const response = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ phone: loginForm.phone })
+        body: JSON.stringify({
+          phone: loginForm.phone,
+          codeId: captchaId.value,
+          captchaCode: loginForm.captcha.trim()
+        })
       })
       
       let result;
@@ -205,6 +320,8 @@ const sendCode = async () => {
         if (result.code === 200) {
           ElMessage.success('验证码已发送')
           hasSentCode.value = true
+          // 图片验证码验证通过：解锁短信验证码输入框
+          captchaVerified.value = true
           countdown.value = 60
           timer.value = setInterval(() => {
             countdown.value--
@@ -213,6 +330,12 @@ const sendCode = async () => {
               timer.value = null
             }
           }, 1000)
+          // 图片验证码已一次性使用，清空输入（保留旧图；再次获取时后端会要求重新验证）
+          loginForm.captcha = ''
+          // 验证通过：短信验证码输入框自动获得焦点
+          nextTick(() => {
+            codeInputRef.value?.focus()
+          })
         } else {
           ElMessage.error(result.message || '发送验证码失败')
         }
@@ -223,6 +346,9 @@ const sendCode = async () => {
         } catch (jsonError) {
           ElMessage.error(`发送验证码失败 (${response.status})`)
         }
+        // 后端校验不通过（如图片验证码错误），刷新图片验证码让用户重新输入
+        loginForm.captcha = ''
+        loadCaptcha()
       }
     } catch (error) {
       console.error('发送验证码失败:', error)
@@ -268,7 +394,8 @@ const handleLogin = async () => {
           permissions: []
         }
         
-        localStorage.setItem('token', 'super-admin-token-' + Date.now())
+        // 内置超管：token 存 sessionStorage（浏览器关闭即失效，属于"其它登录"）
+        setToken('super-admin-token-' + Date.now(), 'account')
         localStorage.setItem('user', JSON.stringify(superAdminUser))
         localStorage.setItem('username', '系统管理员')
         localStorage.setItem('roleName', '超级管理员')
@@ -324,7 +451,9 @@ const handleLogin = async () => {
       const user = res.data?.user;
       
       if (token) {
-        localStorage.setItem('token', token)
+        // 按登录方式存 token：
+        // sms → localStorage + 记录时间（6小时有效）；account → sessionStorage（浏览器关闭失效）
+        setToken(token, loginType.value)
         localStorage.setItem('user', JSON.stringify(user || {}))
         localStorage.setItem('username', user?.realName || user?.username || '')
         localStorage.setItem('roleName', user?.roleName || user?.role || '用户')
@@ -589,6 +718,31 @@ const handleLogin = async () => {
 
 .code-input-wrapper .el-input { 
   flex: 1; 
+}
+
+/* 图片验证码：输入框 + 图片一行排列 */
+.captcha-wrapper {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-wrapper .el-input {
+  flex: 1;
+}
+
+.captcha-img {
+  width: 120px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #f2f3f5;
+}
+
+.captcha-img:hover {
+  border-color: var(--el-color-primary, #409eff);
 }
 
 .code-button { 

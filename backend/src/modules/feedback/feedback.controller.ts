@@ -10,8 +10,10 @@ import { DatabaseConfigService } from '../config/config.service';
 // 全局上传路径变量，应用启动时初始化
 let globalUploadPath = './uploads';
 
-// 问题反馈控制器
-// 访问路径前缀：/api/feedback
+// 控制器（类比 VB6 的窗体事件过程：前端请求 -> 这里接 -> 调 Service 处理）
+// @Controller('feedback') = 本控制器所有路由都以 /api/feedback 开头
+// 注意路由声明顺序有讲究：具体路径（upload/images/reminder）要放在
+// ':id' 通配路径前面，否则 ':id' 会把 upload 当成 id 吞掉
 @Controller('feedback')
 export class FeedbackController {
   constructor(
@@ -22,20 +24,21 @@ export class FeedbackController {
     globalUploadPath = this.configService.getUploadPath();
   }
 
-  // 上传图片 - 图片命名格式: {id}-{序号}.{扩展名}
-  // POST /api/feedback/upload
+  // 上传图片（POST /api/feedback/upload）
+  // FileInterceptor = multer 中间件，自动接收 multipart/form-data 里的 file 文件
+  // 先存到临时文件，下面再改名成 {id}-{序号}.{扩展名} 的正式命名
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        // 确保目录存在
+        // 确保目录存在（上传目录可在系统设置里自定义）
         if (!fs.existsSync(globalUploadPath)) {
           fs.mkdirSync(globalUploadPath, { recursive: true });
         }
         cb(null, globalUploadPath);
       },
       filename: (req, file, cb) => {
-        cb(null, file.originalname);
+        cb(null, file.originalname);  // 先按原名落盘，下面再改名
       },
     }),
   }))

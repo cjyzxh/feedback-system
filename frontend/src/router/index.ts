@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import type { App } from 'vue'
+import { getToken, clearToken, isPhoneTokenExpired } from '@/utils/auth'
 
 import Layout from '@/views/layout/index.vue'
 import Login from '@/views/login/index.vue'
@@ -17,8 +18,13 @@ import DiscussList from '@/views/discuss/index.vue'
 import Report from '@/views/report/index.vue'
 import ModifyStatusReport from '@/views/report/modify-status.vue'
 
-// 路由配置
-// 类似于 VB6 的菜单配置，定义每个路径对应的页面组件
+// ============ 路由配置（类比 VB6 的菜单配置：每个菜单项对应一个窗体） ============
+// meta 里的字段：
+//   title        = 菜单/页面标题
+//   hidden       = true 表示不出现在侧边栏（如登录页、问题详情页）
+//   permission   = 菜单权限标识（角色勾选的权限里包含它才能访问）
+//   requireAdmin = true 表示仅管理员可访问（用户管理/角色管理）
+//   requiresAuth = true 表示必须登录才能进（挂在父路由上，子路由都继承）
 const routes: RouteRecordRaw[] = [
   // 登录页面（不需要认证）
   { path: '/login', name: 'Login', component: Login, meta: { title: '登录', hidden: true } },
@@ -69,8 +75,22 @@ const router = createRouter({ history: createWebHistory(), routes })
 // 路由守卫（页面跳转前执行）
 // 类似于 VB6 的 Form_Load 或权限验证
 router.beforeEach((to, from, next) => {
-  // 从 localStorage 中获取 token
-  const token = localStorage.getItem('token')
+  // ===== 手机号登录 token 6小时有效期检查 =====
+  // 每次页面跳转（含刷新、重新打开）都检查一次：
+  // 手机号登录的 token 超过6小时 → 清除登录信息，必须重新登录
+  if (isPhoneTokenExpired()) {
+    clearToken()
+    localStorage.removeItem('user')
+    localStorage.removeItem('username')
+    localStorage.removeItem('roleName')
+    localStorage.removeItem('permissions')
+    localStorage.removeItem('viewOthers')
+    localStorage.removeItem('isSuperAdmin')
+  }
+  // ===== 有效期检查结束 =====
+
+  // 读取 token（sessionStorage 优先，其次 localStorage）
+  const token = getToken()
   // 判断是否是内置超级用户admin
   const isSuperAdmin = localStorage.getItem('isSuperAdmin') === '1'
   
@@ -118,7 +138,7 @@ router.beforeEach((to, from, next) => {
         // 如果没有任何菜单权限，或者第一个有权限的页面就是当前页面（避免无限重定向）
         // 则清除登录信息并跳转到登录页
         if (!firstPermitted || firstPermitted === to.path) {
-          localStorage.removeItem('token')
+          clearToken()
           localStorage.removeItem('user')
           next('/login')
           return

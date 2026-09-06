@@ -1,5 +1,14 @@
+// ============================================================
+// DTO（数据传输对象）= 定义接口"接收/返回的数据形状"
+// 这里全部用 @IsOptional()（可选），因为保存时前端会传完整字段，
+// 而更新接口（处理/测试）常常只传一两个字段
+// 注意很多字段有两个名字：yiyuanmc/hospital、mokuai/module、
+//       chuangtimc/form、xggcs/engineer —— 兼容新旧前端，
+//       service 里统一用 || 取其中一个
+// ============================================================
 import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
 
+// 新增问题时的请求体（POST /api/feedback）
 export class CreateFeedbackDto {
   @IsOptional()
   banben?: string;
@@ -77,6 +86,8 @@ export class CreateFeedbackDto {
   lurumid?: number;
 }
 
+// 更新问题时的请求体（PUT /api/feedback/:id）
+// 与 Create 几乎一样，但语义是"传哪个改哪个"
 export class UpdateFeedbackDto {
   @IsOptional()
   banben?: string;
@@ -154,6 +165,8 @@ export class UpdateFeedbackDto {
   lurumid?: number;
 }
 
+// 查询列表时的查询参数（GET /api/feedback?xxx=...）
+// 页面顶部的搜索条件都映射到这里
 export class QueryFeedbackDto {
   @IsOptional()
   page?: number;

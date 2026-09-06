@@ -1,0 +1,11 @@
+{
+  "server": {
+    "host": "cjysoft.zicp.fun",
+    "port": 2222,
+    "user": "Administrator"
+  },
+  "build": {
+    "frontend": true,
+    "backend": true
+  }
+}

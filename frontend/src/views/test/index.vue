@@ -83,7 +83,12 @@
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">测试说明</div>
-              <div class="info-value textarea large-text">{{ form.shouzhongcs || '-' }}</div>
+              <div class="info-value textarea large-text">
+                <template v-if="form.shouzhongcs">
+                  <div v-for="(line, i) in shouzhongcsLines(form.shouzhongcs)" :key="i" :style="assignLineStyle(line)">{{ line }}</div>
+                </template>
+                <span v-else>-</span>
+              </div>
             </div>
           </el-col>
           <el-col :span="4" v-if="form.shouhoucs">
@@ -299,7 +304,29 @@ const formatDate = (date: any) => {
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const seconds = String(d.getSeconds()).padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
+}
+// 获取当前登录者姓名（与 loadList 取法一致）
+const getCurrentUserName = () => {
+  const userStr = localStorage.getItem('user')
+  const user = userStr ? JSON.parse(userStr) : null
+  return user?.realName || user?.username || localStorage.getItem('username') || ''
+}
+
+// 生成分配记录标签：分配类型(操作人) 时间
+const buildAssignNote = (type: string) => {
+  return `${type}(${getCurrentUserName()}) ${formatDate(new Date())}`
+}
+
+// 测试说明按行拆分（逐行渲染用）
+const shouzhongcsLines = (text: string) => (text || '').split('\n')
+
+// 分配记录行着色：分配修改=红，分配跟进=蓝
+const assignLineStyle = (line: string) => {
+  if (line.startsWith('分配修改')) return { color: '#f56c6c', fontWeight: 600 }
+  if (line.startsWith('分配跟进')) return { color: '#409eff', fontWeight: 600 }
+  return {}
+}
+
 
 // 行颜色：选中行=淡蓝；测试打回的问题=淡红（提醒工程师重新处理）
 const getRowClass = ({ row }: { row: any }) => {
@@ -415,14 +442,19 @@ const handleAssign = async () => {
 }
 
 // 确认分配修改人：调专用接口 /assign-dev 更新工程师字段
-// 若上方"处理意见"框已填写，则连同意见一起保存，方便接手人查看
+// 处理意见追加到测试说明：分配修改(操作人) 时间 + 意见（不写入 gongcscs，输入框不回显）
 const confirmAssign = async () => {
   if (!selectedDev.value) { alert("请选择研发人员"); return; }
   try {
-    await axios.put("/api/feedback/" + selected.value.id + "/assign-dev", {
-      xggcs: selectedDev.value,
-      ...(form.gongcscs ? { gongcscs: form.gongcscs } : {})
-    })
+    const patch: any = { xggcs: selectedDev.value }
+    const opinion = (form.gongcscs || '').trim()
+    if (opinion) {
+      // 意见只追加到测试说明(已在显示区可见)，不写入 gongcscs，避免处理意见输入框回显
+      const note = buildAssignNote('分配修改')
+      const old = (form.shouzhongcs || '').replace(/\s+$/, '')
+      patch.shouzhongcs = old ? `${old}\n${note}\n${opinion}` : `${note}\n${opinion}`
+    }
+    await axios.put("/api/feedback/" + selected.value.id + "/assign-dev", patch)
     ElMessage.success('分配成功')
     showDevSelect.value = false
     loadList()
@@ -439,16 +471,17 @@ const handleAssignFollower = async () => {
   showFollowerSelect.value = true
 }
 
-// 确认分配跟进人：普通更新接口，只改 shishiry 字段
-// 若上方"处理意见"框有内容，则追加保存到测试说明(shouzhongcs)：原内容 + 换行 + "分配意见:" + 换行 + 意见
+// 确认分配跟进人：普通更新接口，改 shishiry 字段
+// 若上方"处理意见"框有内容，则追加保存到测试说明(shouzhongcs)：分配跟进(操作人) 时间 + 意见
 const confirmAssignFollower = async () => {
   if (!selectedFollower.value) { alert("请选择实施人员"); return; }
   try {
     const patch: any = { shishiry: selectedFollower.value }
     const opinion = (form.gongcscs || '').trim()
     if (opinion) {
+      const note = buildAssignNote('分配跟进')
       const old = (form.shouzhongcs || '').replace(/\s+$/, '')
-      patch.shouzhongcs = old ? (old + '\n分配意见:\n' + opinion) : ('分配意见:\n' + opinion)
+      patch.shouzhongcs = old ? `${old}\n${note}\n${opinion}` : `${note}\n${opinion}`
     }
     await axios.put("/api/feedback/" + selected.value.id, patch)
     ElMessage.success('分配跟进人成功')

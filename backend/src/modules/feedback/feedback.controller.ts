@@ -108,11 +108,12 @@ export class FeedbackController {
 
   // 分配开发人员
   // PUT /api/feedback/:id/assign-dev
-  // 同时支持可选传 gongcscs（处理意见）：分配修改人时若上方意见框已填写则一并保存
+  // 支持可选传 gongcscs（处理意见）和 shouzhongcs（追加到测试说明）：分配修改人时若意见框已填写则一并保存
   @Put(':id/assign-dev')
-  async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string; gongcscs?: string }) {
+  async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string; gongcscs?: string; shouzhongcs?: string }) {
     const patch: any = { xggcs: body.xggcs };
     if (body.gongcscs !== undefined) patch.gongcscs = body.gongcscs;
+    if (body.shouzhongcs !== undefined) patch.shouzhongcs = body.shouzhongcs;
     const data = await this.feedbackService.update(id, patch);
     return { code: 200, message: '分配成功', data };
   }

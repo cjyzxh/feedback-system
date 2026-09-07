@@ -158,6 +158,12 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
+        <el-table-column prop="gongcscs" label="处理意见" min-width="40">
+          <template #default="{ row }">
+            <span v-if="row.gongcscs">{{ row.gongcscs }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="shouhoucs" label="测试结果" min-width="40" v-if="!viewTaolun">
           <template #default="{ row }">
             <span v-if="row.shouhoucs" style="color: #f56c6c">{{ row.shouhoucs }}</span>
@@ -409,11 +415,20 @@ const handleAssign = async () => {
 }
 
 // 确认分配修改人：调专用接口 /assign-dev 更新工程师字段
+// 若上方"处理意见"框已填写，则连同意见一起保存，方便接手人查看
 const confirmAssign = async () => {
   if (!selectedDev.value) { alert("请选择研发人员"); return; }
-  axios.put("/api/feedback/" + selected.value.id + "/assign-dev", {xggcs: selectedDev.value})
-    .then(() => { alert("分配成功"); showDevSelect.value = false; loadList(); })
-    .catch(() => alert("分配失败"))
+  try {
+    await axios.put("/api/feedback/" + selected.value.id + "/assign-dev", {
+      xggcs: selectedDev.value,
+      ...(form.gongcscs ? { gongcscs: form.gongcscs } : {})
+    })
+    ElMessage.success('分配成功')
+    showDevSelect.value = false
+    loadList()
+  } catch (err) {
+    ElMessage.error('分配失败')
+  }
 }
 
 // 点"分配跟进"：打开跟进人员选择弹窗（默认带出当前跟进人）
@@ -425,10 +440,17 @@ const handleAssignFollower = async () => {
 }
 
 // 确认分配跟进人：普通更新接口，只改 shishiry 字段
+// 若上方"处理意见"框有内容，则追加保存到测试说明(shouzhongcs)：原内容 + 换行 + "分配意见:" + 换行 + 意见
 const confirmAssignFollower = async () => {
   if (!selectedFollower.value) { alert("请选择实施人员"); return; }
   try {
-    await axios.put("/api/feedback/" + selected.value.id, { shishiry: selectedFollower.value })
+    const patch: any = { shishiry: selectedFollower.value }
+    const opinion = (form.gongcscs || '').trim()
+    if (opinion) {
+      const old = (form.shouzhongcs || '').replace(/\s+$/, '')
+      patch.shouzhongcs = old ? (old + '\n分配意见:\n' + opinion) : ('分配意见:\n' + opinion)
+    }
+    await axios.put("/api/feedback/" + selected.value.id, patch)
     ElMessage.success('分配跟进人成功')
     showFollowerSelect.value = false
     loadList()

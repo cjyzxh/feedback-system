@@ -89,13 +89,16 @@
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big required">测试结果</div>
-              <el-input 
+              <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
+                <el-input
                 class="test-result-input"
-                v-model="form.shouhoucs" 
-                type="textarea" 
-                :rows="5" 
-                placeholder="请录入测试结果..." 
-              />
+                v-model="form.shouhoucs"
+                type="textarea"
+                :rows="5"
+                placeholder="请录入测试结果..."
+                />
+                <TemplatePicker :lx="'测试结果'" @select="appendShouhoucs" />
+              </div>
             </div>
           </el-col>
         </el-row>
@@ -185,135 +188,135 @@
       </el-table>
     </el-card>
 
-    <!-- 查看问题对话框（只读） -->
-    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
-      <el-form :model="form" label-width="100px">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="问题ID号">
-              <el-input v-model="form.id" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="录入时间">
-              <el-input :model-value="formatDate(form.lvrusj)" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="10">
-            <el-form-item label="紧急程度">
-              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="软件版本">
-              <el-input v-model="form.banben" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="16">
-            <el-form-item label="医院名称">
-              <el-input v-model="form.yiyuanmc" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="模块">
-              <el-input v-model="form.mokuai" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="窗体">
-              <el-input v-model="form.chuangtimc" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="跟进人员">
-              <el-input v-model="form.shishiry" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="工程师">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈人">
-              <el-input v-model="form.szcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈渠道">
-              <el-input v-model="form.FanKuiQD" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="问题说明">
-          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
-        </el-form-item>
-        
-        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
-          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <el-form-item label="测试意见" v-if="form.shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <!-- 处理信息 -->
-        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
-        <el-row v-if="form.xgsj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="处理人">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="处理时间">
-              <el-input :model-value="formatDate(form.xgsj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <!-- 测试返回信息 -->
-        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="form.cssj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="测试人员">
-              <el-input v-model="form.shcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item v-if="form.shouhoucs" label="测试结果">
-          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
-        </el-form-item>
-        
-        <!-- 问题截图（只读） -->
-        <el-form-item label="问题截图" v-if="detailImages.length > 0">
-          <div class="view-images">
-            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
-          </div>
-        </el-form-item>
-        
-        <div class="view-dialog-actions">
-          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
-            <el-icon><Back /></el-icon> 返回列表
-          </el-button>
-        </div>
-      </el-form>
-    </el-dialog>
+    <!-- 查看问题对话框（只读） -->
+    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
+      <el-form :model="form" label-width="100px">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-form-item label="问题ID号">
+              <el-input v-model="form.id" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="录入时间">
+              <el-input :model-value="formatDate(form.lvrusj)" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="10">
+            <el-form-item label="紧急程度">
+              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="软件版本">
+              <el-input v-model="form.banben" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="16">
+            <el-form-item label="医院名称">
+              <el-input v-model="form.yiyuanmc" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="模块">
+              <el-input v-model="form.mokuai" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="窗体">
+              <el-input v-model="form.chuangtimc" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="跟进人员">
+              <el-input v-model="form.shishiry" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="工程师">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈人">
+              <el-input v-model="form.szcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈渠道">
+              <el-input v-model="form.FanKuiQD" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item label="问题说明">
+          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
+        </el-form-item>
+        
+        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
+          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <el-form-item label="测试意见" v-if="form.shouzhongcs">
+          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <!-- 处理信息 -->
+        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
+        <el-row v-if="form.xgsj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="处理人">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="处理时间">
+              <el-input :model-value="formatDate(form.xgsj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- 测试返回信息 -->
+        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
+        <el-row v-if="form.cssj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="测试人员">
+              <el-input v-model="form.shcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="测试返回时间">
+              <el-input :model-value="formatDate(form.cssj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item v-if="form.shouhoucs" label="测试结果">
+          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
+        </el-form-item>
+        
+        <!-- 问题截图（只读） -->
+        <el-form-item label="问题截图" v-if="detailImages.length > 0">
+          <div class="view-images">
+            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
+          </div>
+        </el-form-item>
+        
+        <div class="view-dialog-actions">
+          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
+            <el-icon><Back /></el-icon> 返回列表
+          </el-button>
+        </div>
+      </el-form>
+    </el-dialog>
     <!-- 图片预览弹窗 -->
     <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
@@ -357,6 +360,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
+import TemplatePicker from '@/components/TemplatePicker.vue'
 
 // ============ 页面状态变量 ============
 const list = ref<any[]>([])      // 待测试问题列表
@@ -426,8 +430,10 @@ const loadList = async () => {
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
   
   // 不打勾"查看所有"：只查跟进人员（shishiry）=当前登录者的待测试数据
-  if (!viewAll.value && currentUserName) {
-    params.shishiry = currentUserName
+  // 按编码过滤：跟进人编码(shishiryBM)=当前登录人编码
+  const currentUserCode = localStorage.getItem('userCode') || ''
+  if (!viewAll.value && (currentUserName || currentUserCode)) {
+    params.shishiryBM = currentUserCode
   }
   
   try {
@@ -550,6 +556,7 @@ const handleConfirm = async () => {
       shouhoucs: form.shouhoucs,
       shouhoubz: 'Y',
       shcsgcs: currentUserName,
+      shcsgcsBM: localStorage.getItem('userCode') || '',
       cssj: new Date()
     }
     
@@ -605,6 +612,7 @@ const handleReset = async () => {
       gongchengsbz: 'N',
       shouhoucs: form.shouhoucs || '',
       shcsgcs: currentUserName,
+      shcsgcsBM: localStorage.getItem('userCode') || '',
       cssj: new Date()
     }
     
@@ -615,6 +623,11 @@ const handleReset = async () => {
     loadList()
   } catch (err) { ElMessage.error('操作失败') }
   finally { submitting.value = false }
+}
+
+// ============ 模板按钮追加（测试结果） ============
+const appendShouhoucs = (text: string) => {
+  form.shouhoucs = form.shouhoucs ? form.shouhoucs + '\n' + text : text
 }
 
 onMounted(() => { loadList() })

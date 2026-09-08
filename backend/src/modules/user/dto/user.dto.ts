@@ -57,6 +57,18 @@ export class CreateUserDto {
   @IsNumber()
   @Min(0)
   @Max(1)
+  isShishi?: number; // 是否实施人员：1=是，0=否
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  isYanfa?: number; // 是否研发人员：1=是，0=否
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
   status?: number;
 }
 
@@ -112,6 +124,18 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   themeMode?: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  isShishi?: number; // 是否实施人员：1=是，0=否
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  isYanfa?: number; // 是否研发人员：1=是，0=否
 
   @IsOptional()
   @IsNumber()

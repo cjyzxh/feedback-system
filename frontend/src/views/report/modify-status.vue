@@ -270,6 +270,7 @@ function tableRowClassName({ row }: any) {
 const loadData = async () => {
   try {
     const currentUser = getCurrentUser()
+    const currentUserCode = localStorage.getItem('userCode') || currentUser
     const baseParams: any = {
       page: 1,
       pageSize: 2000,
@@ -280,20 +281,18 @@ const loadData = async () => {
     let list: any[] = []
     
     if (viewAll.value) {
-      // 勾选"查询所有人员"时，先找出类别包含"工程师"的操作员，然后按人循环查询
-      // 1. 先查询人员列表，找出类别包含工程师的操作员
-      const staffRes = await axios.get('/api/staff')
+      // 勾选"查询所有人员"时，先找出研发人员（isYanfa=1），再按编码循环查询
+      // 1. 从系统人员字典（sys_user）获取研发人员列表（返回 {value:姓名, username:编码}）
+      const staffRes = await axios.get('/api/dict/yanfa')
       const staffData = staffRes.data?.data || staffRes.data || {}
       const staffList = staffData?.list || staffData || []
-      const engineerList = staffList.filter((s: any) => 
-        s.category && s.category.includes('1') && s.xingming  // category='1'表示研发人员
-      )
-      const engineerNames = [...new Set(engineerList.map((s: any) => s.xingming))]
+      const engineerList = staffList.filter((s: any) => s.username)  // 有编码才算有效人员
+      const engineerCodes = [...new Set(engineerList.map((s: any) => s.username))]
       
-      // 2. 按人循环查询问题，合并结果
+      // 2. 按人编码循环查询问题，合并结果
       const allResults = await Promise.all(
-        engineerNames.map((name: string) => 
-          axios.get('/api/feedback', { params: { ...baseParams, xggcs: name } })
+        engineerCodes.map((code: string) => 
+          axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: code } })
         )
       )
       
@@ -315,7 +314,7 @@ const loadData = async () => {
       list = Object.values(uniqueMap)
     } else {
       // 不勾选时，只查询当前用户作为工程师的问题（不管是否有查看非本人数据权限）
-      const res = await axios.get('/api/feedback', { params: { ...baseParams, xggcs: currentUser } })
+      const res = await axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: currentUserCode } })
       const data = res.data?.data || res.data || res
       list = data?.list || []
     }

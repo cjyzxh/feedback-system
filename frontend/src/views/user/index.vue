@@ -125,6 +125,10 @@
             <el-option label="客户" value="客户" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="form.userType === '内部员工'" label="人员属性">
+          <el-checkbox v-model="form.isShishi" :true-value="1" :false-value="0">实施人员</el-checkbox>
+          <el-checkbox v-model="form.isYanfa" :true-value="1" :false-value="0">研发人员</el-checkbox>
+        </el-form-item>
         <el-form-item label="医院名称" prop="hospital">
           <el-select v-model="form.hospital" placeholder="请搜索选择医院（客户用户填写）" clearable filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading">
             <el-option v-for="h in hospitalList" :key="h.label || h.value" :label="h.label || h.value" :value="h.label || h.value" />
@@ -166,7 +170,7 @@ const shishiList = ref([])
 const hospitalLoading = ref(false)
 
 const queryForm = reactive({ username: '', realName: '', role: '', status: undefined, page: 1, pageSize: 10 })
-const form = reactive({ id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', status: 1 })
+const form = reactive({ id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', isShishi: 0, isYanfa: 0, status: 1 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -224,7 +228,7 @@ const loadData = async () => {
 const resetQuery = () => { queryForm.username = ''; queryForm.realName = ''; queryForm.role = ''; queryForm.status = undefined; queryForm.page = 1; loadData() }
 
 const handleAdd = () => {
-  Object.assign(form, { id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', status: 1 })
+  Object.assign(form, { id: null, username: '', password: '', realName: '', gender: '', birthDate: '', phone: '', email: '', role: '', userType: '内部员工', hospital: '', follower: '', isShishi: 0, isYanfa: 0, status: 1 })
   isEdit.value = false
   dialogVisible.value = true
 }
@@ -275,6 +279,8 @@ const handleSubmit = async () => {
         userType: form.userType || '内部员工',
         hospital: form.hospital || '',
         follower: form.follower || '',
+        isShishi: form.isShishi || 0,
+        isYanfa: form.isYanfa || 0,
         status: form.status
       }
       // 编辑用户时，如果密码不为空，传递密码字段
@@ -298,6 +304,8 @@ const handleSubmit = async () => {
         userType: form.userType || '内部员工',
         hospital: form.hospital || '',
         follower: form.follower || '',
+        isShishi: form.isShishi || 0,
+        isYanfa: form.isYanfa || 0,
         status: form.status
       }
       console.log('提交创建用户的数据:', submitData)

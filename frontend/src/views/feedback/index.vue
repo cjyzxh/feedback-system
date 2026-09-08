@@ -23,15 +23,14 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleSearch" style="width:130px">
-            <el-option label="待修改" value="daixiugai" />
-            <el-option label="待测试" value="daiceshi" />
-            <el-option label="已修改" value="yixiugai" />
+            <el-option label="未完成" value="weiwan" />
+            <el-option label="已完成" value="yiwan" />
             <el-option label="待讨论" value="daitaolun" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="canViewOthers && viewAll && !isCustomerUser">
           <el-select v-model="selectedShishiry" placeholder="跟进人员" clearable style="width:130px" @change="handleSearch">
-            <el-option v-for="s in shishiList" :key="s.value || s.xingming" :label="s.label || s.xingming" :value="s.value || s.xingming" />
+            <el-option v-for="s in shishiList" :key="s.value || s.xingming" :label="s.label || s.xingming" :value="s.username || s.value || s.xingming" />
           </el-select>
         </el-form-item>
         <!-- 第一行末尾：查询问题 + 重置条件 + 新增问题（以查询问题为基准统一宽高） -->
@@ -234,7 +233,10 @@
         </el-form-item>
         
         <el-form-item label="测试意见" prop="shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" placeholder="请填写测试人员意见..." />
+          <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
+            <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" placeholder="请填写测试人员意见..." style="flex:1; min-width:0" />
+            <TemplatePicker :lx="'测试意见'" @select="appendShouzhongcs" />
+          </div>
         </el-form-item>
         
         <!-- 处理信息（编辑时显示，只读） -->
@@ -466,6 +468,7 @@ import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
+import TemplatePicker from '@/components/TemplatePicker.vue'
 
 // ============ 页面状态变量（类比 VB6 的窗体级变量） ============
 const loading = ref(false)          // 列表加载中（控制转圈动画）
@@ -570,11 +573,11 @@ const canDelete = (row: any) => {
   return isAdmin.value || row.szcsgcs === currentUserName.value
 }
 
-// 查询条件：默认查最近一个月的数据（今天是 end，一个月前是 start）
+// 查询条件：默认查最近一年的数据（今天是 end，一年前是 start）
 const getDefaultDateRange = () => {
   const end = new Date()
   const start = new Date()
-  start.setMonth(start.getMonth() - 1)
+  start.setFullYear(start.getFullYear() - 1)
   // 把 Date 对象格式化成 YYYY-MM-DD 字符串（类比 VB6 的 Format(Now, "yyyy-mm-dd")）
   const formatDate = (d: Date) => {
     const year = d.getFullYear()
@@ -592,7 +595,7 @@ const searchForm = reactive({
   yiyuanmc: '',      // 医院名称
   mokuai: '',        // 模块
   id: '',            // 问题ID
-  zhuangtai: '',     // 问题状态（待修改/待测试/已修改/待讨论）
+  zhuangtai: 'weiwan',  // 问题状态（未完成/已完成/待讨论），默认未完成
   wentism: '',       // 问题说明（模糊检索关键词）
   startDate: defaultRange.startDate,  // 录入日期起
   endDate: defaultRange.endDate       // 录入日期止
@@ -859,9 +862,9 @@ const loadData = async () => {
     //   不勾"查看所有问题" -> 只查自己跟进的问题（shishiry=当前登录者）
     //   勾了"查看所有问题" -> 可选跟进人员过滤；不选就是全部
     if (!viewAll.value) {
-      params.shishiry = currentUserName
+      params.shishiryBM = localStorage.getItem('userCode') || ''  // 只看自己跟进（按编码）
     } else if (selectedShishiry.value) {
-      params.shishiry = selectedShishiry.value
+      params.shishiryBM = selectedShishiry.value  // 选定跟进人员（编码）
     }
   }
   
@@ -882,13 +885,13 @@ const loadData = async () => {
 
 // 点"查询"：回到第一页再加载
 const handleSearch = () => { pagination.page = 1; loadData() }
-// 点"重置条件"：把搜索栏清回默认（日期=最近一个月，其余为空）
+// 点"重置条件"：把搜索栏清回默认（日期=最近一年，状态=未完成，其余为空）
 const handleResetSearch = () => { 
   const defaultRange = getDefaultDateRange()
   searchForm.yiyuanmc = ''
   searchForm.mokuai = ''
   searchForm.id = ''
-  searchForm.zhuangtai = ''
+  searchForm.zhuangtai = 'weiwan'
   searchForm.wentism = ''
   searchForm.startDate = defaultRange.startDate
   searchForm.endDate = defaultRange.endDate
@@ -985,6 +988,7 @@ const handleAdd = async () => {
     // 内部员工：跟进人员默认为当前登录者本人
     form.yiyuanmc = ''
     form.shishiry = currentUser  // 跟进人员默认为当前登录者
+    form.shishiryBM = localStorage.getItem('userCode') || ''  // 跟进人员编码
     form.xggcs = ''
   }
   form.mokuai = ''
@@ -1168,6 +1172,11 @@ const viewImages = async (row: any) => {
 }
 
 // ============ 核心：保存（新增或更新） ============
+// ============ 模板按钮追加（测试意见，双击弹窗条目） ============
+const appendShouzhongcs = (text: string) => {
+  form.shouzhongcs = form.shouzhongcs ? form.shouzhongcs + '\n' + text : text
+}
+
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()  // 先过必填校验，不过直接抛错到 catch
@@ -1181,8 +1190,15 @@ const handleSubmit = async () => {
       const userStr = localStorage.getItem('user')
       const user = userStr ? JSON.parse(userStr) : null
       data.szcsgcs = user?.realName || user?.username || localStorage.getItem('username') || ''  // 反馈人=当前登录者
+      data.szcsgcsBM = user?.username || localStorage.getItem('userCode') || ''  // 反馈人编码
       data.FanKuiQD = user?.userType || '内部员工'  // 反馈渠道=登录者的用户类型
     }
+    
+    // 人员编码：根据姓名从人员列表匹配（跟进人/工程师）
+    const sUser = shishiList.value.find((x: any) => (x.value || x.xingming) === data.shishiry)
+    if (sUser?.username) data.shishiryBM = sUser.username
+    const yUser = yanfaList.value.find((x: any) => (x.value || x.xingming) === data.xggcs)
+    if (yUser?.username) data.xggcsBM = yUser.username
     
     let savedFeedback = null
     

@@ -84,6 +84,20 @@ export class CreateFeedbackDto {
 
   @IsOptional()
   lurumid?: number;
+  @IsOptional()
+  shishiryBM?: string;
+
+  @IsOptional()
+  xggcsBM?: string;
+
+  @IsOptional()
+  szcsgcsBM?: string;
+
+  @IsOptional()
+  shcsgcsBM?: string;
+
+  @IsOptional()
+  LSH?: string;
 }
 
 // 更新问题时的请求体（PUT /api/feedback/:id）
@@ -163,6 +177,20 @@ export class UpdateFeedbackDto {
 
   @IsOptional()
   lurumid?: number;
+  @IsOptional()
+  shishiryBM?: string;
+
+  @IsOptional()
+  xggcsBM?: string;
+
+  @IsOptional()
+  szcsgcsBM?: string;
+
+  @IsOptional()
+  shcsgcsBM?: string;
+
+  @IsOptional()
+  LSH?: string;
 }
 
 // 查询列表时的查询参数（GET /api/feedback?xxx=...）
@@ -227,4 +255,10 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   dateField?: string;  // 日期查询字段：lvrusj（录入时间，默认）或 xgsj（处理时间）
+
+  @IsOptional()
+  shishiryBM?: string;
+
+  @IsOptional()
+  xggcsBM?: string;
 }

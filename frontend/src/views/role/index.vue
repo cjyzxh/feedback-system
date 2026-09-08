@@ -125,11 +125,12 @@ const menuTree = [
     label: '系统设置',
     children: [
       { id: '/settings', label: '系统管理' },
-      { id: '/settings/staff', label: '人员维护' },
+      // { id: '/settings/staff', label: '人员维护' },  // 已停用
       { id: '/settings/user', label: '用户管理' },
       { id: '/settings/role', label: '角色管理' },
       { id: '/settings/module', label: '模块维护' },
-      { id: '/settings/form', label: '窗体维护' }
+      { id: '/settings/form', label: '窗体维护' },
+      { id: '/settings/template', label: '模板维护' }
     ]
   }
 ]

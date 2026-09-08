@@ -11,6 +11,9 @@ export class Staff {
   @Column({ name: 'xingming', length: 50, type: 'varchar', nullable: true })
   xingming: string;
 
+  @Column({ name: 'username', length: 50, type: 'varchar', nullable: true })
+  username: string;  // 关联系统用户编码（sys_user.username）
+
   @Column({ name: 'gender', length: 10, type: 'varchar', nullable: true })
   gender: string;
 

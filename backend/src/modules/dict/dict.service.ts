@@ -4,7 +4,7 @@ import { Repository, Like } from 'typeorm';
 import { Hospital } from '../hospital/hospital.entity';
 import { Module as ModuleEntity } from './module.entity';
 import { Form } from './form.entity';
-import { Staff } from '../staff/staff.entity';
+import { User } from '../user/user.entity';
 import pinyin from 'pinyin';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class DictService {
   constructor(
     @InjectRepository(ModuleEntity) private moduleRepository: Repository<ModuleEntity>,
     @InjectRepository(Form) private formRepository: Repository<Form>,
-    @InjectRepository(Staff) private engineerRepository: Repository<Staff>,
+    @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Hospital) private configRepository: Repository<Hospital>,
   ) {}
 
@@ -107,47 +107,39 @@ export class DictService {
     }
   }
 
+  // ============ 人员下拉：全部从 sys_user 加载 ============
+  // 数据源切换：原 zd_jishuyuan 已停用，改由用户管理维护"是否实施/研发"标志
+  // 条件统一：status=1（正常）+ userType='内部员工' + 对应标志=1
+  // 返回 {value: 姓名, label: 姓名, username: 编码}，前端显示姓名、保存编码
+
+  // 工程师（新增问题时自动绑定）：研发人员
   async getEngineers() {
-    try {
-      const engineers = await this.engineerRepository.find({
-        where: { zhuangtai: 1 },
-        order: { xingming: 'ASC' },
-      });
-      
-      const uniqueNames = [...new Set(engineers.map((e) => e.xingming))];
-      return uniqueNames.map((name) => ({ value: name, label: name }));
-    } catch (e) {
-      console.error('getEngineers error:', e);
-      return [];
-    }
+    return this.getUsersByFlag('isYanfa');
   }
 
+  // 实施人员 = 跟进人员
   async getShishi() {
-    // 实施人员：category 包含 "0"
-    try {
-      const list = await this.engineerRepository.find({
-        where: { zhuangtai: 1, category: Like('%0%') },
-        order: { xingming: 'ASC' },
-      });
-      const uniqueNames = [...new Set(list.map((e) => e.xingming))];
-      return uniqueNames.map((name) => ({ value: name, label: name }));
-    } catch (e) {
-      console.error('getShishi error:', e);
-      return [];
-    }
+    return this.getUsersByFlag('isShishi');
   }
 
+  // 研发人员
   async getYanfa() {
-    // 研发人员：category 包含 "1"
+    return this.getUsersByFlag('isYanfa');
+  }
+
+  private async getUsersByFlag(flag: 'isShishi' | 'isYanfa') {
     try {
-      const list = await this.engineerRepository.find({
-        where: { zhuangtai: 1, category: Like('%1%') },
-        order: { xingming: 'ASC' },
+      const users = await this.userRepository.find({
+        where: { status: 1, userType: '内部员工', [flag]: 1 },
+        order: { realName: 'ASC' },
       });
-      const uniqueNames = [...new Set(list.map((e) => e.xingming))];
-      return uniqueNames.map((name) => ({ value: name, label: name }));
+      return users.map((u) => ({
+        value: u.realName,
+        label: u.realName,
+        username: u.username,
+      }));
     } catch (e) {
-      console.error('getYanfa error:', e);
+      console.error('getUsersByFlag error:', e);
       return [];
     }
   }

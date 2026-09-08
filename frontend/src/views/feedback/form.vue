@@ -153,7 +153,10 @@
         </el-form-item>
         
         <el-form-item label="测试意见" prop="shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" placeholder="请填写测试人员意见..." />
+          <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
+            <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" placeholder="请填写测试人员意见..."  style="width:50%; min-width:0" />
+            <TemplatePicker :lx="'测试意见'" @select="appendShouzhongcs" />
+          </div>
         </el-form-item>
         
         <el-form-item label="问题截图">
@@ -222,6 +225,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Tickets, Delete } from '@element-plus/icons-vue'
 import api from '@/api'
 import axios from 'axios'
+import TemplatePicker from '@/components/TemplatePicker.vue'
 
 const loading = ref(false)
 const submitting = ref(false)

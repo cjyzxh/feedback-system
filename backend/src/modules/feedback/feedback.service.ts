@@ -27,6 +27,7 @@ export class FeedbackService {
         banben: dto.banben,
         yiyuanmc: dto.yiyuanmc || dto.hospital,
         shishiry: dto.shishiry,
+        shishiryBM: dto.shishiryBM,
         mokuai: dto.mokuai || dto.module,
         chuangtimc: dto.chuangtimc || dto.form,
         wentism: dto.wentism,
@@ -41,9 +42,13 @@ export class FeedbackService {
         lvrusj: new Date(),
         taolunbz: dto.taolunbz || 'N',
         szcsgcs: dto.szcsgcs,
+        szcsgcsBM: dto.szcsgcsBM,
         FanKuiQD: dto.FanKuiQD,
         shcsgcs: dto.shcsgcs,
+        shcsgcsBM: dto.shcsgcsBM,
         cssj: dto.cssj,
+        xggcsBM: dto.xggcsBM,
+        LSH: dto.LSH,
       });
       
       const saved = await this.feedbackRepository.save(feedback);
@@ -58,7 +63,7 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
       
       const where: any = {};
       
@@ -81,35 +86,30 @@ export class FeedbackService {
         where.mokuai = Like(`%${m}%`);
       }
       
-      if (shishiry) {
-        where.shishiry = shishiry;
+      // 人员查询统一用编码（shishiryBM），兼容旧前端传姓名 shishiry
+      const sPerson = shishiryBM || shishiry;
+      if (sPerson) {
+        where.shishiryBM = sPerson;
       }
       
-      const eng = xggcs || engineer;
+      // 工程师查询统一用编码（xggcsBM），兼容旧前端传姓名 xggcs/engineer
+      const eng = xggcsBM || xggcs || engineer;
       if (eng) {
-        where.xggcs = eng;
+        where.xggcsBM = eng;
       }
       
       // ===== 按"状态"筛选（选了状态下拉时，这里优先，单字段条件全部跳过） =====
-      // 状态的本质是三个标志位(Y/N)的组合：
-      //   待修改: 工程师未处理(gongchengsbz='N') + 未测试(shouhoubz='N') + 非讨论(taolunbz='N')
-      //   待测试: 工程师已改(gongchengsbz='Y') + 未测试(shouhoubz='N') + 非讨论
-      //   已修改: 工程师已改(gongchengsbz='Y') + 测试完成(shouhoubz='Y') + 非讨论
-      //   待讨论: taolunbz='Y'（最高优先级，只看这一个标志）
+      // 状态的本质是三个标志位的组合：
+      //   未完成: 未测试(shouhoubz='N') + 非讨论(taolunbz='N')
+      //   已完成: 测试完成(shouhoubz='Y') + 非讨论(taolunbz='N')
+      //   待讨论: taolunbz='Y'（只看这一个标志）
       if (zhuangtai) {
         switch (zhuangtai) {
-          case 'daixiugai':
-            where.gongchengsbz = 'N';
+          case 'weiwan':
             where.shouhoubz = 'N';
             where.taolunbz = 'N';
             break;
-          case 'daiceshi':
-            where.gongchengsbz = 'Y';
-            where.shouhoubz = 'N';
-            where.taolunbz = 'N';
-            break;
-          case 'yixiugai':
-            where.gongchengsbz = 'Y';
+          case 'yiwan':
             where.shouhoubz = 'Y';
             where.taolunbz = 'N';
             break;
@@ -213,6 +213,7 @@ export class FeedbackService {
       if (dto.banben !== undefined) feedback.banben = dto.banben;
       if (dto.yiyuanmc || dto.hospital) feedback.yiyuanmc = dto.yiyuanmc || dto.hospital;
       if (dto.shishiry !== undefined) feedback.shishiry = dto.shishiry;
+      if (dto.shishiryBM !== undefined) feedback.shishiryBM = dto.shishiryBM;
       if (dto.mokuai || dto.module) feedback.mokuai = dto.mokuai || dto.module;
       if (dto.chuangtimc || dto.form) feedback.chuangtimc = dto.chuangtimc || dto.form;
       if (dto.wentism !== undefined) feedback.wentism = dto.wentism;
@@ -223,10 +224,13 @@ export class FeedbackService {
       if (dto.gongchengsbz !== undefined) feedback.gongchengsbz = dto.gongchengsbz;
       if (dto.shouhoubz !== undefined) feedback.shouhoubz = dto.shouhoubz;
       if (dto.xggcs || dto.engineer) feedback.xggcs = dto.xggcs || dto.engineer;
+      if (dto.xggcsBM !== undefined) feedback.xggcsBM = dto.xggcsBM;
       if (dto.jingjicd !== undefined) feedback.jingjicd = dto.jingjicd;
       if (dto.taolunbz !== undefined) feedback.taolunbz = dto.taolunbz;
       if (dto.szcsgcs !== undefined) feedback.szcsgcs = dto.szcsgcs;
+      if (dto.szcsgcsBM !== undefined) feedback.szcsgcsBM = dto.szcsgcsBM;
       if (dto.shcsgcs !== undefined) feedback.shcsgcs = dto.shcsgcs;
+      if (dto.shcsgcsBM !== undefined) feedback.shcsgcsBM = dto.shcsgcsBM;
       if (dto.cssj !== undefined) feedback.cssj = dto.cssj;
       
       feedback.xgsj = new Date();  // 每次更新自动刷新"修改时间"
@@ -289,14 +293,14 @@ export class FeedbackService {
     try {
       // 待处理问题：gongchengsbz='N' 且 xggcs=当前登录者（我的待办）
       const pendingList = await this.feedbackRepository.find({
-        where: { gongchengsbz: 'N', xggcs: currentUser },
+        where: { gongchengsbz: 'N', xggcsBM: currentUser },
         order: { lvrusj: 'DESC' },
         take: 10
       });
 
       // 待测试问题：gongchengsbz='Y' 且 shouhoubz='N' 且 shishiry=当前登录者
       const testList = await this.feedbackRepository.find({
-        where: { gongchengsbz: 'Y', shouhoubz: 'N', shishiry: currentUser },
+        where: { gongchengsbz: 'Y', shouhoubz: 'N', shishiryBM: currentUser },
         order: { xgsj: 'DESC' },
         take: 10
       });

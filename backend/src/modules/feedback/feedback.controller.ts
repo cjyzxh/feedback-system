@@ -110,8 +110,9 @@ export class FeedbackController {
   // PUT /api/feedback/:id/assign-dev
   // 支持可选传 gongcscs（处理意见）和 shouzhongcs（追加到测试说明）：分配修改人时若意见框已填写则一并保存
   @Put(':id/assign-dev')
-  async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string; gongcscs?: string; shouzhongcs?: string }) {
+  async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string; xggcsBM?: string; gongcscs?: string; shouzhongcs?: string }) {
     const patch: any = { xggcs: body.xggcs };
+    if (body.xggcsBM !== undefined) patch.xggcsBM = body.xggcsBM;
     if (body.gongcscs !== undefined) patch.gongcscs = body.gongcscs;
     if (body.shouzhongcs !== undefined) patch.shouzhongcs = body.shouzhongcs;
     const data = await this.feedbackService.update(id, patch);

@@ -42,7 +42,7 @@
           </el-sub-menu>
         </template>
         <!-- 系统设置菜单（子菜单样式） -->
-        <el-sub-menu index="/settings" v-if="hasMenuPermission('/settings') || hasMenuPermission('/settings/staff') || hasMenuPermission('/settings/user') || hasMenuPermission('/settings/role') || hasMenuPermission('/settings/module') || hasMenuPermission('/settings/form')">
+        <el-sub-menu index="/settings" v-if="hasMenuPermission('/settings') || hasMenuPermission('/settings/user') || hasMenuPermission('/settings/role') || hasMenuPermission('/settings/module') || hasMenuPermission('/settings/form') || hasMenuPermission('/settings/template')">
           <template #title>
             <el-icon><Setting /></el-icon style="font-size:16px">
             <span>系统设置</span>
@@ -51,10 +51,7 @@
             <el-icon><Setting /></el-icon style="font-size:14px">
             <template #title>系统管理</template>
           </el-menu-item>
-          <el-menu-item index="/settings/staff" v-if="hasMenuPermission('/settings/staff')">
-            <el-icon><User /></el-icon style="font-size:14px">
-            <template #title>人员维护</template>
-          </el-menu-item>
+          <!-- 人员维护菜单已停用 -->
           <el-menu-item index="/settings/user" v-if="hasMenuPermission('/settings/user')">
             <el-icon><UserFilled /></el-icon style="font-size:14px">
             <template #title>用户管理</template>
@@ -70,6 +67,10 @@
           <el-menu-item index="/settings/form" v-if="hasMenuPermission('/settings/form')">
             <el-icon><Document /></el-icon style="font-size:14px">
             <template #title>窗体维护</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/template" v-if="hasMenuPermission('/settings/template')">
+            <el-icon><Collection /></el-icon style="font-size:14px">
+            <template #title>模板维护</template>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>

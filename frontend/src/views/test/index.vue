@@ -100,7 +100,10 @@
           <el-col :span="8">
             <div class="info-item large">
               <div class="info-label big required">处理意见</div>
-              <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." />
+              <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
+                <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." />
+                <TemplatePicker :lx="'处理意见'" @select="appendGongcscs" />
+              </div>
             </div>
           </el-col>
         </el-row>
@@ -204,135 +207,135 @@
       </el-table>
     </el-card>
 
-    <!-- 查看问题对话框（只读） -->
-    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
-      <el-form :model="form" label-width="100px">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="问题ID号">
-              <el-input v-model="form.id" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="录入时间">
-              <el-input :model-value="formatDate(form.lvrusj)" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="10">
-            <el-form-item label="紧急程度">
-              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="软件版本">
-              <el-input v-model="form.banben" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="16">
-            <el-form-item label="医院名称">
-              <el-input v-model="form.yiyuanmc" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="模块">
-              <el-input v-model="form.mokuai" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="窗体">
-              <el-input v-model="form.chuangtimc" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="跟进人员">
-              <el-input v-model="form.shishiry" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="工程师">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈人">
-              <el-input v-model="form.szcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈渠道">
-              <el-input v-model="form.FanKuiQD" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="问题说明">
-          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
-        </el-form-item>
-        
-        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
-          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <el-form-item label="测试意见" v-if="form.shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <!-- 处理信息 -->
-        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
-        <el-row v-if="form.xgsj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="处理人">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="处理时间">
-              <el-input :model-value="formatDate(form.xgsj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <!-- 测试返回信息 -->
-        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="form.cssj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="测试人员">
-              <el-input v-model="form.shcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item v-if="form.shouhoucs" label="测试结果">
-          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
-        </el-form-item>
-        
-        <!-- 问题截图（只读） -->
-        <el-form-item label="问题截图" v-if="detailImages.length > 0">
-          <div class="view-images">
-            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
-          </div>
-        </el-form-item>
-        
-        <div class="view-dialog-actions">
-          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
-            <el-icon><Back /></el-icon> 返回列表
-          </el-button>
-        </div>
-      </el-form>
-    </el-dialog>
+    <!-- 查看问题对话框（只读） -->
+    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
+      <el-form :model="form" label-width="100px">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-form-item label="问题ID号">
+              <el-input v-model="form.id" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="录入时间">
+              <el-input :model-value="formatDate(form.lvrusj)" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="10">
+            <el-form-item label="紧急程度">
+              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="软件版本">
+              <el-input v-model="form.banben" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="16">
+            <el-form-item label="医院名称">
+              <el-input v-model="form.yiyuanmc" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="模块">
+              <el-input v-model="form.mokuai" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="窗体">
+              <el-input v-model="form.chuangtimc" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="跟进人员">
+              <el-input v-model="form.shishiry" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="工程师">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈人">
+              <el-input v-model="form.szcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈渠道">
+              <el-input v-model="form.FanKuiQD" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item label="问题说明">
+          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
+        </el-form-item>
+        
+        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
+          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <el-form-item label="测试意见" v-if="form.shouzhongcs">
+          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <!-- 处理信息 -->
+        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
+        <el-row v-if="form.xgsj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="处理人">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="处理时间">
+              <el-input :model-value="formatDate(form.xgsj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- 测试返回信息 -->
+        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
+        <el-row v-if="form.cssj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="测试人员">
+              <el-input v-model="form.shcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="测试返回时间">
+              <el-input :model-value="formatDate(form.cssj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item v-if="form.shouhoucs" label="测试结果">
+          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
+        </el-form-item>
+        
+        <!-- 问题截图（只读） -->
+        <el-form-item label="问题截图" v-if="detailImages.length > 0">
+          <div class="view-images">
+            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
+          </div>
+        </el-form-item>
+        
+        <div class="view-dialog-actions">
+          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
+            <el-icon><Back /></el-icon> 返回列表
+          </el-button>
+        </div>
+      </el-form>
+    </el-dialog>
     <!-- 图片预览弹窗 -->
     <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
@@ -370,7 +373,7 @@
     />
     <el-dialog v-model="showDevSelect" title="分配修改人" width="320px">
       <el-select v-model="selectedDev" placeholder="请选择研发人员" style="width:100%">
-        <el-option v-for="u in yanfaList" :key="u.id" :label="u.xingming" :value="u.xingming" />
+        <el-option v-for="u in yanfaList" :key="u.username" :label="u.label" :value="u.value" />
       </el-select>
       <template #footer>
         <el-button class="btn-cancel" @click="showDevSelect=false">取消</el-button>
@@ -380,7 +383,7 @@
     <!-- 分配跟进人弹窗 -->
     <el-dialog v-model="showFollowerSelect" title="分配跟进人" width="320px">
       <el-select v-model="selectedFollower" placeholder="请选择实施人员" style="width:100%">
-        <el-option v-for="u in shishiList" :key="u.id" :label="u.xingming" :value="u.xingming" />
+        <el-option v-for="u in shishiList" :key="u.username" :label="u.label" :value="u.value" />
       </el-select>
       <template #footer>
         <el-button class="btn-cancel" @click="showFollowerSelect=false">取消</el-button>
@@ -395,6 +398,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
+import TemplatePicker from '@/components/TemplatePicker.vue'
 
 // ============ 页面状态变量 ============
 const list = ref<any[]>([])      // 待处理问题列表
@@ -433,28 +437,28 @@ const formatDate = (date: any) => {
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const seconds = String(d.getSeconds()).padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-// 获取当前登录者姓名（与 loadList 取法一致）
-const getCurrentUserName = () => {
-  const userStr = localStorage.getItem('user')
-  const user = userStr ? JSON.parse(userStr) : null
-  return user?.realName || user?.username || localStorage.getItem('username') || ''
-}
-
-// 生成分配记录标签：分配类型(操作人) 时间
-const buildAssignNote = (type: string) => {
-  return `${type}(${getCurrentUserName()}) ${formatDate(new Date())}`
-}
-
-// 测试说明按行拆分（逐行渲染用）
-const shouzhongcsLines = (text: string) => (text || '').split('\n')
-
-// 分配记录行着色：分配修改=红，分配跟进=蓝
-const assignLineStyle = (line: string) => {
-  if (line.startsWith('分配修改')) return { color: '#f56c6c', fontWeight: 600 }
-  if (line.startsWith('分配跟进')) return { color: '#409eff', fontWeight: 600 }
-  return {}
-}
+}
+// 获取当前登录者姓名（与 loadList 取法一致）
+const getCurrentUserName = () => {
+  const userStr = localStorage.getItem('user')
+  const user = userStr ? JSON.parse(userStr) : null
+  return user?.realName || user?.username || localStorage.getItem('username') || ''
+}
+
+// 生成分配记录标签：分配类型(操作人) 时间
+const buildAssignNote = (type: string) => {
+  return `${type}(${getCurrentUserName()}) ${formatDate(new Date())}`
+}
+
+// 测试说明按行拆分（逐行渲染用）
+const shouzhongcsLines = (text: string) => (text || '').split('\n')
+
+// 分配记录行着色：分配修改=红，分配跟进=蓝
+const assignLineStyle = (line: string) => {
+  if (line.startsWith('分配修改')) return { color: '#f56c6c', fontWeight: 600 }
+  if (line.startsWith('分配跟进')) return { color: '#409eff', fontWeight: 600 }
+  return {}
+}
 
 
 // 行颜色：选中行=淡蓝；测试打回的问题=淡红（提醒工程师重新处理）
@@ -501,8 +505,10 @@ const loadList = async () => {
   const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
   
   // 不打勾"查看所有"：只查工程师（xggcs）=当前登录者的数据（每人只看到分给自己的问题）
-  if (!viewAll.value && currentUserName) {
-    params.xggcs = currentUserName
+  // 按编码过滤：工程师编码(xggcsBM)=当前登录人编码
+  const currentUserCode = localStorage.getItem('userCode') || ''
+  if (!viewAll.value && (currentUserName || currentUserCode)) {
+    params.xggcsBM = currentUserCode
   }
   
   try {
@@ -545,23 +551,22 @@ const hasImages = ref(false)  // 当前选中问题是否有图片
 
 
 // ============ 分配修改人 / 分配跟进人 ============
-const userList = ref([])
-const yanfaList = ref([])   // 研发人员列表（category 含 '1'）——"分配修改"选人用
-const shishiList = ref([])  // 实施人员列表（category 含 '0'）——"分配跟进"选人用
+const yanfaList = ref([])   // 研发人员列表（sys_user isYanfa=1）——"分配修改"选人用
+const shishiList = ref([])  // 实施人员列表（sys_user isShishi=1）——"分配跟进"选人用
 const showDevSelect = ref(false)       // 分配修改人弹窗是否显示
 const selectedDev = ref('')            // 选中的研发人员
 const showFollowerSelect = ref(false)  // 分配跟进人弹窗是否显示
 const selectedFollower = ref('')       // 选中的跟进人
 
-// 加载员工列表，并按 category 拆成研发/实施两组
+// 加载人员下拉：研发/实施均从 sys_user 加载（dict 接口返回 {value:姓名, label:姓名, username:编码}）
 const loadUsers = async () => {
   try {
-    const res = await axios.get('/api/staff')
-    userList.value = res.data?.data?.list || []
-    // category 字段（字符串）：包含 '1' = 研发人员；包含 '0' = 实施人员
-    // filter 类比 VB6 的 For 循环 + If 判断，把满足条件的项挑出来
-    yanfaList.value = userList.value.filter((u: any) => String(u.category || '').includes('1'))
-    shishiList.value = userList.value.filter((u: any) => String(u.category || '').includes('0'))
+    const [y, s] = await Promise.all([
+      axios.get('/api/dict/yanfa'),
+      axios.get('/api/dict/shishi')
+    ])
+    yanfaList.value = y.data?.data || []
+    shishiList.value = s.data?.data || []
   } catch(e) { console.error(e) }
 }
 
@@ -578,7 +583,8 @@ const handleAssign = async () => {
 const confirmAssign = async () => {
   if (!selectedDev.value) { alert("请选择研发人员"); return; }
   try {
-    const patch: any = { xggcs: selectedDev.value }
+    const dev = yanfaList.value.find((u: any) => u.value === selectedDev.value)
+    const patch: any = { xggcs: selectedDev.value, xggcsBM: dev?.username || '' }
     const opinion = (form.gongcscs || '').trim()
     if (opinion) {
       // 意见只追加到测试说明(已在显示区可见)，不写入 gongcscs，避免处理意见输入框回显
@@ -608,7 +614,8 @@ const handleAssignFollower = async () => {
 const confirmAssignFollower = async () => {
   if (!selectedFollower.value) { alert("请选择实施人员"); return; }
   try {
-    const patch: any = { shishiry: selectedFollower.value }
+    const fol = shishiList.value.find((u: any) => u.value === selectedFollower.value)
+    const patch: any = { shishiry: selectedFollower.value, shishiryBM: fol?.username || '' }
     const opinion = (form.gongcscs || '').trim()
     if (opinion) {
       const note = buildAssignNote('分配跟进')
@@ -679,6 +686,11 @@ const handleViewImage = (url: string) => {
 
 // ============ 核心：确认处理（工程师填完处理意见后提交） ============
 // 成功后该问题 gongchengsbz 置 'Y'，从本页列表消失、进入"待测试"
+// ============ 模板按钮追加（处理意见） ============
+const appendGongcscs = (text: string) => {
+  form.gongcscs = form.gongcscs ? form.gongcscs + '\n' + text : text
+}
+
 const handleSubmit = async () => {
   if (!selected.value) { ElMessage.warning('请先选择要处理的问题'); return }
   if (!form.gongcscs) { ElMessage.warning('请填写处理意见'); return }

@@ -78,4 +78,19 @@ export class Feedback {
 
   @Column({ name: 'cssj', nullable: true })  // 测试时间（确认测试/返回测试时写入）
   cssj: Date;
+
+  @Column({ name: 'shishiryBM', nullable: true, length: 50 })  // 跟进人员编码（sys_user.username）
+  shishiryBM: string;
+
+  @Column({ name: 'xggcsBM', nullable: true, length: 50 })  // 修改工程师编码
+  xggcsBM: string;
+
+  @Column({ name: 'szcsgcsBM', nullable: true, length: 50 })  // 反馈人编码
+  szcsgcsBM: string;
+
+  @Column({ name: 'shcsgcsBM', nullable: true, length: 50 })  // 测试人编码
+  shcsgcsBM: string;
+
+  @Column({ name: 'LSH', nullable: true, length: 50 })  // 流水号（导入老数据用）
+  LSH: string;
 }

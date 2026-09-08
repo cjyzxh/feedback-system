@@ -7,8 +7,9 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { HospitalModule } from './modules/hospital/hospital.module';
 import { RoleModule } from './modules/role/role.module';
 import { DictModule } from './modules/dict/dict.module';
-import { StaffModule } from './modules/staff/staff.module';
+// import { StaffModule } from './modules/staff/staff.module';  // 已停用：人员维护（人员数据源改为 sys_user）
 import { ConfigModule } from './modules/config/config.module';
+import { TemplateModule } from './modules/template/template.module';
 
 // 这是应用程序的根模块
 // 类似于 VB6 的工程文件（.vbp），负责注册所有子模块
@@ -66,10 +67,13 @@ import { ConfigModule } from './modules/config/config.module';
     HospitalModule,
     RoleModule,
     DictModule,
-    StaffModule,
+    // StaffModule,  // 已停用：人员维护（人员数据源改为 sys_user）
 
     // 配置管理模块
     ConfigModule,
+
+    // 模板维护模块
+    TemplateModule,
   ],
 })
 export class AppModule {}

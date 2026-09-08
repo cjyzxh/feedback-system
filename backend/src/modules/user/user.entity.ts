@@ -41,6 +41,12 @@ export class User {
   @Column({ length: 20, default: '' })
   themeMode: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
 
+  @Column({ type: 'int', default: 0 })
+  isShishi: number; // 是否实施人员：1=是，0=否（内部员工勾选）
+
+  @Column({ type: 'int', default: 0 })
+  isYanfa: number; // 是否研发人员：1=是，0=否（内部员工勾选）
+
   @Column({ type: 'int', default: 1 })
   status: number; // 0: 禁用, 1: 正常
 

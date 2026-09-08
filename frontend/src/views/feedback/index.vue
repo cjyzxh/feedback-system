@@ -122,8 +122,8 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">查看</el-button>
-            <el-button type="primary" link @click="handleEdit(row)" :disabled="!canEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)" :disabled="!canDelete(row)">删除</el-button>
+            <el-button v-if="canEdit(row)" type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="canDelete(row)" type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -1307,6 +1307,24 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 }
 /* 列表只读：文字上显示普通鼠标箭头；可点击按钮仍显示手型 */
 :deep(.el-table .cell .el-button) { cursor: pointer !important; }
+
+/* 操作列按钮禁用态：字体变灰，不可操作；鼠标经过不显示任何效果 */
+:deep(.el-table .el-button.is-disabled.is-link),
+:deep(.el-table .el-button.is-disabled) {
+  color: #b3b8bf !important;
+  cursor: not-allowed;
+}
+:deep(.el-table .el-button.is-disabled.is-link:hover),
+:deep(.el-table .el-button.is-disabled.is-link:focus),
+:deep(.el-table .el-button.is-disabled:hover),
+:deep(.el-table .el-button.is-disabled:focus) {
+  color: #b3b8bf !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 1;
+}
 
 /* 莫兰迪色系按钮 */
 .morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }

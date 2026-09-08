@@ -423,7 +423,7 @@ body.theme-dark .btn-login:hover, body.theme-dark .btn-clear:hover {
 }
 .el-table th.el-table__cell {
   background: #fafbfc !important;
-  color: #606266;
+  color: #9CA3AF;
   font-weight: 600;
   border-bottom: 1px solid #ebeef5;
 }
@@ -684,7 +684,7 @@ body.theme-dark .el-table {
 }
 body.theme-dark .el-table th.el-table__cell {
   background: #1E2A40 !important;
-  color: #A5C7E8;
+  color: #7E9DC0;
   border-bottom-color: #2E3D57;
 }
 body.theme-dark .el-table tr {
@@ -1321,7 +1321,7 @@ body.theme-light .el-table {
 }
 body.theme-light .el-table th.el-table__cell {
   background: #EDF3FA !important;
-  color: #1E5DA2;
+  color: #6B94C4;
   font-weight: 600;
   border-bottom-color: #DCDFE6;
 }
@@ -1946,3 +1946,24 @@ body.theme-dark .test-result-box {
   background: #3A2A2A !important;
   border-color: #5C3A3A !important;
 }
+
+
+/* 表格标题字体淡一点：区别于选中行的加粗（浅色/莫兰迪/深色各自适配） */
+.el-table th.el-table__cell { color: #9CA3AF !important; }
+body.theme-light .el-table th.el-table__cell { color: #6B94C4 !important; }
+body.theme-dark .el-table th.el-table__cell { color: #7E9DC0 !important; }
+
+
+/* 深色模式下选中行文字变红色，与普通行明显区分 */
+body.theme-dark .selected-row td { color: #FF7B72 !important; }
+
+/* 关键修复：Element Plus 表格文字渲染在 th/td 内层 .cell div 上，
+   .cell 自身有 color（浅色 #1F2D3D≈黑、深色 #C4D0E0），会把 th/td 的主题色盖掉。
+   这里把表头色和深色选中行红字同步作用到 .cell 内层 */
+.el-table th.el-table__cell .cell { color: #9CA3AF !important; }
+body.theme-light .el-table th.el-table__cell .cell { color: #6B94C4 !important; }
+body.theme-dark .el-table th.el-table__cell .cell { color: #7E9DC0 !important; }
+body.theme-dark .selected-row td .cell { color: #FF7B72 !important; }
+body.theme-dark .selected-row td .cell { font-weight: 600 !important; }
+body.theme-dark .selected-row td { font-weight: 600 !important; }
+

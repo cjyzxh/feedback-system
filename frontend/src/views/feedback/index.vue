@@ -12,12 +12,12 @@
           <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" style="width:120px" />
         </el-form-item>
         <el-form-item label="医院" v-if="!isCustomerUser">
-          <el-select v-model="searchForm.yiyuanmc" placeholder="请搜索选择" filterable clearable style="width:180px" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" @change="handleSearch">
+          <el-select v-model="searchForm.yiyuanmc" placeholder="请搜索选择" filterable clearable style="width:252px" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" @change="handleSearch">
             <el-option v-for="h in hospitals" :key="h.label" :label="h.label" :value="h.label" />
           </el-select>
         </el-form-item>
         <el-form-item label="模块">
-          <el-select v-model="searchForm.mokuai" placeholder="请选择" clearable style="width:130px" @change="handleSearch">
+          <el-select v-model="searchForm.mokuai" placeholder="请选择" clearable style="width:156px" @change="handleSearch">
             <el-option v-for="m in modules" :key="m.value" :label="m.label" :value="m.label" />
           </el-select>
         </el-form-item>
@@ -29,34 +29,43 @@
             <el-option label="待讨论" value="daitaolun" />
           </el-select>
         </el-form-item>
-        <el-form-item label="录入日期">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            @change="handleDateChange"
-            style="width:240px"
-          />
-        </el-form-item>
-        <el-form-item v-if="canViewOthers && !isCustomerUser">
-          <el-checkbox v-model="viewAll" @change="handleSearch">查看所有问题</el-checkbox>
-        </el-form-item>
         <el-form-item v-if="canViewOthers && viewAll && !isCustomerUser">
           <el-select v-model="selectedShishiry" placeholder="跟进人员" clearable style="width:130px" @change="handleSearch">
             <el-option v-for="s in shishiList" :key="s.value || s.xingming" :label="s.label || s.xingming" :value="s.value || s.xingming" />
           </el-select>
         </el-form-item>
-        <el-form-item>
-          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询问题</el-button>
-          <el-button class="morandi-btn morandi-gray btn-reset" @click="handleResetSearch">重置条件</el-button>
-          <el-button class="morandi-btn morandi-blue" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
-        </el-form-item>
+        <!-- 第一行末尾：查询问题 + 重置条件 + 新增问题（以查询问题为基准统一宽高） -->
+        <div class="btn-group-1">
+          <el-button class="morandi-btn morandi-blue btn-search" @click="handleSearch"><el-icon><Search /></el-icon> 查询问题</el-button>
+          <el-button class="morandi-btn morandi-gray btn-reset" @click="handleResetSearch"><el-icon><RefreshLeft /></el-icon> 重置条件</el-button>
+          <el-button class="morandi-btn morandi-blue btn-add" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
+        </div>
+        <!-- 第二行：问题说明 → 录入日期 → 查询/重置（问题说明左对齐第一行问题ID号） -->
+        <div class="search-row-2">
+          <el-form-item label="问题说明" class="wentism-item" :style="{ width: wentismWidth }">
+            <el-input v-model="searchForm.wentism" placeholder="输入问题说明关键词，支持模糊检索" clearable @keyup.enter="handleSearch" style="width:100%" />
+          </el-form-item>
+          <el-form-item label="录入日期" class="date-item" :style="{ width: dateItemWidth }">
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              @change="handleDateChange"
+              style="width:100%"
+            />
+          </el-form-item>
+          <div class="btn-group-2">
+            <el-form-item v-if="canViewOthers && !isCustomerUser" class="check-item">
+              <el-checkbox v-model="viewAll" @change="handleSearch">查看所有问题</el-checkbox>
+            </el-form-item>
+          </div>
+        </div>
       </el-form>
       
-      <el-table :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName">
+      <el-table :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName" @row-click="handleSelectRow" @row-dblclick="handleView">
         <el-table-column prop="id" label="问题ID号" width="90" />
         <el-table-column prop="jingjicd" label="紧急度" width="80">
           <template #default="{ row }">
@@ -453,9 +462,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back } from '@element-plus/icons-vue'
+import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // ============ 页面状态变量（类比 VB6 的窗体级变量） ============
@@ -584,6 +593,7 @@ const searchForm = reactive({
   mokuai: '',        // 模块
   id: '',            // 问题ID
   zhuangtai: '',     // 问题状态（待修改/待测试/已修改/待讨论）
+  wentism: '',       // 问题说明（模糊检索关键词）
   startDate: defaultRange.startDate,  // 录入日期起
   endDate: defaultRange.endDate       // 录入日期止
 })
@@ -734,8 +744,47 @@ const getStatusType = (status: string) => {
   }
 }
 
-// 行颜色：测试后"打回"的问题（工程师标志被重置为 N 且有过测试时间）整行淡红色，提醒处理人
+// 当前选中行ID（点击行高亮用，颜色随主题）
+const selectedId = ref<number | null>(null)
+const handleSelectRow = (row: any) => { selectedId.value = row.id }
+
+// 问题说明条件框总宽：动态测量第一行"问题ID号(左边缘)→医院(右边缘)"的实际宽度
+// 保证问题说明的右边缘与医院下拉框右侧精确对齐（含ID与医院之间的间距）
+const wentismWidth = ref('440px')
+// 录入日期条件框总宽：动态测量第一行"模块(左边缘)→状态(右边缘)"，左对齐模块、右对齐状态
+const dateItemWidth = ref('380px')
+const measureWentismWidth = () => {
+  nextTick(() => {
+    const form = document.querySelector('.search-form')
+    if (!form) return
+    // 只取 el-form 直接子级（第一行），第二行在 div 里不受影响
+    const items = form.querySelectorAll(':scope > .el-form-item')
+    if (items.length >= 2) {
+      const right = items[1].offsetLeft + items[1].offsetWidth  // 医院右边缘
+      const left = items[0].offsetLeft                          // 问题ID号左边缘
+      wentismWidth.value = Math.max(right - left, 300) + 'px'
+    }
+    if (items.length >= 4) {
+      const modLeft = items[2].offsetLeft                        // 模块左边缘
+      const statusRight = items[3].offsetLeft + items[3].offsetWidth  // 状态右边缘
+      dateItemWidth.value = Math.max(statusRight - modLeft, 300) + 'px'
+    }
+    // 以查询问题为基准：统一第一行三个按钮的宽高
+    const qBtn = form.querySelector('.btn-group-1 .btn-search')
+    if (qBtn) {
+      form.style.setProperty('--search-btn-w', qBtn.offsetWidth + 'px')
+      form.style.setProperty('--search-btn-h', qBtn.offsetHeight + 'px')
+    }
+  })
+}
+onMounted(() => {
+  measureWentismWidth()
+  window.addEventListener('resize', measureWentismWidth)
+})
+
+// 行颜色：选中行用主题浅色；测试后"打回"的问题（工程师标志被重置为 N 且有过测试时间）整行淡红色
 const getTableRowClassName = ({ row }: { row: any }) => {
+  if (selectedId.value === row.id) return 'selected-row'
   if (row.gongchengsbz === 'N' && row.cssj) {
     return 'test-returned-row'
   }
@@ -798,7 +847,8 @@ const loadData = async () => {
     id: searchForm.id || undefined,
     startDate: searchForm.startDate || undefined,   // 录入日期起
     endDate: searchForm.endDate || undefined,       // 录入日期止
-    zhuangtai: searchForm.zhuangtai || undefined    // 问题状态
+    zhuangtai: searchForm.zhuangtai || undefined,   // 问题状态
+    keyword: searchForm.wentism || undefined        // 问题说明模糊检索（后端按 wentism LIKE）
   }
   
   // ① 客户用户：强制只查本医院的问题（医院的查询条件被覆盖，客户改不了）
@@ -839,6 +889,7 @@ const handleResetSearch = () => {
   searchForm.mokuai = ''
   searchForm.id = ''
   searchForm.zhuangtai = ''
+  searchForm.wentism = ''
   searchForm.startDate = defaultRange.startDate
   searchForm.endDate = defaultRange.endDate
   dateRange.value = [defaultRange.startDate, defaultRange.endDate]
@@ -1210,7 +1261,40 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 <style scoped>
 .feedback-container { padding: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
-.search-form { margin-bottom: 20px; }
+.search-form { margin-bottom: 10px; }
+/* 查询条件第二行：问题说明 + 录入日期 */
+.search-row-2 { display: flex; flex-wrap: nowrap; align-items: center; gap: 0; width: 100%; }
+/* 第二行控件间距 1px */
+.search-row-2 .el-form-item { margin-right: 6px !important; margin-bottom: 0 !important; }
+.search-row-2 .wentism-item { flex: 0 1 auto; min-width: 0; }
+.search-row-2 .wentism-item .el-input { width: 100%; }
+/* 按钮组：固定在末尾，不压缩 */
+.search-row-2 .btn-group-2 { flex: 0 0 auto; margin-right: 0 !important; display: flex; align-items: center; }
+.search-row-2 .btn-group-2 .el-button, .search-row-2 .btn-group-2 .check-item { margin: 0 6px; }
+/* 第一行控件间距 6px（含查看所有/新增问题） */
+.search-form .el-form-item { margin-right: 6px !important; margin-bottom: 10px !important; }
+/* 查看所有/新增/查询/重置 宽度统一：JS 写入 --search-btn-w 取四者最大值 */
+.search-form { --search-btn-w: 110px; --search-btn-h: 40px; }
+.search-form .btn-group-1 { display: inline-flex; align-items: center; vertical-align: top; margin-left: 6px; }
+.search-form .btn-group-1 .el-button { width: var(--search-btn-w); height: 32px; margin: 0 6px; }
+.search-row-2 .btn-group-2 .check-item { margin: 0 6px; }
+.search-form .morandi-btn { min-width: var(--search-btn-w); }
+/* 第二行顶部对齐：录入日期与查询按钮上边缘齐平 */
+.search-row-2 { align-items: flex-start; }
+/* 复选框跟随系统主题（与问题处理/测试页一致）：主色边框 + 浅色底 */
+:deep(.el-checkbox__inner) {
+  border: 2px solid var(--el-color-primary) !important;
+  background-color: var(--el-color-primary-light-9) !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+}
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner::after) {
+  border-color: #ffffff !important;
+}
 .full-width { width: 100%; }
 
 
@@ -1219,7 +1303,10 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  cursor: default !important;
 }
+/* 列表只读：文字上显示普通鼠标箭头；可点击按钮仍显示手型 */
+:deep(.el-table .cell .el-button) { cursor: pointer !important; }
 
 /* 莫兰迪色系按钮 */
 .morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }
@@ -1267,6 +1354,14 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .upload-icon { font-size: 28px; color: #999; }
 .upload-text { font-size: 12px; color: #999; margin-top: 8px; text-align: center; line-height: 1.6; }
 .viewer-tip { margin-top: 12px; padding: 8px 12px; background: #ecf5ff; color: var(--el-color-primary); border-radius: 4px; font-size: 12px; text-align: center; }
+
+/* 选中行：跟随系统主题的明显底色 + 整行加粗，一眼可辨 */
+:deep(.selected-row) {
+  background-color: var(--el-color-primary-light-9) !important;
+}
+:deep(.selected-row td) {
+  font-weight: 600 !important;
+}
 
 /* 测试后返回的问题行颜色：淡淡的红色 */
 :deep(.test-returned-row) {

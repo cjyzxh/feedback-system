@@ -696,7 +696,12 @@ onMounted(() => { loadList() })
 .table-card :deep(.el-table) { font-size: 13px; }
 
 /* 选中行蓝色 */
-:deep(.selected-row) { background: #ecf5ff !important; }
+:deep(.selected-row) {
+  background-color: var(--el-color-primary-light-9) !important;
+}
+:deep(.selected-row td) {
+  font-weight: 600 !important;
+}
 
 /* 测试后返回的问题行颜色：淡淡的红色 */
 :deep(.test-returned-row) { background: #fef0f0 !important; }

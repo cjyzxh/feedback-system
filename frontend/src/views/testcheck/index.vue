@@ -543,7 +543,12 @@ onMounted(() => { loadList() })
 .test-result-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
 .table-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin: 0; }
 .table-card :deep(.el-card__body) { flex: 1; overflow: hidden; padding: 0; }
-.selected-row { background-color: #ecf5ff !important; }
+:deep(.selected-row) {
+  background-color: var(--el-color-primary-light-9) !important;
+}
+:deep(.selected-row td) {
+  font-weight: 600 !important;
+}
 .carousel-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .carousel-wrapper { width: 100%; height: 560px; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-shrink: 0; }
 .carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }

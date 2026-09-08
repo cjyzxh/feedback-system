@@ -154,14 +154,17 @@ export class FeedbackService {
         where[queryDateField] = Between(new Date('1900-01-01'), end);  // 只有结束日期：从最早到今天
       }
       
-      // findAndCount = 查列表 + 同时数总数（一次出两个结果，分页用）
-      // order id DESC = 新问题排前面；skip/take = SQL 的 OFFSET/FETCH 分页
-      const [list, total] = await this.feedbackRepository.findAndCount({
-        where,
-        order: { id: 'DESC' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      });
+      // 排序：紧急程度优先（紧急>急>一般），同级按录入时间倒序，再按ID倒序
+      // 用 queryBuilder 支持自定义排序权重（findAndCount 的 order 不支持 CASE）
+      const qb = this.feedbackRepository.createQueryBuilder('feedback');
+      if (Object.keys(where).length) {
+        qb.where(where);
+      }
+      qb.addOrderBy("CASE WHEN feedback.jingjicd = '紧急' THEN 0 WHEN feedback.jingjicd = '急' THEN 1 ELSE 2 END", 'ASC');
+      qb.addOrderBy('feedback.lvrusj', 'DESC');
+      qb.addOrderBy('feedback.id', 'DESC');
+      qb.skip((page - 1) * pageSize).take(pageSize);
+      const [list, total] = await qb.getManyAndCount();
       
       return { list, total };
     } catch (error) {

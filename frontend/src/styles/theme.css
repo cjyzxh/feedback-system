@@ -1966,4 +1966,9 @@ body.theme-dark .el-table th.el-table__cell .cell { color: #7E9DC0 !important; }
 body.theme-dark .selected-row td .cell { color: #FF7B72 !important; }
 body.theme-dark .selected-row td .cell { font-weight: 600 !important; }
 body.theme-dark .selected-row td { font-weight: 600 !important; }
-
+/* 查看问题对话框：图片小图 + 返回按钮居中（全局统一） */
+.view-dialog-actions { display: flex !important; justify-content: center !important; align-items: center !important; margin-top: 20px !important; width: 100% !important; text-align: center !important; }
+.view-dialog-actions .el-button { padding: 11px 36px !important; font-size: 14px !important; height: auto !important; line-height: 1.5 !important; }
+.view-images { display: flex !important; flex-wrap: wrap !important; gap: 12px !important; }
+.view-image { width: 120px !important; height: 120px !important; object-fit: cover !important; border-radius: 6px !important; border: 1px solid #dcdfe6 !important; transition: all 0.3s !important; }
+.view-image:hover { transform: scale(1.05) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }

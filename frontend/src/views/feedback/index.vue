@@ -66,8 +66,8 @@
       </el-form>
       
       <el-table :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName" @row-click="handleSelectRow" @row-dblclick="handleView">
-        <el-table-column prop="id" label="问题ID号" width="90" />
-        <el-table-column prop="jingjicd" label="紧急度" width="80">
+        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
             <el-tag v-else-if="row.jingjicd === '急'" type="warning" size="small">急</el-tag>
@@ -433,14 +433,14 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="nextImage"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0">
-          <el-button class="morandi-btn morandi-blue" @click="openImageViewer">
-            <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
+          <el-button type="primary" @click="openImageViewer">
+            <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
           <el-button type="danger" @click="deleteCurrentImage">
             <el-icon><Delete /></el-icon> 删除当前图片
           </el-button>
           <el-button type="info" plain @click="previewVisible = false">
-            <el-icon><Back /></el-icon> 返回
+            <el-icon><Back /></el-icon> 返回列表
           </el-button>
         </div>
         <div class="viewer-tip" v-if="previewImages.length > 0">

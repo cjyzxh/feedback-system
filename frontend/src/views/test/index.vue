@@ -149,8 +149,15 @@
           </div>
         </div>
       </template>
-      <el-table :data="list" @row-click="handleRowClick" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
+      <el-table :data="list" @row-click="handleRowClick" @row-dblclick="handleView" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
         <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
+            <el-tag v-else-if="row.jingjicd === '急'" type="warning" size="small">急</el-tag>
+            <el-tag v-else type="info" size="small">一般</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="yiyuanmc" label="医院名称" min-width="50" />
         <el-table-column prop="mokuai" label="模块" width="90" />
         <el-table-column prop="chuangtimc" label="窗体" width="90" />
@@ -175,13 +182,6 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="jingjicd" label="紧急" width="65" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
-            <el-tag v-else-if="row.jingjicd === '急'" type="warning" size="small">急</el-tag>
-            <el-tag v-else type="info" size="small">一般</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="lvrusj" label="录入时间" width="180">
           <template #default="{ row }">
             <span v-if="row.lvrusj">{{ formatDate(row.lvrusj) }}</span>
@@ -204,6 +204,135 @@
       </el-table>
     </el-card>
 
+    <!-- 查看问题对话框（只读） -->
+    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
+      <el-form :model="form" label-width="100px">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-form-item label="问题ID号">
+              <el-input v-model="form.id" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="录入时间">
+              <el-input :model-value="formatDate(form.lvrusj)" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="10">
+            <el-form-item label="紧急程度">
+              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="软件版本">
+              <el-input v-model="form.banben" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="16">
+            <el-form-item label="医院名称">
+              <el-input v-model="form.yiyuanmc" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="模块">
+              <el-input v-model="form.mokuai" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="窗体">
+              <el-input v-model="form.chuangtimc" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="跟进人员">
+              <el-input v-model="form.shishiry" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="工程师">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈人">
+              <el-input v-model="form.szcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="反馈渠道">
+              <el-input v-model="form.FanKuiQD" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item label="问题说明">
+          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
+        </el-form-item>
+        
+        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
+          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <el-form-item label="测试意见" v-if="form.shouzhongcs">
+          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
+        </el-form-item>
+        
+        <!-- 处理信息 -->
+        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
+        <el-row v-if="form.xgsj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="处理人">
+              <el-input v-model="form.xggcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="处理时间">
+              <el-input :model-value="formatDate(form.xgsj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- 测试返回信息 -->
+        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
+        <el-row v-if="form.cssj" :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="测试人员">
+              <el-input v-model="form.shcsgcs" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="测试返回时间">
+              <el-input :model-value="formatDate(form.cssj)" readonly />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item v-if="form.shouhoucs" label="测试结果">
+          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
+        </el-form-item>
+        
+        <!-- 问题截图（只读） -->
+        <el-form-item label="问题截图" v-if="detailImages.length > 0">
+          <div class="view-images">
+            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
+          </div>
+        </el-form-item>
+        
+        <div class="view-dialog-actions">
+          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
+            <el-icon><Back /></el-icon> 返回列表
+          </el-button>
+        </div>
+      </el-form>
+    </el-dialog>
     <!-- 图片预览弹窗 -->
     <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
@@ -217,11 +346,11 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="currentIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button type="warning" plain @click="openImageViewer">
-            <el-icon><ZoomIn /></el-icon> 查看原图（可缩放）
+          <el-button type="primary" @click="openImageViewer">
+            <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
           <el-button type="info" plain @click="previewVisible = false">
-            <el-icon><Back /></el-icon> 返回
+            <el-icon><Back /></el-icon> 返回列表
           </el-button>
         </div>
         <div class="viewer-tip" v-if="previewImages.length > 0">
@@ -409,6 +538,9 @@ const handleRowClick = async (row: any) => {
 }
 
 const previewVisible = ref(false)
+const viewDialogVisible = ref(false)  // 查看对话框是否显示
+const detailImages = ref<string[]>([])  // 查看详情图片列表
+
 const hasImages = ref(false)  // 当前选中问题是否有图片
 
 
@@ -516,6 +648,34 @@ const viewImages = async (row: any) => {
     } else { ElMessage.warning("暂无图片") }
   } catch (err) { console.error("加载图片失败", err) }
 }
+// 双击行查看问题详情：把整行数据塞进 form（只读展示），再加载该问题的图片
+const handleView = async (row: any) => {
+  const rowCopy = JSON.parse(JSON.stringify(row))
+  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
+  rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
+  rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
+  Object.assign(form, rowCopy)
+  detailImages.value = []
+  try {
+    const res = await axios.get(`/api/feedback/images/${row.id}`)
+    const imgs = res.data
+    if (imgs && imgs.length > 0) {
+      detailImages.value = imgs.map((img: any) => {
+        const name = typeof img === 'string' ? img : (img.filename || img.name)
+        return `/api/feedback/uploads/${name}`
+      })
+    }
+  } catch (err) { console.error('加载图片失败:', err) }
+  viewDialogVisible.value = true
+}
+
+const handleViewImage = (url: string) => {
+  previewImages.value = detailImages.value
+  currentIndex.value = previewImages.value.findIndex(u => u === url)
+  previewVisible.value = true
+}
+
+
 
 // ============ 核心：确认处理（工程师填完处理意见后提交） ============
 // 成功后该问题 gongchengsbz 置 'Y'，从本页列表消失、进入"待测试"
@@ -718,4 +878,10 @@ onMounted(() => { loadList() })
 /* 图片预览对话框：固定尺寸 */
 .preview-dialog :deep(.el-dialog) { width: 960px !important; height: 760px !important; display: flex; flex-direction: column; }
 .preview-dialog :deep(.el-dialog__body) { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+
+.view-dialog-actions { display: flex; justify-content: center; align-items: center; margin-top: 20px; width: 100%; text-align: center; }
+.view-dialog-actions .el-button { padding: 11px 36px !important; font-size: 14px !important; height: auto; line-height: 1.5; }
+.view-images { display: flex; flex-wrap: wrap; gap: 12px; }
+.view-image { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #dcdfe6; transition: all 0.3s; }
+.view-image:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 </style>

@@ -412,7 +412,13 @@ const handlePageFocus = () => {
 // 检查新问题并提醒
 const checkNewProblems = async () => {
   try {
-    const currentUser = username.value
+    // 消息提醒按用户编码查询（后端按 xggcsBM / shishiryBM 匹配）
+    let currentUser = localStorage.getItem('userCode') || ''
+    if (!currentUser) {
+      // 兼容旧登录态：从 user 的 username（编码）兜底
+      const u = JSON.parse(localStorage.getItem('user') || '{}')
+      currentUser = u.username || ''
+    }
     if (!currentUser) return
 
     const res = await axios.get(`/api/feedback/reminder/count?currentUser=${encodeURIComponent(currentUser)}`)

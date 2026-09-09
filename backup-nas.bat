@@ -21,10 +21,19 @@ echo [1/3] git add -A ...
 git add -A
 if errorlevel 1 goto :err
 
+:: no staged changes -> skip commit
+git diff --cached --quiet
+if %errorlevel%==0 goto :nocommit
+
 echo [2/3] git commit ...
 git commit -m "v%VER% %DT% backup"
 if errorlevel 1 goto :err
+goto :push
 
+:nocommit
+echo [2/3] git commit ... skipped (no changes)
+
+:push
 echo [3/3] git push nas master ...
 git push nas master
 if errorlevel 1 goto :err

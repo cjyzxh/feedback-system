@@ -272,11 +272,23 @@
           <el-input v-model="form.shouhoucs" type="textarea" :rows="2" disabled style="color: #f56c6c" />
         </el-form-item>
         
-        <el-form-item label="问题截图">
+        <el-form-item label="问题附件">
           <div @paste="handlePaste" class="upload-area">
-            <el-upload ref="uploadRef" v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-preview="handlePreview" :on-remove="handleRemove" :limit="5" accept="image/*" drag multiple>
+            <el-upload ref="uploadRef" v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
               <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">拖拽或点击选择<br/>Ctrl+V 粘贴图片</div>
+              <div class="upload-text">拖拽或点击选择<br/>支持图片/视频/文档（单个≤50MB）<br/>Ctrl+V 粘贴图片或文件</div>
+              <template #file="{ file }">
+                <div class="file-card" @click="handlePreview(file)">
+                  <img v-if="getAttachType(file.name) === 'image'" :src="file.url" class="file-thumb" alt="" />
+                  <div v-else class="file-icon">
+                    <el-icon><Document /></el-icon>
+                    <span class="file-name">{{ file.name }}</span>
+                  </div>
+                  <div class="file-card-del" @click.stop="handleRemove(file, uploadFileList)">
+                    <el-icon><Close /></el-icon>
+                  </div>
+                </div>
+              </template>
             </el-upload>
           </div>
         </el-form-item>
@@ -407,10 +419,15 @@
           <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
         </el-form-item>
         
-        <!-- 问题截图（只读） -->
-        <el-form-item label="问题截图" v-if="detailImages.length > 0">
+        <!-- 问题附件（只读） -->
+        <el-form-item label="问题附件" v-if="detailItems.length > 0">
           <div class="view-images">
-            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
+            <template v-for="(item, index) in detailItems" :key="index">
+              <img v-if="item.type === 'image'" :src="item.url" class="view-image" @click="handleViewImage(item.url)" style="cursor: zoom-in;" />
+              <div v-else class="view-file" @click="handleViewImage(item.url)">
+                <el-icon><Document /></el-icon><span>{{ item.name }}</span>
+              </div>
+            </template>
           </div>
         </el-form-item>
         
@@ -422,31 +439,48 @@
       </el-form>
     </el-dialog>
     
-    <!-- 图片预览弹窗 -->
-    <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
+    <!-- 附件预览弹窗 -->
+    <el-dialog v-model="previewVisible" title="问题附件" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
-        <div class="carousel-wrapper" v-if="previewImages.length > 0">
-          <img :src="previewImages[currentIndex]" class="carousel-image" @click="openImageViewer" style="cursor: zoom-in;" />
+        <div class="carousel-wrapper" v-if="previewItems.length > 0">
+          <img v-if="currentItem.type === 'image'" :src="currentItem.url" class="carousel-image" @click="openImageViewer" style="cursor: zoom-in;" />
+          <template v-else-if="currentItem.type === 'video'">
+            <video :src="currentItem.url" class="carousel-video" controls @error="handleVideoError" @loadedmetadata="handleVideoMeta"></video>
+            <div v-if="videoPlayError" class="video-error-tip">
+              此视频编码浏览器不支持画面（只能听到声音），多为 MPEG-4 或 H.265 格式。<br/>
+              请点击下方"下载文件"保存后，用格式工厂等工具转码为 H.264（如"MP4 H.264"）再上传。
+            </div>
+          </template>
+          <div v-else class="carousel-file">
+            <el-icon class="carousel-file-icon"><Document /></el-icon>
+            <div class="carousel-file-name">{{ currentItem.name }}</div>
+            <el-button type="primary" @click="openExternalFile">
+              <el-icon><Download /></el-icon> {{ canPreviewInBrowser(currentItem.name) ? '打开文件' : '下载打开' }}
+            </el-button>
+          </div>
         </div>
-        <el-empty v-else description="暂无图片" />
-        <div class="carousel-controls" v-if="previewImages.length > 1">
+        <el-empty v-else description="暂无附件" />
+        <div class="carousel-controls" v-if="previewItems.length > 1">
           <el-button circle :disabled="currentIndex === 0" @click="prevImage"><el-icon><ArrowLeft /></el-icon></el-button>
-          <span class="carousel-indicator">{{ currentIndex + 1 }} / {{ previewImages.length }}</span>
-          <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="nextImage"><el-icon><ArrowRight /></el-icon></el-button>
+          <span class="carousel-indicator">{{ currentIndex + 1 }} / {{ previewItems.length }}</span>
+          <el-button circle :disabled="currentIndex === previewItems.length - 1" @click="nextImage"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
-        <div class="carousel-actions" v-if="previewImages.length > 0">
-          <el-button type="primary" @click="openImageViewer">
+        <div class="carousel-actions" v-if="previewItems.length > 0">
+          <el-button v-if="currentItem.type === 'image'" type="primary" @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
+          <a v-else :href="currentItem.url" target="_blank">
+            <el-button type="primary"><el-icon><Download /></el-icon> 下载文件</el-button>
+          </a>
           <el-button type="danger" @click="deleteCurrentImage">
-            <el-icon><Delete /></el-icon> 删除当前图片
+            <el-icon><Delete /></el-icon> 删除当前附件
           </el-button>
           <el-button type="info" plain @click="previewVisible = false">
             <el-icon><Back /></el-icon> 返回列表
           </el-button>
         </div>
-        <div class="viewer-tip" v-if="previewImages.length > 0">
-          提示：点击图片或"查看原图"按钮可全屏查看，支持鼠标滚轮缩放、拖拽移动
+        <div class="viewer-tip" v-if="previewItems.length > 0">
+          提示：图片点击可全屏缩放；视频可直接播放；其他文件点击"打开文件"新窗口查看
         </div>
       </div>
     </el-dialog>
@@ -454,7 +488,7 @@
     <!-- 全屏图片查看器（支持鼠标滚轮缩放、拖拽、全屏） -->
     <el-image-viewer
       v-if="imageViewerVisible"
-      :url-list="previewImages"
+      :url-list="viewerUrlList"
       :initial-index="currentIndex"
       :hide-on-click-modal="true"
       :z-index="9999"
@@ -464,9 +498,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back } from '@element-plus/icons-vue'
+import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
 import TemplatePicker from '@/components/TemplatePicker.vue'
 
@@ -475,39 +509,90 @@ const loading = ref(false)          // 列表加载中（控制转圈动画）
 const submitting = ref(false)       // 保存提交中（防止连点两次重复提交）
 const dialogVisible = ref(false)    // 新增/编辑 对话框是否显示
 const viewDialogVisible = ref(false)// 查看 对话框是否显示
-const detailImages = ref<string[]>([])  // 查看详情里显示的图片地址列表
-const previewVisible = ref(false)   // 图片轮播预览窗口是否显示
-const previewImages = ref<string[]>([]) // 轮播预览的图片数组
-const currentIndex = ref(0)         // 轮播当前是第几张（0 起）
+const detailItems = ref<any[]>([])      // 查看详情附件列表（含类型/文件名）
+const previewVisible = ref(false)   // 附件轮播预览窗口是否显示
+const previewItems = ref<any[]>([]) // 轮播预览的附件数组 [{url, type, name}]
+const currentIndex = ref(0)         // 轮播当前是第几个（0 起）
 const isEdit = ref(false)           // true=编辑模式，false=新增模式
 const imageViewerVisible = ref(false)  // 全屏图片查看器状态（Element Plus 自带查看器）
+const viewerUrlList = ref<string[]>([]) // 全屏查看器只放图片URL（视频/文件不走它）
 
-// 轮播：上一张 / 下一张（类比 VB6 里改数组下标后重画 PictureBox）
+// 附件类型判断（按扩展名）：image=图片 / video=视频 / other=其他文件
+const getAttachType = (name: string) => {
+  const n = (name || '').toLowerCase()
+  if (/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/.test(n)) return 'image'
+  if (/\.(mp4|avi|mov|wmv|mkv|flv|webm)$/.test(n)) return 'video'
+  return 'other'
+}
+// 把文件名转成附件项 {url, type, name}
+const toAttachItem = (name: string) => {
+  const url = `/api/feedback/uploads/${name}`
+  return { url, type: getAttachType(name), name }
+}
+// 当前正在预览的附件（用于模板里按类型渲染）
+const currentItem = computed(() => previewItems.value[currentIndex.value] || { url: '', type: 'image', name: '' })
+
+// 视频画面解码失败提示（如 MPEG-4/H.265 编码浏览器无画面，只有声音）
+const videoPlayError = ref(false)
+const handleVideoError = () => { videoPlayError.value = true }
+const handleVideoMeta = (e: any) => {
+  // loadedmetadata 后宽高为 0 说明视频轨道无法解码（没有画面）
+  const v = e.target
+  if (v && typeof v.videoWidth === 'number' && v.videoWidth === 0) {
+    videoPlayError.value = true
+  }
+}
+// 切换预览项时重置视频错误提示
+watch(currentItem, () => { videoPlayError.value = false })
+
+// 浏览器可直接渲染的文件类型（txt/html/pdf 等）：新窗口直接打开
+const canPreviewInBrowser = (name: string) => /\.(txt|md|html|htm|pdf)$/i.test(name || '')
+// 打开非图片非视频文件：可预览的直接新窗口打开；Office/压缩包等先提示再下载
+const openExternalFile = async () => {
+  const name = currentItem.value.name || ''
+  if (canPreviewInBrowser(name)) {
+    window.open(currentItem.value.url, '_blank')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `文件「${name}」无法在浏览器中直接预览，点击"下载打开"后将下载到本地，请使用 Word/Excel/WPS 等程序打开。`,
+      '打开文件',
+      { type: 'info', confirmButtonText: '下载打开', cancelButtonText: '取消' }
+    )
+    window.open(currentItem.value.url, '_blank')
+  } catch (e) { /* 用户取消下载 */ }
+}
+
+// 轮播：上一个 / 下一个（类比 VB6 里改数组下标后重画 PictureBox）
 const prevImage = () => {
   if (currentIndex.value > 0) currentIndex.value--
 }
 
 const nextImage = () => {
-  if (currentIndex.value < previewImages.value.length - 1) currentIndex.value++
+  if (currentIndex.value < previewItems.value.length - 1) currentIndex.value++
 }
 
-// 打开全屏图片查看器（支持鼠标滚轮缩放、拖拽、全屏）
+// 打开全屏图片查看器（仅图片类型可用，支持鼠标滚轮缩放、拖拽、全屏）
 const openImageViewer = () => {
-  if (previewImages.value.length > 0) {
-    imageViewerVisible.value = true
-  }
+  const images = previewItems.value.filter(i => i.type === 'image')
+  if (images.length === 0) return
+  viewerUrlList.value = images.map(i => i.url)
+  const cur = previewItems.value[currentIndex.value]
+  currentIndex.value = Math.max(0, images.findIndex(i => i.url === cur.url))
+  imageViewerVisible.value = true
 }
 
 const deleteCurrentImage = async () => {
   try {
-    await ElMessageBox.confirm(`确定要删除第 ${currentIndex.value + 1} 张图片吗？`, '提示', { type: 'warning' })
-    const filename = previewImages.value[currentIndex.value].split('/').pop()
+    await ElMessageBox.confirm(`确定要删除第 ${currentIndex.value + 1} 个附件吗？`, '提示', { type: 'warning' })
+    const filename = previewItems.value[currentIndex.value].url.split('/').pop()
     if (filename) {
       await axios.delete(`/api/feedback/image/${filename}`)
     }
-    previewImages.value.splice(currentIndex.value, 1)
-    if (currentIndex.value >= previewImages.value.length && currentIndex.value > 0) {
-      currentIndex.value = previewImages.value.length - 1
+    previewItems.value.splice(currentIndex.value, 1)
+    if (currentIndex.value >= previewItems.value.length && currentIndex.value > 0) {
+      currentIndex.value = previewItems.value.length - 1
     }
     ElMessage.success('删除成功')
   } catch (e: any) {
@@ -534,22 +619,26 @@ const uploadFileList = ref<any[]>([]) // 图片上传列表（含已存在+待�
 // ============ 当前登录者信息（登录成功后存在 localStorage，这里读出来用） ============
 // localStorage 类比 VB6 的 SaveSetting 注册表保存：浏览器关闭再打开仍在
 const currentUserName = ref('')  // 当前登录者姓名
+const currentUserCode = ref('')  // 当前登录者编码
 const isAdmin = ref(false)       // 是否管理员
 
-// 从 localStorage 的 user 对象里解析出姓名和管理员标志
+// 从 localStorage 的 user 对象里解析出姓名/编码和管理员标志
 const initCurrentUser = () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
     try {
       const user = JSON.parse(userStr)
       currentUserName.value = user?.realName || user?.username || localStorage.getItem('username') || ''
+      currentUserCode.value = user?.username || localStorage.getItem('userCode') || ''
       isAdmin.value = parseInt(user?.isAdmin || '0') === 1
     } catch (e) {
       currentUserName.value = localStorage.getItem('username') || ''
+      currentUserCode.value = localStorage.getItem('userCode') || ''
       isAdmin.value = false
     }
   } else {
     currentUserName.value = localStorage.getItem('username') || ''
+    currentUserCode.value = localStorage.getItem('userCode') || ''
     isAdmin.value = false
   }
 }
@@ -563,14 +652,14 @@ const canEdit = (row: any) => {
 
 // 判断是否可以删除：
 // 1. 只有待修改状态可以删除
-// 2. 必须是反馈人本人(szcsgcs为当前登录者)，或者当前登录者是管理员
+// 2. 必须是反馈人本人(szcsgcsBM为当前登录者编码)，或者当前登录者是管理员
 const canDelete = (row: any) => {
   // 只有待修改状态可以删除
   if (row.gongchengsbz === 'Y' || row.shouhoubz === 'Y' || row.taolunbz === 'Y') {
     return false
   }
-  // 必须是反馈人本人或者管理员
-  return isAdmin.value || row.szcsgcs === currentUserName.value
+  // 必须是反馈人本人（按编码）或者管理员
+  return isAdmin.value || row.szcsgcsBM === currentUserCode.value
 }
 
 // 查询条件：默认查最近一年的数据（今天是 end，一年前是 start）
@@ -1015,24 +1104,24 @@ const handleView = async (row: any) => {
   rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
   rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
   Object.assign(form, rowCopy)  // 把行的所有字段复制到 form
-  detailImages.value = []
+  detailItems.value = []
   try {
     const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      // 兼容字符串数组和对象数组，统一转成可访问的图片URL
-      detailImages.value = imgs.map((img: any) => {
+      // 兼容字符串数组和对象数组，统一转成附件项（图片/视频/其他）
+      detailItems.value = imgs.map((img: any) => {
         const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return `/api/feedback/uploads/${name}`
+        return toAttachItem(name)
       })
     }
-  } catch (err) { console.error('加载图片失败:', err) }
+  } catch (err) { console.error('加载附件失败:', err) }
   viewDialogVisible.value = true  // 打开查看对话框
 }
 
 const handleViewImage = (url: string) => {
-  previewImages.value = detailImages.value
-  currentIndex.value = previewImages.value.findIndex(u => u === url)
+  previewItems.value = detailItems.value
+  currentIndex.value = previewItems.value.findIndex(u => u.url === url)
   previewVisible.value = true
 }
 
@@ -1114,17 +1203,21 @@ const handleDelete = async (row: any) => {
   } catch (err: any) { if (err !== 'cancel') ElMessage.error(err.message || '删除失败') }
 }
 
-// ============ 图片相关操作 ============
-// 编辑对话框中点预览：把所有图片放进轮播，定位到当前张
+// ============ 附件相关操作 ============
+// 编辑对话框中点附件卡片：把所有附件放进轮播，定位到当前个
 const handlePreview = (file: any) => {
-  previewImages.value = uploadFileList.value.map(f => f.url)
-  currentIndex.value = previewImages.value.findIndex(url => url === file.url)
+  previewItems.value = uploadFileList.value.map(f => {
+    const name = f.name || f.url?.split('/').pop() || ''
+    return { url: f.url, type: getAttachType(name), name }
+  })
+  const idx = previewItems.value.findIndex(it => it.url === file.url)
+  currentIndex.value = idx > -1 ? idx : 0
   previewVisible.value = true
 }
-// 编辑对话框中删除单张图片 - 带确认提示（先删后端文件，再删本地列表项）
+// 编辑对话框中删除单个附件 - 带确认提示（先删后端文件，再删本地列表项）
 const handleRemove = async (file: any, fileList: any) => {
   try {
-    await ElMessageBox.confirm('确定要删除当前图片吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确定要删除当前附件吗？', '提示', { type: 'warning' })
     if (file.url && file.name) {
       const filename = file.name || file.url.split('/').pop()
       if (filename) {
@@ -1139,34 +1232,61 @@ const handleRemove = async (file: any, fileList: any) => {
   }
 }
 
-// 支持 Ctrl+V 直接粘贴剪贴板里的图片到上传列表
+// 选择文件时检查大小：单个附件不超过 50MB，超限直接移除并提示
+const handleFileChange = (file: any) => {
+  const raw = file.raw || file.rawFile
+  if (raw && raw.size > 50 * 1024 * 1024) {
+    ElMessage.warning(`文件「${raw.name}」超过 50MB，不能上传`)
+    const idx = uploadFileList.value.findIndex(f => f.uid === file.uid)
+    if (idx > -1) uploadFileList.value.splice(idx, 1)
+  }
+}
+
+// 支持 Ctrl+V 直接粘贴剪贴板里的图片或复制的文件到上传列表
 const handlePaste = (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items
-  if (!items) return
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile()
-      if (file) {
-        const url = URL.createObjectURL(file)
-        uploadFileList.value.push({ name: file.name, url, raw: file, status: 'ready' })
+  const cd = event.clipboardData
+  if (!cd) return
+  const seen = new Set<string>()
+  const pushFile = (f: File) => {
+    const key = `${f.name}-${f.size}-${f.lastModified}`
+    if (seen.has(key)) return // 同一内容（截图在 files/items 各出现一次）只加一次
+    seen.add(key)
+    if (f.size > 50 * 1024 * 1024) {
+      ElMessage.warning(`文件「${f.name}」超过 50MB，不能上传`)
+      return
+    }
+    const url = URL.createObjectURL(f)
+    uploadFileList.value.push({ name: f.name, url, raw: f, status: 'ready' })
+  }
+  // 1. 复制的文件（在资源管理器 Ctrl+C 文件后粘贴）
+  if (cd.files) {
+    for (const f of Array.from(cd.files)) pushFile(f)
+  }
+  // 2. 截图（剪贴板 items 里的 image 类型）
+  const items = cd.items
+  if (items) {
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const f = item.getAsFile()
+        if (f) pushFile(f)
       }
     }
   }
 }
 
-// 列表里点"查看图片"图标：加载该问题的所有图片并打开轮播
+// 列表里点"查看附件"图标：加载该问题的所有附件并打开轮播
 const viewImages = async (row: any) => {
   try {
     const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewImages.value = imgs.map((name: string) => `/api/feedback/uploads/${name}`)
+      previewItems.value = imgs.map((name: any) => toAttachItem(typeof name === 'string' ? name : (name.filename || name.name)))
     } else {
-      previewImages.value = []
+      previewItems.value = []
     }
   } catch (err) { 
-    console.error('加载图片失败:', err)
-    previewImages.value = []
+    console.error('加载附件失败:', err)
+    previewItems.value = []
   }
   previewVisible.value = true
 }
@@ -1247,17 +1367,22 @@ const handleSubmit = async () => {
     for (let i = 0; i < rawFiles.length; i++) {
       const formData = new FormData()
       const fileObj = rawFiles[i].raw || rawFiles[i].rawFile || rawFiles[i]
+      // 上传前再次校验大小（选择时已校验，这里兜底）
+      if (fileObj.size > 50 * 1024 * 1024) {
+        ElMessage.warning(`文件「${fileObj.name}」超过 50MB，已跳过上传`)
+        continue
+      }
       formData.append('file', fileObj)
       formData.append('id', String(idToUse))
       formData.append('yiyuanmc', form.yiyuanmc || '')
       formData.append('tpnum', String(maxTpnum + i + 1))
       try {
-        console.log('上传图片:', i + 1, '/', rawFiles.length, '文件名:', fileObj.name)
+        console.log('上传附件:', i + 1, '/', rawFiles.length, '文件名:', fileObj.name)
         const uploadRes = await axios.post('/api/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-        console.log('图片上传成功:', uploadRes.data)
+        console.log('附件上传成功:', uploadRes.data)
       } catch (err) { 
-        console.error('上传图片失败:', err) 
-        ElMessage.error('图片上传失败: ' + (err as any)?.message)
+        console.error('上传附件失败:', err) 
+        ElMessage.error('附件上传失败: ' + (err as any)?.message)
       }
     }
     
@@ -1415,8 +1540,28 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 .preview-dialog :deep(.el-dialog) { width: 960px !important; height: 760px !important; display: flex; flex-direction: column; }
 .preview-dialog :deep(.el-dialog__body) { flex: 1; overflow: auto; display: flex; flex-direction: column; }
 
-/* 查看对话框图片样式 */
+/* 查看对话框附件样式 */
 .view-images { display: flex; flex-wrap: wrap; gap: 12px; }
 .view-image { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #dcdfe6; transition: all 0.3s; }
 .view-image:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+/* 查看对话框里的非图片文件：图标 + 文件名 */
+.view-file { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #dcdfe6; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--el-color-primary); max-width: 260px; }
+.view-file:hover { background: var(--el-color-primary-light-9); }
+.view-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 上传卡片：图片缩略图 / 文件图标（跟随主题） */
+:deep(.el-upload-list--picture-card .el-upload-list__item) { overflow: hidden; }
+.file-card { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+.file-thumb { width: 100%; height: 100%; object-fit: cover; }
+.file-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; font-size: 28px; color: var(--el-color-primary); }
+.file-name { font-size: 11px; color: #606266; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; }
+.file-card-del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.45); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 2; }
+.file-card-del:hover { background: #f56c6c; }
+
+/* 轮播里的视频 / 其他文件 */
+.carousel-video { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.video-error-tip { margin-top: 12px; padding: 10px 16px; background: #fef0f0; color: #f56c6c; border: 1px solid #fbc4c4; border-radius: 6px; font-size: 13px; line-height: 1.7; text-align: center; max-width: 640px; }
+.carousel-file { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.carousel-file-icon { font-size: 64px; color: var(--el-color-primary); }
+.carousel-file-name { font-size: 15px; font-weight: 600; color: #303133; word-break: break-all; text-align: center; max-width: 600px; }
 </style>

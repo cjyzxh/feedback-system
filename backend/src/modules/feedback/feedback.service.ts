@@ -261,15 +261,14 @@ export class FeedbackService {
     }
   }
 
-  // 获取问题图片列表
+  // 获取问题附件列表（图片/视频/文档等：按 {id}-{序号}.{扩展名} 命名，在 uploads 目录下直接查找）
   async getImagesById(id: number): Promise<string[]> {
     const uploadPath = this.configService.getUploadPath();
     const uploadDir = path.isAbsolute(uploadPath) ? uploadPath : path.join(process.cwd(), uploadPath);
     if (!fs.existsSync(uploadDir)) {
       return [];
     }
-    // 图片命名格式: {id}-{序号}.{扩展名}，在 uploads 目录下直接查找
-    return fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`) && /\.(jpg|jpeg|png|gif|bmp)$/i.test(f));
+    return fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`));
   }
 
   // 删除问题图片目录

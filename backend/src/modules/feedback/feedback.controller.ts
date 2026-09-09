@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
+import { isVideoFile, probeVideoCodec, transcodeToH264 } from '../../common/ffmpeg.util';
 
 // 全局上传路径变量，应用启动时初始化
 let globalUploadPath = './uploads';
@@ -58,7 +59,35 @@ export class FeedbackController {
       fs.renameSync(oldPath, newPath);
     }
     
-    return { url: `/feedback/uploads/${filename}`, filename: filename };
+    // ============ 视频自动转码：非 H.264 编码统一转成 H.264+AAC 的 mp4 ============
+    // 浏览器只支持 H.264/VP9/AV1 等编码的画面，MPEG-4/H.265 等会出现"只有声音没有图像"
+    let finalName = filename;
+    if (isVideoFile(file.originalname)) {
+      let tmpOut = '';
+      try {
+        const codec = await probeVideoCodec(newPath);
+        if (codec && codec !== 'h264') {
+          tmpOut = `${newPath}.tmp.mp4`;
+          await transcodeToH264(newPath, tmpOut);
+          if (fs.existsSync(tmpOut)) {
+            fs.unlinkSync(newPath);  // 删除原编码文件
+            finalName = `${id}-${tpnum}.mp4`;
+            fs.renameSync(tmpOut, join(globalUploadPath, finalName));
+            console.log(`视频自动转码完成: ${filename} (${codec}) -> ${finalName} (h264)`);
+          }
+        } else if (!codec) {
+          console.log('视频编码探测失败，跳过转码:', filename);
+        }
+      } catch (e) {
+        // 转码失败不阻断上传：保留原文件，前端会提示"视频编码不支持"
+        console.error('视频转码失败:', filename, e?.message || e);
+        if (tmpOut && fs.existsSync(tmpOut)) {
+          try { fs.unlinkSync(tmpOut); } catch { /* 忽略清理失败 */ }
+        }
+      }
+    }
+    
+    return { url: `/feedback/uploads/${finalName}`, filename: finalName };
   }
 
   // 获取问题的所有图片 - 从目录中检索

@@ -62,6 +62,8 @@ New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 $feZip = Join-Path $tmp 'wtfk-frontend.zip'
 $beZip = Join-Path $tmp 'wtfk-backend.zip'
 $bat   = Join-Path $tmp 'deploy.bat'
+$ffmpegZip = Join-Path $Root 'docs\工具\ffmpeg.zip'
+$ffmpegSetup = Join-Path $Root 'deploy-ffmpeg-setup.ps1'
 
 Write-Host "==> 打包 dist ..." -ForegroundColor Cyan
 $feDist = Join-Path $Root 'frontend\dist'
@@ -100,8 +102,21 @@ Invoke-Ssh "if not exist $remoteTmp mkdir $remoteTmp"
 Send-File $feZip "$remoteTmp\wtfk-frontend.zip"
 Send-File $beZip "$remoteTmp\wtfk-backend.zip"
 Send-File $bat   "$remoteTmp\deploy.bat"
+# ffmpeg：远程已存在则跳过上传（幂等，避免每次传 115MB）
+$ffHasFfmpeg = Invoke-Ssh 'if exist C:\wtfk-backend\ffmpeg\bin\ffmpeg.exe (echo YES) else (echo NO)'
+if ($ffHasFfmpeg -match 'YES') {
+    Write-Host "==> 远程已有 ffmpeg，跳过上传" -ForegroundColor DarkGray
+} else {
+    if (-not (Test-Path $ffmpegZip)) { throw "缺少 ffmpeg.zip: $ffmpegZip" }
+    Send-File $ffmpegZip "$remoteTmp\ffmpeg.zip"
+}
+Send-File $ffmpegSetup "$remoteTmp\deploy-ffmpeg-setup.ps1"
 
 # ---------- 第 5 步：远程执行部署 ----------
+# 先配置 ffmpeg/.env/nginx（保证后端启动时已带 ffmpeg 配置），再执行 dist 覆盖
+Write-Host "==> 远程配置 ffmpeg 与 nginx ..." -ForegroundColor Cyan
+$setupOut = Invoke-Ssh "powershell -NoProfile -ExecutionPolicy Bypass -File $remoteTmp\deploy-ffmpeg-setup.ps1"
+$setupOut | ForEach-Object { Write-Host $_ }
 Write-Host "==> 远程部署中 ..." -ForegroundColor Cyan
 $out = Invoke-Ssh "$remoteTmp\deploy.bat"
 $out | ForEach-Object { Write-Host $_ }

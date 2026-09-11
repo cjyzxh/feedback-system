@@ -89,6 +89,9 @@ body.theme-dark {
 }
 
 /* 全局背景色 */
+html, body {
+  overflow-x: hidden; /* 等比缩放的补偿宽度会超过视口，禁止横向滚动条 */
+}
 body {
   background-color: #f5f7fa;
   color: #303133;
@@ -1952,10 +1955,14 @@ body.theme-dark .test-result-box {
 .el-table th.el-table__cell { color: #9CA3AF !important; }
 body.theme-light .el-table th.el-table__cell { color: #6B94C4 !important; }
 body.theme-dark .el-table th.el-table__cell { color: #7E9DC0 !important; }
-
-
-/* 深色模式下选中行文字变红色，与普通行明显区分 */
-body.theme-dark .selected-row td { color: #FF7B72 !important; }
+
+
+
+
+/* 深色模式下选中行文字变红色，与普通行明显区分 */
+
+body.theme-dark .selected-row td { color: #FF7B72 !important; }
+
 
 /* 关键修复：Element Plus 表格文字渲染在 th/td 内层 .cell div 上，
    .cell 自身有 color（浅色 #1F2D3D≈黑、深色 #C4D0E0），会把 th/td 的主题色盖掉。

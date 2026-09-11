@@ -4,6 +4,7 @@ import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
+import { Tzxx } from './tzxx.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
 
@@ -15,8 +16,22 @@ export class FeedbackService {
     // Repository = TypeORM 的数据访问层，类比 VB6 里封装好的 ADODB.Recordset 操作类
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
+    @InjectRepository(Tzxx)
+    private tzxxRepository: Repository<Tzxx>,
     private configService: DatabaseConfigService,  // 读上传目录配置等
   ) {}
+
+  // 写入一条通知：接收人 = 本人时不写；空编码不写
+  private async addTzxx(wentiid: number, lx: string, jsrbm: string, nr: string, excludeBm?: string) {
+    try {
+      if (!jsrbm || (excludeBm && jsrbm === excludeBm)) return;
+      await this.tzxxRepository.save(this.tzxxRepository.create({
+        wentiid, lx, jsrbm, nr, lrsj: new Date(),
+      }));
+    } catch (error) {
+      console.error('写入通知失败:', error);
+    }
+  }
 
   // 创建问题反馈（POST /api/feedback）
   // create() = 在内存里组装一条新记录，save() = 真正写库
@@ -39,6 +54,7 @@ export class FeedbackService {
         shouhoubz: dto.shouhoubz || 'N',
         xggcs: dto.xggcs || dto.engineer,
         jingjicd: dto.jingjicd,
+        wentilx: dto.wentilx || '其它问题',
         lvrusj: new Date(),
         taolunbz: dto.taolunbz || 'N',
         szcsgcs: dto.szcsgcs,
@@ -53,6 +69,12 @@ export class FeedbackService {
       
       const saved = await this.feedbackRepository.save(feedback);
       console.log('创建成功 ID:', saved.id);
+
+      // ===== 事件通知：新增问题 → 提醒工程师 + 跟进人（录入人本人不提示） =====
+      const tzTitle = `【新问题#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}${saved.chuangtimc ? '-' + saved.chuangtimc : ''}：${(saved.wentism || '').slice(0, 50)}`;
+      if (saved.xggcsBM) await this.addTzxx(saved.id, '新增', saved.xggcsBM, tzTitle, saved.szcsgcsBM);
+      if (saved.shishiryBM) await this.addTzxx(saved.id, '新增', saved.shishiryBM, tzTitle, saved.szcsgcsBM);
+
       return saved;
     } catch (error) {
       console.error('创建失败:', error);
@@ -207,6 +229,10 @@ export class FeedbackService {
       if (!feedback) {
         throw new NotFoundException(`问题 ID ${id} 不存在`);
       }
+
+      // 记录状态旧值，用于保存后判断"发生了什么操作"（决定给谁发通知）
+      const oldGongchengsbz = feedback.gongchengsbz;
+      const oldShouhoubz = feedback.shouhoubz;
       
       // 直接合并字段并保存（dto 里传了哪个字段就改哪个，没传的不动）
       // 这样处理页只传 {gongchengsbz:'Y'} 就能只改状态位，不影响其它字段
@@ -226,6 +252,7 @@ export class FeedbackService {
       if (dto.xggcs || dto.engineer) feedback.xggcs = dto.xggcs || dto.engineer;
       if (dto.xggcsBM !== undefined) feedback.xggcsBM = dto.xggcsBM;
       if (dto.jingjicd !== undefined) feedback.jingjicd = dto.jingjicd;
+      if (dto.wentilx !== undefined) feedback.wentilx = dto.wentilx;
       if (dto.taolunbz !== undefined) feedback.taolunbz = dto.taolunbz;
       if (dto.szcsgcs !== undefined) feedback.szcsgcs = dto.szcsgcs;
       if (dto.szcsgcsBM !== undefined) feedback.szcsgcsBM = dto.szcsgcsBM;
@@ -237,6 +264,32 @@ export class FeedbackService {
       
       const saved = await this.feedbackRepository.save(feedback);
       console.log('更新成功 ID:', saved.id);
+
+      // ===== 事件通知：根据状态变化判断"发生了什么"，通知对应的人（接收人是操作人本人不提示） =====
+      try {
+        // 场景1：处理确认（工程师处理完成 gongchengsbz: N -> Y）→ 通知跟进人 + 反馈人
+        if (dto.gongchengsbz === 'Y' && oldGongchengsbz === 'N') {
+          const nr = `【已处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.gongcscs || saved.wentism || '').slice(0, 50)}`;
+          if (saved.shishiryBM) await this.addTzxx(saved.id, '处理', saved.shishiryBM, nr, saved.xggcsBM);
+          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '处理', saved.szcsgcsBM, nr, saved.xggcsBM);
+        }
+        // 场景2：测试确认（测试通过 shouhoubz: -> Y）→ 通知反馈人 + 工程师 + 跟进人
+        else if (dto.shouhoubz === 'Y' && oldShouhoubz !== 'Y') {
+          const nr = `【测试通过#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
+          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '测试', saved.szcsgcsBM, nr, saved.shcsgcsBM);
+          if (saved.xggcsBM) await this.addTzxx(saved.id, '测试', saved.xggcsBM, nr, saved.shcsgcsBM);
+          if (saved.shishiryBM) await this.addTzxx(saved.id, '测试', saved.shishiryBM, nr, saved.shcsgcsBM);
+        }
+        // 场景3：返回测试（测试不过退回工程师 gongchengsbz: Y -> N）→ 通知工程师 + 反馈人
+        else if (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y' && (dto.cssj || dto.shouhoucs)) {
+          const nr = `【测试返回#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
+          if (saved.xggcsBM) await this.addTzxx(saved.id, '返回', saved.xggcsBM, nr, saved.shcsgcsBM);
+          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '返回', saved.szcsgcsBM, nr, saved.shcsgcsBM);
+        }
+      } catch (error) {
+        console.error('写通知失败:', error);
+      }
+
       return saved;
     } catch (error) {
       console.error('更新失败:', error);
@@ -283,47 +336,36 @@ export class FeedbackService {
     }
   }
 
-  // 获取待处理/待测试/测试返回问题数量（前端每10秒轮询一次，右下角弹提醒用）
-  // 三种提醒：
-  //   待处理(pending)   : 分给当前工程师处理的问题
-  //   待测试(test)      : 分给当前操作员测试的问题
-  //   测试返回(returned): 测试不过退回工程师的问题（红色特别提醒）
-  async getReminderCount(currentUser: string): Promise<{ pendingCount: number; testCount: number; returnedCount: number; pendingList: any[]; testList: any[]; returnedList: any[] }> {
+  // ===== 事件通知查询 =====
+  // 前端每10秒轮询"我的未读通知"：新增/处理/测试/返回 四类事件写入 xt_tzxx，接收人=本人且未读的返回
+  // 注意：全部按用户编码（jsrbm）过滤，与姓名无关
+  async getReminderCount(currentUser: string): Promise<{ list: Tzxx[]; count: number }> {
     try {
-      // 待处理问题：gongchengsbz='N' 且 xggcs=当前登录者（我的待办）
-      const pendingList = await this.feedbackRepository.find({
-        where: { gongchengsbz: 'N', xggcsBM: currentUser },
-        order: { lvrusj: 'DESC' },
-        take: 10
+      if (!currentUser) return { list: [], count: 0 };
+      const list = await this.tzxxRepository.find({
+        where: { jsrbm: currentUser, ydsj: null },
+        order: { lrsj: 'DESC' },
+        take: 50
       });
-
-      // 待测试问题：gongchengsbz='Y' 且 shouhoubz='N' 且 shishiry=当前登录者
-      const testList = await this.feedbackRepository.find({
-        where: { gongchengsbz: 'Y', shouhoubz: 'N', shishiryBM: currentUser },
-        order: { xgsj: 'DESC' },
-        take: 10
-      });
-
-      // 测试后返回的问题：从待处理里再筛出"被测试打回过"的
-      // 判断依据：有测试结果(shouhoucs) 或 有测试时间(cssj) 或 有测试人(shcsgcs)
-      // 这类问题需要红色特别提醒
-      const returnedList = pendingList.filter((item: any) => {
-        return (item.shouhoucs && item.shouhoucs.trim() !== '') || 
-               (item.cssj && item.cssj !== null) ||
-               (item.shcsgcs && item.shcsgcs.trim() !== '');
-      }).slice(0, 5);
-
-      return {
-        pendingCount: pendingList.length,
-        testCount: testList.length,
-        returnedCount: returnedList.length,
-        pendingList,
-        testList,
-        returnedList
-      };
+      return { list, count: list.length };
     } catch (error) {
-      console.error('获取提醒数量失败:', error);
-      return { pendingCount: 0, testCount: 0, returnedCount: 0, pendingList: [], testList: [], returnedList: [] };
+      console.error('获取提醒失败:', error);
+      return { list: [], count: 0 };
     }
+  }
+
+  // 标记单条通知已读
+  async markTzxxRead(id: number): Promise<void> {
+    const t = await this.tzxxRepository.findOne({ where: { id } });
+    if (t) {
+      t.ydsj = new Date();
+      await this.tzxxRepository.save(t);
+    }
+  }
+
+  // 标记当前用户全部通知已读
+  async markAllRead(currentUser: string): Promise<void> {
+    if (!currentUser) return;
+    await this.tzxxRepository.update({ jsrbm: currentUser, ydsj: null }, { ydsj: new Date() });
   }
 }

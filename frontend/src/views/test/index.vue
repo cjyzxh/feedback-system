@@ -161,6 +161,9 @@
             <el-tag v-else type="info" size="small">一般</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="wentilx" label="问题类型" width="90" align="center">
+          <template #default="{ row }">{{ row.wentilx || '其它问题' }}</template>
+        </el-table-column>
         <el-table-column prop="yiyuanmc" label="医院名称" min-width="50" />
         <el-table-column prop="mokuai" label="模块" width="90" />
         <el-table-column prop="chuangtimc" label="窗体" width="90" />

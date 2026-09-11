@@ -58,6 +58,9 @@ export class Feedback {
   @Column({ name: 'jingjicd', nullable: true, length: 10 })  // 紧急程度：一般/急/紧急
   jingjicd: string;
 
+  @Column({ name: 'wentilx', nullable: true, length: 20 })  // 问题类型：软件BUG/业务逻辑/个性化/其它问题
+  wentilx: string;
+
   @Column({ name: 'lvrusj', nullable: true })  // 录入时间（新增时自动写入）
   lvrusj: Date;
 

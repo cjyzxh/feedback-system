@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
 import { Feedback } from './feedback.entity';
+import { Tzxx } from './tzxx.entity';
 import { Ok } from './ok.entity';
 import { ConfigModule } from '../config/config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Feedback, Ok]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([Feedback, Tzxx, Ok]), ConfigModule],
   controllers: [FeedbackController],
   providers: [FeedbackService],
   exports: [FeedbackService],

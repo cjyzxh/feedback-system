@@ -5,7 +5,6 @@ import { getToken, clearToken, isPhoneTokenExpired } from '@/utils/auth'
 import Layout from '@/views/layout/index.vue'
 import Login from '@/views/login/index.vue'
 import FeedbackList from '@/views/feedback/index.vue'
-import FeedbackForm from '@/views/feedback/form.vue'
 import TestHandle from '@/views/test/index.vue'
 import TestCheck from '@/views/testcheck/index.vue'
 import Settings from '@/views/settings/index.vue'
@@ -39,8 +38,6 @@ const routes: RouteRecordRaw[] = [
     children: [
       // 问题列表
       { path: '/feedback', name: 'FeedbackList', component: FeedbackList, meta: { title: '问题列表', permission: 'feedback' } },
-      // 问题详情/编辑
-      { path: '/feedback/:id', name: 'FeedbackForm', component: FeedbackForm, meta: { title: '问题详情', hidden: true } },
       // 问题处理
       { path: '/test', name: 'TestHandle', component: TestHandle, meta: { title: '问题处理', permission: 'test' } },
       // 问题测试

@@ -65,6 +65,9 @@ export class CreateFeedbackDto {
   jingjicd?: string;
 
   @IsOptional()
+  wentilx?: string;  // 问题类型：软件BUG/业务逻辑/个性化/其它问题
+
+  @IsOptional()
   taolunbz?: string;
 
   @IsOptional()
@@ -156,6 +159,9 @@ export class UpdateFeedbackDto {
 
   @IsOptional()
   jingjicd?: string;
+
+  @IsOptional()
+  wentilx?: string;  // 问题类型：软件BUG/业务逻辑/个性化/其它问题
 
   @IsOptional()
   taolunbz?: string;

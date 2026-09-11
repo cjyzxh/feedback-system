@@ -1,5 +1,6 @@
 ﻿<template>
-  <div class="layout-container">
+  <div class="scale-wrap">
+  <div class="layout-container" :style="containerScaleStyle">
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
         <img :src="logoSrc" alt="logo" class="logo-img" />
@@ -74,6 +75,19 @@
           </el-menu-item>
         </el-sub-menu>
       </el-menu>
+      <!-- 系统消息提醒权限开关（浏览器最小化/切走时也能收到系统通知） -->
+      <div class="sidebar-notice" :class="{ collapsed: isCollapse }">
+        <template v-if="notificationPermission === 'granted'">
+          <el-icon><Bell /></el-icon>
+          <span>系统提醒已开启</span>
+        </template>
+        <template v-else>
+          <el-button class="notice-btn" size="small" @click="enableSystemNotice">
+            <el-icon><Bell /></el-icon>
+            <span>{{ notificationPermission === 'denied' ? '通知被阻止' : '开启系统提醒' }}</span>
+          </el-button>
+        </template>
+      </div>
     </div>
     <div class="main-content">
       <div class="header">
@@ -152,6 +166,7 @@
       </template>
     </el-dialog>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -165,6 +180,28 @@ import { clearToken } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
+
+// ========== 分辨率适配：满屏 + 等比放大（分辨率高→界面大、字大、显示内容多） ==========
+// 页面始终占满屏幕（充分利用当前最大分辨率），按 2560 设计宽度等比缩放：
+//   4K(3840)  → 1.5 倍：字、控件同步放大，显示内容最多
+//   2K(2560)  → 1.0 倍：原尺寸
+//   1K(1920)  → 0.75 倍：等比缩小，保证不换行变形
+// 缩放范围 0.55 ~ 1.5（避免极端屏过度缩放）
+const scaleRatio = ref(1)
+const containerScaleStyle = computed(() => ({
+  width: '2560px',
+  margin: '0 auto', // 缩放后恰好等于视口宽度，自动占满
+  zoom: scaleRatio.value,
+  height: (100 / scaleRatio.value) + 'vh'
+}))
+
+const applyPageScale = () => {
+  const baseWidth = 2560
+  const w = document.documentElement.clientWidth
+  let s = w / baseWidth
+  s = Math.max(0.55, Math.min(1.5, s))
+  scaleRatio.value = Math.round(s * 100) / 100
+}
 const profileFormRef = ref()
 const profileDialogVisible = ref(false)
 
@@ -242,65 +279,6 @@ const userHospital = computed(() => {
 // ========== 消息提醒功能 ==========
 const reminderTimer = ref<any>(null)
 const CHECK_INTERVAL = 10 * 1000       // 每10秒检查一次新问题
-const REMIND_INTERVAL = 5 * 60 * 1000  // 同一个问题每5分钟重复提醒一次（未点击时）
-
-// 从 localStorage 获取已确认（点击过）的问题ID - 这些不再提醒
-const getConfirmedPendingIds = (): number[] => {
-  try {
-    return JSON.parse(localStorage.getItem('confirmedPendingIds') || '[]')
-  } catch (e) {
-    return []
-  }
-}
-
-const getConfirmedTestIds = (): number[] => {
-  try {
-    return JSON.parse(localStorage.getItem('confirmedTestIds') || '[]')
-  } catch (e) {
-    return []
-  }
-}
-
-// 测试后返回的问题（红色提醒，需要重新处理）
-const getConfirmedReturnedIds = (): number[] => {
-  try {
-    return JSON.parse(localStorage.getItem('confirmedReturnedIds') || '[]')
-  } catch (e) {
-    return []
-  }
-}
-
-// 保存已确认的问题ID到 localStorage
-const saveConfirmedPendingIds = (ids: number[]) => {
-  localStorage.setItem('confirmedPendingIds', JSON.stringify(ids))
-}
-
-const saveConfirmedTestIds = (ids: number[]) => {
-  localStorage.setItem('confirmedTestIds', JSON.stringify(ids))
-}
-
-const saveConfirmedReturnedIds = (ids: number[]) => {
-  localStorage.setItem('confirmedReturnedIds', JSON.stringify(ids))
-}
-
-// 获取最后提醒时间记录 {pending: {id: timestamp}, test: {id: timestamp}, returned: {id: timestamp}}
-const getLastRemindTimes = (): { pending: Record<number, number>; test: Record<number, number>; returned: Record<number, number> } => {
-  try {
-    const data = JSON.parse(localStorage.getItem('lastRemindTimes') || '{}')
-    return {
-      pending: data.pending || {},
-      test: data.test || {},
-      returned: data.returned || {}
-    }
-  } catch (e) {
-    return { pending: {}, test: {}, returned: {} }
-  }
-}
-
-// 保存最后提醒时间
-const saveLastRemindTimes = (times: { pending: Record<number, number>; test: Record<number, number>; returned: Record<number, number> }) => {
-  localStorage.setItem('lastRemindTimes', JSON.stringify(times))
-}
 
 // 播放提示音
 const playNotificationSound = () => {
@@ -324,9 +302,10 @@ const playNotificationSound = () => {
 // ========== 浏览器原生通知（操作系统级别，浏览器最小化也能看到） ==========
 const notificationPermission = ref<string>('default')
 
-// 请求浏览器通知权限
+// 请求浏览器通知权限（浏览器最小化时也能看到系统通知）
 const requestNotificationPermission = async () => {
   if (!('Notification' in window)) {
+    notificationPermission.value = 'unsupported'
     console.log('此浏览器不支持桌面通知')
     return
   }
@@ -335,12 +314,28 @@ const requestNotificationPermission = async () => {
       const permission = await Notification.requestPermission()
       notificationPermission.value = permission
       console.log('通知权限:', permission)
+      if (permission === 'granted') {
+        ElMessage.success('系统消息提醒已开启：浏览器最小化或切走后也能收到通知')
+      }
     } catch (e) {
       console.log('请求通知权限失败:', e)
     }
   } else {
     notificationPermission.value = Notification.permission
   }
+}
+
+// 侧边栏"开启系统提醒"按钮：default 重新请求；denied 引导去浏览器设置
+const enableSystemNotice = () => {
+  if (!('Notification' in window)) {
+    ElMessage.warning('当前浏览器不支持桌面通知')
+    return
+  }
+  if (Notification.permission === 'denied') {
+    ElMessage.warning('浏览器已阻止本站通知：请点击地址栏左侧图标 → 网站设置 → 通知 → 允许，然后回来点此按钮')
+    return
+  }
+  requestNotificationPermission()
 }
 
 // 发送操作系统原生通知（浏览器最小化时也能在右下角看到）
@@ -409,13 +404,26 @@ const handlePageFocus = () => {
 }
 // ========== 浏览器原生通知和标题闪烁结束 ==========
 
-// 检查新问题并提醒
+// 已提醒过的通知ID（localStorage 记录，避免每10秒重复弹同一个通知）
+const getRemindedTzxxIds = (): number[] => {
+  try {
+    return JSON.parse(localStorage.getItem('remindedTzxxIds') || '[]')
+  } catch (e) {
+    return []
+  }
+}
+
+const saveRemindedTzxxIds = (ids: number[]) => {
+  localStorage.setItem('remindedTzxxIds', JSON.stringify(ids))
+}
+
+// ===== 事件通知轮询 =====
+// 后端按用户编码写入 xt_tzxx 通知表：新增→工程师+跟进人；处理→跟进人+反馈人；测试→反馈人+工程师+跟进人；返回→工程师+反馈人
+// 接收人=操作人本人时不写通知；前端每10秒拉一次"我的未读通知"，点击后标记已读并跳转
 const checkNewProblems = async () => {
   try {
-    // 消息提醒按用户编码查询（后端按 xggcsBM / shishiryBM 匹配）
     let currentUser = localStorage.getItem('userCode') || ''
     if (!currentUser) {
-      // 兼容旧登录态：从 user 的 username（编码）兜底
       const u = JSON.parse(localStorage.getItem('user') || '{}')
       currentUser = u.username || ''
     }
@@ -423,259 +431,53 @@ const checkNewProblems = async () => {
 
     const res = await axios.get(`/api/feedback/reminder/count?currentUser=${encodeURIComponent(currentUser)}`)
     const data = res.data?.data
-    if (!data) return
+    if (!data || !data.list || data.list.length === 0) return
 
-    const { pendingList, testList, returnedList } = data
-    const confirmedPendingIds = getConfirmedPendingIds()
-    const confirmedTestIds = getConfirmedTestIds()
-    const confirmedReturnedIds = getConfirmedReturnedIds()
-    const lastRemindTimes = getLastRemindTimes()
-    const now = Date.now()
+    // 只提醒还没提醒过的通知（未读通知刷新后会再次提醒，已读后不再出现）
+    const remindedIds = getRemindedTzxxIds()
+    const newList = data.list.filter((t: any) => !remindedIds.includes(t.id))
+    if (newList.length === 0) return
 
-    // 测试返回问题的ID列表（这些问题只提醒红色，不重复提醒黄色）
-    const returnedIds = returnedList.map((item: any) => item.id)
+    // 通知类型 → 跳转页面 + 弹窗颜色
+    const tzConfig: Record<string, any> = {
+      '新增': { page: '/feedback', type: 'warning' },   // 新增问题：去问题列表看新问题
+      '处理': { page: '/testcheck', type: 'success' },  // 工程师处理完：去测试页
+      '测试': { page: '/feedback', type: 'success' },   // 测试通过：回列表看结果
+      '返回': { page: '/test', type: 'error' }          // 测试返回：去处理页重新处理
+    }
 
-    // 检查待处理问题：过滤掉已确认的、过滤掉测试返回问题（测试返回问题单独用红色提醒），然后检查是否需要提醒
-    const pendingToRemind = pendingList.filter((item: any) => {
-      if (confirmedPendingIds.includes(item.id)) return false  // 已点击确认，不再提醒
-      if (returnedIds.includes(item.id)) return false  // 测试返回问题，用红色单独提醒，不重复提醒黄色
-      const lastTime = lastRemindTimes.pending[item.id] || 0
-      return now - lastTime >= REMIND_INTERVAL  // 从未提醒或超过5分钟，需要提醒
-    })
-
-    if (pendingToRemind.length > 0) {
-      const titles = pendingToRemind.map((item: any) => `【${item.id}】${item.yiyuanmc || ''} - ${item.wentism?.substring(0, 20) || ''}`).join('\n')
-      const notifyTitle = `您有 ${pendingToRemind.length} 个待处理问题`
-      const notifyMessage = titles + '\n\n（点击查看并确认，否则每5分钟提醒一次）'
-      const isPageHidden = document.hidden  // 浏览器是否最小化或在后台
-
-      const confirmPending = () => {
-        router.push('/test')
-        const newIds = pendingToRemind.map((item: any) => item.id)
-        const updatedIds = [...new Set([...confirmedPendingIds, ...newIds])]
-        saveConfirmedPendingIds(updatedIds)
+    newList.forEach((t: any) => {
+      const cfg = tzConfig[t.lx] || { page: '/feedback', type: 'info' }
+      const onClick = () => {
+        axios.post('/api/feedback/reminder/read', { id: t.id }).catch(() => {})
+        router.push(cfg.page)
         stopTitleBlink()
       }
-
-      if (isPageHidden) {
-        // 浏览器最小化或在后台：使用系统通知 + 标题闪烁 + 声音
-        sendSystemNotification(notifyTitle, notifyMessage, confirmPending)
-        startTitleBlink(`${pendingToRemind.length}个待处理问题`)
+      if (document.hidden) {
+        sendSystemNotification('【' + (t.lx || '消息') + '提醒】', t.nr || '', onClick)
+        startTitleBlink('有新消息')
       } else {
-        // 浏览器可见：只使用页面内通知 + 声音
         const notification = ElNotification({
-          title: notifyTitle,
-          message: notifyMessage,
-          type: 'warning',
+          title: '【' + (t.lx || '消息') + '提醒】',
+          message: t.nr || '',
+          type: cfg.type,
           duration: 15000,
           position: 'bottom-right',
           icon: Bell,
           onClick: () => {
-            notification.close()  // 点击后立即关闭通知
-            confirmPending()      // 执行回调
+            notification.close()
+            onClick()
           }
         })
       }
-
-      // 声音提醒（无论浏览器是否可见都播放）
-      playNotificationSound()
-
-      // 记录这些问题的最后提醒时间
-      pendingToRemind.forEach((item: any) => {
-        lastRemindTimes.pending[item.id] = now
-      })
-      saveLastRemindTimes(lastRemindTimes)
-    }
-
-    // 检查待测试问题：过滤掉已确认的，然后检查是否需要提醒
-    const testToRemind = testList.filter((item: any) => {
-      if (confirmedTestIds.includes(item.id)) return false  // 已点击确认，不再提醒
-      const lastTime = lastRemindTimes.test[item.id] || 0
-      return now - lastTime >= REMIND_INTERVAL  // 从未提醒或超过5分钟，需要提醒
     })
 
-    if (testToRemind.length > 0) {
-      const titles = testToRemind.map((item: any) => `【${item.id}】${item.yiyuanmc || ''} - ${item.wentism?.substring(0, 20) || ''}`).join('\n')
-      const notifyTitle = `您有 ${testToRemind.length} 个待测试问题`
-      const notifyMessage = titles + '\n\n（点击查看并确认，否则每5分钟提醒一次）'
-      const isPageHidden = document.hidden  // 浏览器是否最小化或在后台
+    // 声音提醒
+    playNotificationSound()
 
-      const confirmTest = () => {
-        router.push('/testcheck')
-        const newIds = testToRemind.map((item: any) => item.id)
-        const updatedIds = [...new Set([...confirmedTestIds, ...newIds])]
-        saveConfirmedTestIds(updatedIds)
-        stopTitleBlink()
-      }
-
-      if (isPageHidden) {
-        // 浏览器最小化或在后台：使用系统通知 + 标题闪烁 + 声音
-        sendSystemNotification(notifyTitle, notifyMessage, confirmTest)
-        startTitleBlink(`${testToRemind.length}个待测试问题`)
-      } else {
-        // 浏览器可见：只使用页面内通知 + 声音
-        const notification = ElNotification({
-          title: notifyTitle,
-          message: notifyMessage,
-          type: 'success',
-          duration: 15000,
-          position: 'bottom-right',
-          icon: Bell,
-          onClick: () => {
-            notification.close()  // 点击后立即关闭通知
-            confirmTest()         // 执行回调
-          }
-        })
-      }
-
-      // 声音提醒（无论浏览器是否可见都播放）
-      playNotificationSound()
-
-      // 记录这些问题的最后提醒时间
-      testToRemind.forEach((item: any) => {
-        lastRemindTimes.test[item.id] = now
-      })
-      saveLastRemindTimes(lastRemindTimes)
-    }
-
-    // 检查测试后返回的问题：过滤掉已确认的，然后检查是否需要提醒（红色，需要重新处理）
-    const returnedToRemind = returnedList.filter((item: any) => {
-      if (confirmedReturnedIds.includes(item.id)) return false  // 已点击确认，不再提醒
-      const lastTime = lastRemindTimes.returned[item.id] || 0
-      return now - lastTime >= REMIND_INTERVAL  // 从未提醒或超过5分钟，需要提醒
-    })
-
-    if (returnedToRemind.length > 0) {
-      const titles = returnedToRemind.map((item: any) => `【${item.id}】${item.yiyuanmc || ''} - ${item.wentism?.substring(0, 20) || ''}\n  测试意见: ${(item.shouhoucs || '').substring(0, 30)}`).join('\n')
-      const notifyTitle = `⚠ 您有 ${returnedToRemind.length} 个测试返回的问题需要重新处理`
-      const notifyMessage = titles + '\n\n（点击查看并确认，否则每5分钟提醒一次）'
-      const isPageHidden = document.hidden  // 浏览器是否最小化或在后台
-
-      const confirmReturned = () => {
-        router.push('/test')
-        const newIds = returnedToRemind.map((item: any) => item.id)
-        const updatedIds = [...new Set([...confirmedReturnedIds, ...newIds])]
-        saveConfirmedReturnedIds(updatedIds)
-        stopTitleBlink()
-      }
-
-      if (isPageHidden) {
-        // 浏览器最小化或在后台：使用系统通知 + 标题闪烁 + 声音
-        sendSystemNotification(notifyTitle, notifyMessage, confirmReturned)
-        startTitleBlink(`${returnedToRemind.length}个测试返回问题`)
-      } else {
-        // 浏览器可见：只使用页面内通知 + 声音（红色 error 类型）
-        const notification = ElNotification({
-          title: notifyTitle,
-          message: notifyMessage,
-          type: 'error',  // 红色，区别于黄色待处理和绿色待测试
-          duration: 20000,  // 红色提醒显示时间更长
-          position: 'bottom-right',
-          icon: Bell,
-          onClick: () => {
-            notification.close()  // 点击后立即关闭通知
-            confirmReturned()     // 执行回调
-          }
-        })
-      }
-
-      // 声音提醒（无论浏览器是否可见都播放）
-      playNotificationSound()
-
-      // 记录这些问题的最后提醒时间
-      returnedToRemind.forEach((item: any) => {
-        lastRemindTimes.returned[item.id] = now
-      })
-      saveLastRemindTimes(lastRemindTimes)
-    }
-
-    // 清理1：问题被处理后（不在列表中），清除已确认记录，避免 localStorage 膨胀
-    const pendingIds = pendingList.map((item: any) => item.id)
-    const testIds = testList.map((item: any) => item.id)
-    // returnedIds 已经在前面定义过了
-
-    let cleanedConfirmedPending = confirmedPendingIds.filter(id => pendingIds.includes(id))
-    let cleanedConfirmedTest = confirmedTestIds.filter(id => testIds.includes(id))
-    let cleanedConfirmedReturned = confirmedReturnedIds.filter(id => returnedIds.includes(id))
-
-    // 清理2：状态流转时清除对应已确认记录，让问题在状态变化后能重新提醒
-    // 问题进入待测试状态（已被工程师处理）→ 从待处理和测试返回的已确认列表中删除
-    // （下次测试不通过返回待处理时，应该重新提醒）
-    testIds.forEach(id => {
-      if (cleanedConfirmedPending.includes(id)) {
-        cleanedConfirmedPending = cleanedConfirmedPending.filter(i => i !== id)
-      }
-      if (cleanedConfirmedReturned.includes(id)) {
-        cleanedConfirmedReturned = cleanedConfirmedReturned.filter(i => i !== id)
-      }
-    })
-
-    // 问题进入待处理状态（还未被工程师处理）→ 从待测试的已确认列表中删除
-    // （下次工程师处理完进入待测试时，应该重新提醒）
-    pendingIds.forEach(id => {
-      if (cleanedConfirmedTest.includes(id)) {
-        cleanedConfirmedTest = cleanedConfirmedTest.filter(i => i !== id)
-      }
-    })
-
-    // 保存清理后的已确认记录
-    if (cleanedConfirmedPending.length !== confirmedPendingIds.length) {
-      saveConfirmedPendingIds(cleanedConfirmedPending)
-    }
-    if (cleanedConfirmedTest.length !== confirmedTestIds.length) {
-      saveConfirmedTestIds(cleanedConfirmedTest)
-    }
-    if (cleanedConfirmedReturned.length !== confirmedReturnedIds.length) {
-      saveConfirmedReturnedIds(cleanedConfirmedReturned)
-    }
-
-    // 清理提醒时间记录
-    let timesChanged = false
-
-    // 清理1：不在对应列表中的问题，清除提醒时间
-    Object.keys(lastRemindTimes.pending).forEach(idStr => {
-      if (!pendingIds.includes(parseInt(idStr))) {
-        delete lastRemindTimes.pending[parseInt(idStr)]
-        timesChanged = true
-      }
-    })
-    Object.keys(lastRemindTimes.test).forEach(idStr => {
-      if (!testIds.includes(parseInt(idStr))) {
-        delete lastRemindTimes.test[parseInt(idStr)]
-        timesChanged = true
-      }
-    })
-    Object.keys(lastRemindTimes.returned).forEach(idStr => {
-      if (!returnedIds.includes(parseInt(idStr))) {
-        delete lastRemindTimes.returned[parseInt(idStr)]
-        timesChanged = true
-      }
-    })
-
-    // 清理2：状态流转时清除对应提醒时间，让问题在状态变化后能立即重新提醒
-    // 问题进入待测试状态 → 清除待处理和测试返回的提醒时间
-    testIds.forEach(id => {
-      if (lastRemindTimes.pending[id] !== undefined) {
-        delete lastRemindTimes.pending[id]
-        timesChanged = true
-      }
-      if (lastRemindTimes.returned[id] !== undefined) {
-        delete lastRemindTimes.returned[id]
-        timesChanged = true
-      }
-    })
-
-    // 问题进入待处理状态 → 清除待测试的提醒时间
-    pendingIds.forEach(id => {
-      if (lastRemindTimes.test[id] !== undefined) {
-        delete lastRemindTimes.test[id]
-        timesChanged = true
-      }
-    })
-
-    if (timesChanged) {
-      saveLastRemindTimes(lastRemindTimes)
-    }
+    // 记录已提醒的通知ID，防止重复弹
+    const newIds = newList.map((t: any) => t.id)
+    saveRemindedTzxxIds([...new Set([...remindedIds, ...newIds])])
   } catch (error) {
     console.error('检查新问题失败:', error)
   }
@@ -883,6 +685,9 @@ onMounted(() => {
   window.addEventListener('focus', handlePageFocus)
   // 启动消息提醒
   startReminder()
+  // 分辨率适配：初始计算一次，窗口大小变化时重算
+  applyPageScale()
+  window.addEventListener('resize', applyPageScale)
 })
 
 onUnmounted(() => {
@@ -892,13 +697,17 @@ onUnmounted(() => {
   stopTitleBlink()
   // 停止消息提醒
   stopReminder()
+  // 移除分辨率监听
+  window.removeEventListener('resize', applyPageScale)
 })
 </script>
 
 <style scoped>
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
-.layout-container { display: flex; height: 100vh; background: #f5f7fa; }
-.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; }
+.scale-wrap { width: 100%; height: 100vh; overflow: hidden; }
+.layout-container { display: flex; background: #f5f7fa; }
+.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
+.sidebar .el-menu { flex: 1; }
 .sidebar.collapsed { width: 64px; }
 .sidebar.collapsed .logo { padding: 16px 8px; gap: 0; }
 .sidebar.collapsed .logo span { display: none; }
@@ -925,6 +734,33 @@ onUnmounted(() => {
   object-fit: contain;
   border-radius: 6px;
   flex-shrink: 0;
+}
+/* 侧边栏底部：系统消息提醒权限开关 */
+.sidebar-notice {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #67C23A;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-notice.collapsed { padding: 12px 4px; }
+.sidebar-notice.collapsed span { display: none; }
+.notice-btn {
+  border: 1px dashed #c0c4cc !important;
+  color: #606266 !important;
+  background: #ffffff !important;
+  border-radius: 6px;
+}
+.notice-btn:hover {
+  color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  background: var(--el-color-primary-light-9) !important;
 }
 .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .header { 

@@ -73,6 +73,11 @@
             <el-tag v-else type="info" size="small">一般</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="wentilx" label="问题类型" width="90" align="center">
+          <template #default="{ row }">
+            <span>{{ row.wentilx || '其它问题' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="banben" label="软件版本" width="100" />
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
@@ -133,7 +138,7 @@
     <!-- 新增/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑问题' : '新增问题'" width="900px" :close-on-click-modal="false" destroy-on-close>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-row :gutter="20">
+        <el-row :gutter="6">
           <el-col :span="6" v-if="isEdit">
             <el-form-item label="问题ID号">
               <div class="lsh-box">
@@ -166,39 +171,49 @@
           </el-col>
         </el-row>
         
-        <el-row :gutter="20">
-          <el-col :span="8">
+        <el-row :gutter="6">
+          <el-col :span="6">
             <el-form-item label="软件版本" prop="banben">
-              <el-select v-model="form.banben" placeholder="请选择" class="full-width" @change="onVersionChange">
+              <el-select v-model="form.banben" placeholder="请选择" style="width:100%" @change="onVersionChange">
                 <el-option label="HIS问题" value="HIS问题" />
                 <el-option label="医保接口" value="医保接口" />
                 <el-option label="其它问题" value="其它问题" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="6">
+            <el-form-item label="问题类型" prop="wentilx">
+              <el-select v-model="form.wentilx" placeholder="请选择" style="width:100%">
+                <el-option label="软件BUG" value="软件BUG" />
+                <el-option label="业务逻辑" value="业务逻辑" />
+                <el-option label="个性化" value="个性化" />
+                <el-option label="其它问题" value="其它问题" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="医院名称" prop="yiyuanmc">
-              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable class="full-width" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" :disabled="isCustomerUser" @change="onHospitalChange">
+              <el-select v-model="form.yiyuanmc" placeholder="请搜索选择" filterable style="width:100%" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" :disabled="isCustomerUser" @change="onHospitalChange">
                 <el-option v-for="h in hospitals" :key="h.label" :label="h.label" :value="h.label" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         
-        <el-row :gutter="20">
-          <el-col :span="8">
+        <el-row :gutter="6">
+          <el-col :span="6">
             <el-form-item label="模块" prop="mokuai">
-              <el-select v-model="form.mokuai" placeholder="请选择" class="full-width" @change="(val) => onModuleChange(val)">
+              <el-select v-model="form.mokuai" placeholder="请选择" style="width:100%" @change="(val) => onModuleChange(val)">
                 <el-option v-for="m in modules" :key="m.value" :label="m.label" :value="m.label" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="窗体" prop="chuangtimc">
               <el-select 
                 v-model="form.chuangtimc" 
                 placeholder="请选择或输入" 
-                class="full-width" 
+                style="width:100%" 
                 :disabled="!form.mokuai"
                 filterable
                 allow-create
@@ -209,19 +224,16 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="跟进人员" prop="shishiry">
-              <el-select v-model="form.shishiry" placeholder="请选择" class="full-width" :disabled="isCustomerUser">
+              <el-select v-model="form.shishiry" placeholder="请选择" style="width:100%" :disabled="isCustomerUser">
                 <el-option v-for="e in shishiList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
           </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="工程师" prop="xggcs">
-              <el-select v-model="form.xggcs" placeholder="请选择" class="full-width" :disabled="isCustomerUser">
+              <el-select v-model="form.xggcs" placeholder="请选择" style="width:100%" :disabled="isCustomerUser">
                 <el-option v-for="e in yanfaList" :key="e.value" :label="e.label" :value="e.value" />
               </el-select>
             </el-form-item>
@@ -241,7 +253,7 @@
         
         <!-- 处理信息（编辑时显示，只读） -->
         <el-divider v-if="isEdit && form.xgsj" content-position="left">处理信息</el-divider>
-        <el-row v-if="isEdit && form.xgsj" :gutter="20">
+        <el-row v-if="isEdit && form.xgsj" :gutter="6">
           <el-col :span="8">
             <el-form-item label="处理人">
               <el-input v-model="form.xggcs" disabled />
@@ -256,7 +268,7 @@
         
         <!-- 测试信息（编辑时显示，只读） -->
         <el-divider v-if="isEdit && form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="isEdit && form.cssj" :gutter="20">
+        <el-row v-if="isEdit && form.cssj" :gutter="6">
           <el-col :span="8">
             <el-form-item label="测试人员">
               <el-input v-model="form.shcsgcs" disabled />
@@ -273,7 +285,7 @@
         </el-form-item>
         
         <el-form-item label="问题附件">
-          <div @paste="handlePaste" class="upload-area">
+          <div @paste.capture.stop="handlePaste" class="upload-area">
             <el-upload ref="uploadRef" v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
               <el-icon class="upload-icon"><Plus /></el-icon>
               <div class="upload-text">拖拽或点击选择<br/>支持图片/视频/文档（单个≤50MB）<br/>Ctrl+V 粘贴图片或文件</div>
@@ -305,7 +317,13 @@
     </el-dialog>
     
     <!-- 查看问题对话框（只读） -->
-    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
+    <el-dialog v-model="viewDialogVisible" width="900px" :close-on-click-modal="false" destroy-on-close>
+      <template #header>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 24px;">
+          <span style="font-size: 18px; font-weight: 600; color: var(--el-text-color-primary);">查看问题</span>
+          <span :style="viewStatusStyle">{{ viewStatusText }}</span>
+        </div>
+      </template>
       <el-form :model="form" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="6">
@@ -331,7 +349,12 @@
               <el-input v-model="form.banben" readonly />
             </el-form-item>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="8">
+            <el-form-item label="问题类型">
+              <el-input v-model="form.wentilx" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="医院名称">
               <el-input v-model="form.yiyuanmc" readonly />
             </el-form-item>
@@ -742,6 +765,7 @@ const form = reactive({
   chuangtimc: '',      // 窗体名称
   xggcs: '',           // 工程师（修改人员）
   jingjicd: '一般',    // 紧急程度：一般/急/紧急
+  wentilx: '其它问题', // 问题类型：软件BUG/业务逻辑/个性化/其它问题
   wentism: '',         // 问题说明
   shouzhongcs: '',     // 售后（测试）说明
   shouhoucs: '',       // 处理意见（售后处理）
@@ -793,6 +817,8 @@ const rules = {
   chuangtimc: [{ required: true, message: '请选择窗体', trigger: 'change' }],
   xggcs: [{ required: true, message: '请选择工程师', trigger: 'change' }],
   jingjicd: [{ required: true, message: '请选择紧急程度', trigger: 'change' }],
+  wentilx: [{ required: true, message: '请选择问题类型', trigger: 'change' }],
+  shouzhongcs: [{ required: true, message: '请填写测试意见', trigger: 'blur' }],
   wentism: [{ required: true, message: '请填写问题说明', trigger: 'blur' }]
 }
 
@@ -835,6 +861,33 @@ const getStatusType = (status: string) => {
     default: return 'info'
   }
 }
+
+// 查看问题对话框右上角的状态标签（待处理/待测试/已处理/待讨论，莫兰迪配色，字号与标题一致）
+const viewStatusText = computed(() => {
+  const s = getProblemStatus(form)
+  if (s === '待修改') return '待处理'
+  if (s === '已修改') return '已处理'
+  return s
+})
+const viewStatusStyle = computed(() => {
+  const colors: Record<string, string> = {
+    待处理: 'linear-gradient(135deg, #7B8FA1, #6A7E90)', // 莫兰迪蓝
+    待测试: 'linear-gradient(135deg, #C9A87C, #B8976B)', // 莫兰迪橙
+    已处理: 'linear-gradient(135deg, #8FAF8F, #7A9E7A)', // 莫兰迪绿（已处理固定绿色）
+    待讨论: 'linear-gradient(135deg, #E08888, #D07070)', // 莫兰迪红
+  }
+  return {
+    background: colors[viewStatusText.value] || '#909399',
+    color: '#ffffff',
+    fontSize: '18px',
+    fontWeight: '600',
+    padding: '6px 18px',
+    borderRadius: '6px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+    lineHeight: '1',
+    whiteSpace: 'nowrap'
+  }
+})
 
 // 当前选中行ID（点击行高亮用，颜色随主题）
 const selectedId = ref<number | null>(null)
@@ -1083,6 +1136,7 @@ const handleAdd = async () => {
   form.mokuai = ''
   form.chuangtimc = ''
   form.jingjicd = '一般'   // 紧急程度默认"一般"
+  form.wentilx = '其它问题' // 问题类型默认"其它问题"
   form.wentism = ''
   form.shouzhongcs = ''
   form.shouhoucs = ''
@@ -1103,6 +1157,7 @@ const handleView = async (row: any) => {
   rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital  // 字段名兼容
   rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
   rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
+  rowCopy.wentilx = rowCopy.wentilx || '其它问题'  // 老数据没有问题类型的兜底
   Object.assign(form, rowCopy)  // 把行的所有字段复制到 form
   detailItems.value = []
   try {
@@ -1143,6 +1198,7 @@ const handleEdit = async (row: any) => {
   rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
   rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
   rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
+  rowCopy.wentilx = rowCopy.wentilx || '其它问题'  // 老数据没有问题类型的兜底
   Object.assign(form, rowCopy)
   uploadFileList.value = []
   forms.value = []
@@ -1246,31 +1302,25 @@ const handleFileChange = (file: any) => {
 const handlePaste = (event: ClipboardEvent) => {
   const cd = event.clipboardData
   if (!cd) return
-  const seen = new Set<string>()
-  const pushFile = (f: File) => {
-    const key = `${f.name}-${f.size}-${f.lastModified}`
-    if (seen.has(key)) return // 同一内容（截图在 files/items 各出现一次）只加一次
-    seen.add(key)
+  // 同一剪贴板内容会同时出现在 files 与 items 两个来源（部分来源文件名/时间戳不一致，
+  // 按 key 去重也会漏掉），因此这里只取一个来源：
+  //   优先 files（资源管理器复制文件），否则取 items 里的 image（截图）
+  let picked: File[] = []
+  if (cd.files && cd.files.length > 0) {
+    picked = Array.from(cd.files)
+  } else if (cd.items) {
+    picked = Array.from(cd.items)
+      .filter(i => i.type.startsWith('image/'))
+      .map(i => i.getAsFile())
+      .filter(Boolean) as File[]
+  }
+  for (const f of picked) {
     if (f.size > 50 * 1024 * 1024) {
       ElMessage.warning(`文件「${f.name}」超过 50MB，不能上传`)
-      return
+      continue
     }
     const url = URL.createObjectURL(f)
     uploadFileList.value.push({ name: f.name, url, raw: f, status: 'ready' })
-  }
-  // 1. 复制的文件（在资源管理器 Ctrl+C 文件后粘贴）
-  if (cd.files) {
-    for (const f of Array.from(cd.files)) pushFile(f)
-  }
-  // 2. 截图（剪贴板 items 里的 image 类型）
-  const items = cd.items
-  if (items) {
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        const f = item.getAsFile()
-        if (f) pushFile(f)
-      }
-    }
   }
 }
 

@@ -198,11 +198,27 @@ export class FeedbackController {
     return { code: 200, message: '删除成功', data: null };
   }
 
-  // 获取待处理和待测试问题数量（用于消息提醒）
-  // GET /api/feedback/reminder/count?currentUser=xxx
+  // 获取我的未读通知（用于右下角消息提醒，按用户编码过滤）
+  // GET /api/feedback/reminder/count?currentUser=用户编码
   @Get('reminder/count')
   async getReminderCount(@Query('currentUser') currentUser: string) {
     const data = await this.feedbackService.getReminderCount(currentUser);
     return { code: 200, message: '查询成功', data };
+  }
+
+  // 标记单条通知已读
+  // POST /api/feedback/reminder/read  body: { id: 通知ID }
+  @Post('reminder/read')
+  async markRead(@Body() body: { id: number }) {
+    await this.feedbackService.markTzxxRead(body.id);
+    return { code: 200, message: '已读', data: null };
+  }
+
+  // 标记当前用户全部通知已读
+  // POST /api/feedback/reminder/read-all  body: { currentUser: 用户编码 }
+  @Post('reminder/read-all')
+  async markAllRead(@Body() body: { currentUser: string }) {
+    await this.feedbackService.markAllRead(body.currentUser);
+    return { code: 200, message: '已全部读', data: null };
   }
 }

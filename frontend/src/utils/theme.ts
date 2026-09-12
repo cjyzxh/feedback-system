@@ -27,8 +27,20 @@ export function applyFontSize(size: string) {
   localStorage.setItem('fontSize', size || 'standard')
 }
 
-// 从后端加载系统字号并应用（登录页 / 布局页进入时调用）
+// 从后端加载字号并应用（登录页 / 布局页进入时调用）
+// 优先级：个人设置（sys_user.fontSize 有值）> 系统设置（database-config.json）> 本地缓存/默认
 export async function applySystemFontSize() {
+  // 1. 个人字号优先：用户已登录且设置了个人字号，直接应用
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}')
+    if (u.fontSize) {
+      applyFontSize(u.fontSize)
+      return
+    }
+  } catch (e) {
+    console.warn('读取个人字号失败:', e)
+  }
+  // 2. 读取系统字号
   try {
     const res = await fetch('/api/config/font-size')
     if (res.ok) {
@@ -39,6 +51,6 @@ export async function applySystemFontSize() {
   } catch (e) {
     console.warn('获取系统字体字号失败，使用本地缓存:', e)
   }
-  // 后端不可用时回退到本地缓存 / 默认
+  // 3. 后端不可用时回退到本地缓存 / 默认
   applyFontSize(localStorage.getItem('fontSize') || 'standard')
 }

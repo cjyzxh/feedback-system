@@ -54,6 +54,10 @@ export class CreateUserDto {
   themeMode?: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
 
   @IsOptional()
+  @IsString()
+  fontSize?: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(1)
@@ -124,6 +128,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   themeMode?: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
+
+  @IsOptional()
+  @IsString()
+  fontSize?: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
 
   @IsOptional()
   @IsNumber()

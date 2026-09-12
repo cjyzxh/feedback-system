@@ -4,7 +4,6 @@
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
         <img :src="logoSrc" alt="logo" class="logo-img" />
-        <span v-if="!isCollapse">问题反馈</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -154,6 +153,12 @@
             <el-radio value="dark">深色系</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="字体大小">
+          <el-radio-group v-model="profileForm.fontSize" @change="handleProfileFontChange">
+            <el-radio value="">跟随系统</el-radio>
+            <el-radio v-for="(label, key) in FONT_SIZE_LABELS" :key="key" :value="key">{{ label }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="修改密码">
           <el-checkbox v-model="profileForm.changePassword">修改密码</el-checkbox>
         </el-form-item>
@@ -181,7 +186,7 @@ import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFill
 import { authApi } from '@/api'
 import axios from 'axios'
 import { clearToken } from '@/utils/auth'
-import { applySystemFontSize } from '@/utils/theme'
+import { applySystemFontSize, applyFontSize, FONT_SIZE_LABELS } from '@/utils/theme'
 
 const router = useRouter()
 const route = useRoute()
@@ -347,6 +352,32 @@ const handleProfileThemeChange = async (val: string) => {
   ElMessage.success(`已切换为${label}（保存后生效）`)
 }
 // ========== 界面风格切换结束 ==========
+
+// ========== 字体大小切换（个人信息弹窗中使用，逻辑与界面风格一致）==========
+const handleProfileFontChange = async (val: string) => {
+  let sizeToApply = val
+  let label = ''
+  if (!val) {
+    // 跟随系统：读取系统字号并预览
+    label = '跟随系统'
+    try {
+      const res = await fetch('/api/config/font-size')
+      if (res.ok) {
+        const data = await res.json()
+        sizeToApply = data.fontSize || 'standard'
+      }
+    } catch (e) {
+      console.warn('获取系统字体字号失败:', e)
+      sizeToApply = 'standard'
+    }
+  } else {
+    label = FONT_SIZE_LABELS[val] || val
+  }
+  // 预览：立即应用（保存时才写入用户表）
+  applyFontSize(sizeToApply)
+  ElMessage.success(`已切换为${label}（保存后生效）`)
+}
+// ========== 字体大小切换结束 ==========
 
 const username = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.realName || u.username || localStorage.getItem('username') || '' })
 const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.roleName || u.role || localStorage.getItem('roleName') || '用户' })
@@ -640,7 +671,8 @@ const profileForm = reactive({
   email: '',
   changePassword: false,
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  fontSize: ''
 })
 
 const validatePassword = (rule: any, value: string, callback: any) => {
@@ -697,6 +729,7 @@ const openProfileDialog = () => {
   profileForm.phone = u.phone || ''
   profileForm.email = u.email || ''
   profileForm.themeMode = u.themeMode || ''  // 空=跟随系统，有值=个人样式
+  profileForm.fontSize = u.fontSize || ''    // 空=跟随系统，有值=个人字号
   profileForm.changePassword = false
   profileForm.newPassword = ''
   profileForm.confirmPassword = ''
@@ -723,7 +756,8 @@ const saveProfile = async () => {
       birthDate: profileForm.birthDate,
       phone: profileForm.phone,
       email: profileForm.email,
-      themeMode: profileForm.themeMode || ''  // 空=跟随系统，有值=个人样式
+      themeMode: profileForm.themeMode || '',  // 空=跟随系统，有值=个人样式
+      fontSize: profileForm.fontSize || ''     // 空=跟随系统，有值=个人字号
     }
     
     // 如果勾选了修改密码，添加新密码
@@ -741,6 +775,7 @@ const saveProfile = async () => {
     u.phone = profileForm.phone
     u.email = profileForm.email
     u.themeMode = profileForm.themeMode || ''  // 同步个人样式偏好
+    u.fontSize = profileForm.fontSize || ''    // 同步个人字号偏好
     localStorage.setItem('user', JSON.stringify(u))
     localStorage.setItem('userThemeMode', profileForm.themeMode || '')  // 更新个人样式标记：空=跟随系统，有值=个人设置
     
@@ -804,10 +839,10 @@ onUnmounted(() => {
 .sidebar { width: 158px; --el-menu-collapse-width: 48px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
 .sidebar .el-menu { flex: 1; }
 .sidebar.collapsed { width: 48px; }
-.sidebar.collapsed .logo { padding: 16px 8px; gap: 0; }
+.sidebar.collapsed .logo { padding: 10px 8px; gap: 0; }
 .sidebar.collapsed .logo span { display: none; }
 .logo { 
-  padding: 20px 12px; 
+  padding: 10px 12px; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -824,8 +859,8 @@ onUnmounted(() => {
   transition: padding 0.3s ease;
 }
 .logo-img {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   border-radius: 6px;
   flex-shrink: 0;

@@ -41,6 +41,9 @@ export class User {
   @Column({ length: 20, default: '' })
   themeMode: string; // 个人界面样式偏好：空=跟随系统，morandi/light/dark
 
+  @Column({ length: 20, default: '' })
+  fontSize: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
+
   @Column({ type: 'int', default: 0 })
   isShishi: number; // 是否实施人员：1=是，0=否（内部员工勾选）
 

@@ -1307,18 +1307,18 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 /* 查询条件第二行：问题说明 + 录入日期 */
 .search-row-2 { display: flex; flex-wrap: nowrap; align-items: center; gap: 0; width: 100%; }
 /* 第二行控件间距 1px */
-.search-row-2 .el-form-item { margin-right: 6px !important; margin-bottom: 0 !important; }
+.search-row-2 .el-form-item { margin-right: var(--qgap) !important; margin-bottom: 0 !important; }
 .search-row-2 .wentism-item { flex: 0 1 auto; min-width: 0; }
 .search-row-2 .wentism-item .el-input { width: 100%; }
 /* 按钮组：固定在末尾，不压缩 */
 .search-row-2 .btn-group-2 { flex: 0 0 auto; margin-right: 0 !important; display: flex; align-items: center; }
-.search-row-2 .btn-group-2 .el-button, .search-row-2 .btn-group-2 .check-item { margin: 0 6px; }
+.search-row-2 .btn-group-2 .el-button, .search-row-2 .btn-group-2 .check-item { margin: 0 var(--qgap); }
 /* 第一行控件间距 6px（含查看所有/新增问题） */
-.search-form .el-form-item { margin-right: 6px !important; margin-bottom: 10px !important; }
+.search-form .el-form-item { margin-right: var(--qgap) !important; margin-bottom: 10px !important; }
 /* 查看所有/新增/查询/重置 宽度统一：JS 写入 --search-btn-w 取四者最大值 */
 .search-form { --search-btn-w: 110px; --search-btn-h: 40px; }
-.search-form .btn-group-1 { display: inline-flex; align-items: center; vertical-align: top; margin-left: 6px; }
-.search-form .btn-group-1 .el-button { width: var(--search-btn-w); height: 32px; margin: 0 6px; }
+.search-form .btn-group-1 { display: inline-flex; align-items: center; vertical-align: top; margin-left: var(--qgap); }
+.search-form .btn-group-1 .el-button { width: var(--search-btn-w); height: 32px; margin: 0 var(--qgap); }
 .search-row-2 .btn-group-2 .check-item { margin: 0 6px; }
 .search-form .morandi-btn { min-width: var(--search-btn-w); }
 /* 第二行顶部对齐：录入日期与查询按钮上边缘齐平 */

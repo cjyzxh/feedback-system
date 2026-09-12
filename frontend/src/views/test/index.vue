@@ -636,12 +636,12 @@ onMounted(() => { loadList() })
 
 <style scoped>
 .handle-page { padding: 0; height: calc(100vh - 100px); display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
-.card-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-header { display: flex; justify-content: flex-start; align-items: center; gap: var(--qgap); flex-wrap: wrap; }
 .form-header { display: flex; justify-content: flex-start; align-items: center; }
-.header-filters { display: flex; align-items: center; gap: 3px; margin-left: 10px; flex-wrap: wrap; }
+.header-filters { display: flex; align-items: center; gap: var(--qgap); margin-left: 10px; flex-wrap: wrap; }
 .header-filters .el-checkbox { margin-right: 8px !important; }
-.header-actions { display: flex; align-items: center; margin-left: auto; flex-shrink: 0; }
-.header-actions .el-button { margin-left: 0 !important; margin-right: 4px !important; }
+.header-actions { display: flex; align-items: center; flex-shrink: 0; }
+.header-actions .el-button { margin-left: 0 !important; margin-right: var(--qgap) !important; }
 
 /* 复选框样式：显眼的边框和背景 */
 :deep(.el-checkbox__inner) {

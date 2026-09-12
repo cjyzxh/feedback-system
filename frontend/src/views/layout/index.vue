@@ -201,6 +201,12 @@ const containerScaleStyle = computed(() => ({
   height: (100 / scaleRatio.value) + 'vh'
 }))
 
+// 全局最宽基准：以所有页面中内容宽度最大的为准（跨页面累积，切页不还原）
+// globalMaxW：正常间距(--qgap)下的最宽内容宽；globalMinW：最小间距(--qgap=2px)下的最宽内容宽
+let globalMaxW = 0
+let globalMinW = 0
+const MIN_GAP_PX = 2 // 最小控件间距(px)
+
 const applyPageScale = () => {
   const wrap = wrapRef.value
   if (!wrap) return
@@ -221,22 +227,42 @@ const applyPageScale = () => {
     el.style.flexWrap = 'nowrap'
   })
   // 只量查询行/头部（表格不参与：列宽由 el-table 内部滚动处理，不拖累整页缩放）
-  let maxContentW = 0
-  noWrapEls.forEach(el => { maxContentW = Math.max(maxContentW, el.scrollWidth) })
+  // 1) 先量“正常间距”下的真实宽度
+  let maxW = 0
+  noWrapEls.forEach(el => { maxW = Math.max(maxW, el.scrollWidth) })
+  // 2) 再量“最小间距”(--qgap=2px)下的真实宽度：先压缩控件间距，仍放不下才缩放
+  const root = document.documentElement
+  const prevGap = root.style.getPropertyValue('--qgap') || ''
+  root.style.setProperty('--qgap', MIN_GAP_PX + 'px')
+  let minW = 0
+  noWrapEls.forEach(el => { minW = Math.max(minW, el.scrollWidth) })
   saved.forEach(({ el, ws, fw }) => { el.style.whiteSpace = ws; el.style.flexWrap = fw })
-  // 测量完恢复缩放容器原状（若 scaleRatio 不变，Vue 不会重渲染，必须手动恢复）
-  if (layoutEl) { layoutEl.style.zoom = prevZoom; layoutEl.style.width = prevWidth }
-  // 左侧导航栏占宽
+  // 全局累积：以所有页面中最宽的内容宽度为准
+  globalMaxW = Math.max(globalMaxW, maxW)
+  globalMinW = Math.max(globalMinW, minW)
+  // 3) 决定最终间距与缩放
   const sidebarEl = wrap.querySelector<HTMLElement>('.sidebar')
   const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 210
   const vw = document.documentElement.clientWidth
-  // 内容区可用宽 = 视口宽 - 侧边栏宽（侧边栏独立占位，不参与内容缩放）
-  const contentW = vw - sidebarW
-  // 需要放下查询行的最小宽度：max(内容区宽, 查询行真实宽)，只缩不放大
-  const needW = Math.max(contentW, maxContentW)
-  let s = contentW / (needW || contentW)
-  s = Math.max(0.4, Math.min(1, s))  // 只缩小不放大；下限 0.4 防极端屏
+  const contentW = vw - sidebarW // 内容区可用宽
+  let finalGap = prevGap
+  let s = 1
+  if (globalMaxW <= contentW) {
+    // 正常间距就能放下：恢复默认间距，不缩放
+    finalGap = prevGap
+  } else if (globalMinW <= contentW) {
+    // 压缩到最小间距就能放下：用最小间距，不缩放
+    finalGap = MIN_GAP_PX + 'px'
+  } else {
+    // 最小间距仍放不下：最小间距 + 等比缩放
+    finalGap = MIN_GAP_PX + 'px'
+    s = contentW / (globalMinW || contentW)
+  }
+  root.style.setProperty('--qgap', finalGap)
+  s = Math.max(0.4, Math.min(1, s)) // 只缩小不放大；下限 0.4 防极端屏
   scaleRatio.value = Math.round(s * 100) / 100
+  // 测量完恢复缩放容器原状（若 scaleRatio 不变，Vue 不会重渲染，必须手动恢复）
+  if (layoutEl) { layoutEl.style.zoom = prevZoom; layoutEl.style.width = prevWidth }
 }
 const profileFormRef = ref()
 const profileDialogVisible = ref(false)

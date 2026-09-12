@@ -9,30 +9,30 @@
     </template>
 
     <el-form :model="form" label-width="100px">
-      <el-row :gutter="20">
-        <el-col :span="6">
+      <el-row :gutter="10">
+        <el-col :span="5">
           <el-form-item label="问题ID号">
             <el-input :model-value="form.id" readonly />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="8">
           <el-form-item label="录入时间">
             <el-input :model-value="formatDate(form.lvrusj)" readonly />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="4">
           <el-form-item label="紧急程度">
             <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
           </el-form-item>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="7">
           <el-form-item label="售后到期日">
             <el-input :model-value="syq" readonly />
           </el-form-item>
         </el-col>
       </el-row>
 
-      <el-row :gutter="20">
+      <el-row :gutter="10">
         <el-col :span="8">
           <el-form-item label="软件版本">
             <el-input :model-value="form.banben" readonly />
@@ -50,7 +50,7 @@
         </el-col>
       </el-row>
 
-      <el-row :gutter="20">
+      <el-row :gutter="10">
         <el-col :span="8">
           <el-form-item label="模块">
             <el-input :model-value="form.mokuai" readonly />
@@ -68,7 +68,7 @@
         </el-col>
       </el-row>
 
-      <el-row :gutter="20">
+      <el-row :gutter="10">
         <el-col :span="8">
           <el-form-item label="工程师">
             <el-input :model-value="form.xggcs" readonly />
@@ -100,7 +100,7 @@
 
       <!-- 处理信息 -->
       <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
-      <el-row v-if="form.xgsj" :gutter="20">
+      <el-row v-if="form.xgsj" :gutter="10">
         <el-col :span="8">
           <el-form-item label="处理人">
             <el-input :model-value="form.xggcs" readonly />
@@ -115,7 +115,7 @@
 
       <!-- 测试返回信息 -->
       <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-      <el-row v-if="form.cssj" :gutter="20">
+      <el-row v-if="form.cssj" :gutter="10">
         <el-col :span="8">
           <el-form-item label="测试人员">
             <el-input :model-value="form.shcsgcs" readonly />

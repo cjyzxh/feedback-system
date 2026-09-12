@@ -65,7 +65,7 @@
         </div>
       </el-form>
       
-      <el-table :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName" @row-click="handleSelectRow" @row-dblclick="handleView">
+      <el-table ref="tableRef" :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName" @row-click="handleSelectRow" @row-dblclick="handleView">
         <el-table-column prop="id" label="ID" width="60" align="center" />
         <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
@@ -380,7 +380,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick, watch , onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -1297,6 +1297,21 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
+
+// ========== 表格固定列重排（缩放应用后由 layout 通知 doLayout） ==========
+const tableRef = ref<any>()
+const relayoutTable = () => {
+  nextTick(() => {
+    try { tableRef.value?.doLayout?.() } catch (e) { /* 忽略布局异常 */ }
+  })
+}
+onMounted(() => {
+  window.addEventListener('page-scale-applied', relayoutTable)
+  // 等 layout 完成缩放后再布局一次（路由切换回来时固定列可能错位）
+  nextTick(() => setTimeout(relayoutTable, 350))
+})
+onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable))
+
 </script>
 
 <style scoped>

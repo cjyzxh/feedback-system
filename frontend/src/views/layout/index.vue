@@ -4,7 +4,7 @@
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
         <img :src="logoSrc" alt="logo" class="logo-img" />
-        <span v-if="!isCollapse">问题反馈系统</span>
+        <span v-if="!isCollapse">问题反馈</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -195,9 +195,13 @@ const route = useRoute()
 const scaleRatio = ref(1)
 const wrapRef = ref<HTMLElement>()
 const containerScaleStyle = computed(() => ({
-  width: (100 / scaleRatio.value) + '%',   // 布局宽 = 视口/scale，zoom 后渲染恰好 = 视口宽
+  width: (100 / scaleRatio.value) + '%',   // 布局宽 = 视口/scale，transform 后渲染恰好 = 视口宽
   margin: '0 auto',
-  zoom: scaleRatio.value,
+  // 用 transform 而非 zoom：zoom 会改变布局尺寸，导致 el-table 固定列定位错乱、
+  // 且切页回来时比例突变产生“字变小、固定列消失、滚动条消失”的问题；
+  // transform 只在渲染层整体缩放，布局尺寸不变，固定列按真实布局计算、不冲突
+  transform: `scale(${scaleRatio.value})`,
+  transformOrigin: 'top left',
   height: (100 / scaleRatio.value) + 'vh'
 }))
 
@@ -206,17 +210,17 @@ const containerScaleStyle = computed(() => ({
 let globalMaxW = 0
 let globalMinW = 0
 const MIN_GAP_PX = 2 // 最小控件间距(px)
+let scaleRetry = 0 // 子页面懒加载未完成时的重测计数
 
 const applyPageScale = () => {
   const wrap = wrapRef.value
   if (!wrap) return
-  // 关键：缩放容器（layout-container）的 width/zoom 是响应式绑定的当前缩放值。
-  // 测量前必须临时恢复原始大小（zoom=1、width=100%），否则测到的是被放大过的宽度，
-  // 会导致每次计算出的比例越来越小、界面逐次缩小（“点一次菜单缩一次”的根因）。
+  // 测量前把缩放容器临时恢复原始大小（transform=none、width=100%），
+  // 避免量到的是被缩放后的状态；transform 不影响 scrollWidth，此重置为保险起见
   const layoutEl = wrap.querySelector<HTMLElement>('.layout-container') as HTMLElement | null
-  const prevZoom = layoutEl ? layoutEl.style.zoom : ''
+  const prevTransform = layoutEl ? layoutEl.style.transform : ''
   const prevWidth = layoutEl ? layoutEl.style.width : ''
-  if (layoutEl) { layoutEl.style.zoom = '1'; layoutEl.style.width = '100%' }
+  if (layoutEl) { layoutEl.style.transform = 'none'; layoutEl.style.width = '100%' }
   // 换行型布局（inline 表单/flex wrap）宽度不足时会自动换行消化溢出，
   // 测量时临时禁止这些行换行，让真实宽度暴露出来，测完立即恢复
   const saved: Array<{ el: HTMLElement; ws: string; fw: string }> = []
@@ -226,6 +230,22 @@ const applyPageScale = () => {
     el.style.whiteSpace = 'nowrap'
     el.style.flexWrap = 'nowrap'
   })
+  // 只允许业务主页面参与缩放基准测量：管理/统计页的查询行未做 --qgap 间距压缩适配，
+  // 若参与测量会把全局基准(globalMaxW/globalMinW)越拉越大，导致字体越切越小
+  const MEASURE_PATHS = ['/feedback', '/test', '/testcheck', '/discuss']
+  if (!MEASURE_PATHS.includes(route.path)) {
+    saved.forEach(({ el, ws, fw }) => { el.style.whiteSpace = ws; el.style.flexWrap = fw })
+    if (layoutEl) { layoutEl.style.transform = prevTransform; layoutEl.style.width = prevWidth }
+    return
+  }
+  // 子页面（懒加载）尚未渲染完成：先恢复原状，稍后重测，避免 F5 首次进入时测到空内容
+  // 而保持“不缩放”，切页后才算出缩放比例导致界面突变
+  if (noWrapEls.length === 0) {
+    if (layoutEl) { layoutEl.style.transform = prevTransform; layoutEl.style.width = prevWidth }
+    if (scaleRetry < 12) { scaleRetry++; setTimeout(applyPageScale, 400) }
+    return
+  }
+  scaleRetry = 0
   // 只量查询行/头部（表格不参与：列宽由 el-table 内部滚动处理，不拖累整页缩放）
   // 1) 先量“正常间距”下的真实宽度
   let maxW = 0
@@ -242,7 +262,7 @@ const applyPageScale = () => {
   globalMinW = Math.max(globalMinW, minW)
   // 3) 决定最终间距与缩放
   const sidebarEl = wrap.querySelector<HTMLElement>('.sidebar')
-  const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 210
+  const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 158 // 侧边栏宽（展开158px/收缩48px）
   const vw = document.documentElement.clientWidth
   const contentW = vw - sidebarW // 内容区可用宽
   let finalGap = prevGap
@@ -262,7 +282,12 @@ const applyPageScale = () => {
   s = Math.max(0.4, Math.min(1, s)) // 只缩小不放大；下限 0.4 防极端屏
   scaleRatio.value = Math.round(s * 100) / 100
   // 测量完恢复缩放容器原状（若 scaleRatio 不变，Vue 不会重渲染，必须手动恢复）
-  if (layoutEl) { layoutEl.style.zoom = prevZoom; layoutEl.style.width = prevWidth }
+  if (layoutEl) { layoutEl.style.transform = prevTransform; layoutEl.style.width = prevWidth }
+  // 通知各页面：缩放已应用，请重新计算表格固定列（zoom 环境下挂载的表格固定列会错位，
+  // 且 zoom 不触发 ResizeObserver，必须手动通知 doLayout）
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new CustomEvent('page-scale-applied'))
+  })
 }
 const profileFormRef = ref()
 const profileDialogVisible = ref(false)
@@ -273,8 +298,8 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
   localStorage.setItem('sidebarCollapsed', isCollapse.value ? '1' : '0')
 }
-// 标题居中偏移：随侧边栏宽度变化（展开210px/收缩64px）
-const titleOffset = computed(() => (isCollapse.value ? '-32px' : '-105px'))
+// 标题居中偏移：随侧边栏宽度变化（展开158px/收缩48px）
+const titleOffset = computed(() => (isCollapse.value ? '-24px' : '-79px'))
 // ========== 侧边栏收缩结束 ==========
 
 // ========== 界面风格切换（个人信息弹窗中使用）==========
@@ -776,18 +801,18 @@ onUnmounted(() => {
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
 .scale-wrap { width: 100%; height: 100vh; overflow: hidden; }
 .layout-container { display: flex; background: #f5f7fa; }
-.sidebar { width: 210px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
+.sidebar { width: 158px; --el-menu-collapse-width: 48px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
 .sidebar .el-menu { flex: 1; }
-.sidebar.collapsed { width: 64px; }
+.sidebar.collapsed { width: 48px; }
 .sidebar.collapsed .logo { padding: 16px 8px; gap: 0; }
 .sidebar.collapsed .logo span { display: none; }
 .logo { 
-  padding: 20px 15px; 
+  padding: 20px 12px; 
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 17px; 
+  font-size: 15px; 
   font-weight: 600; 
   text-align: center; 
   border-bottom: 1px solid #f0f2f5; 
@@ -799,8 +824,8 @@ onUnmounted(() => {
   transition: padding 0.3s ease;
 }
 .logo-img {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   border-radius: 6px;
   flex-shrink: 0;
@@ -865,8 +890,8 @@ onUnmounted(() => {
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 3px;
   text-shadow: 0 2px 4px rgba(var(--el-color-primary-rgb), 0.1);
-  /* 考虑左侧导航栏宽度(210px)，让标题在整个页面居中 */
-  /* 左侧导航栏占用210px，所以标题需要向左偏移105px（导航栏宽度的一半） */
+  /* 考虑左侧导航栏宽度(158px)，让标题在整个页面居中 */
+  /* 左侧导航栏占用158px，所以标题需要向左偏移79px（导航栏宽度的一半） */
   position: relative;
   left: -105px;
 }

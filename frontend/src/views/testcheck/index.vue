@@ -146,7 +146,7 @@
           </div>
         </div>
       </template>
-      <el-table :data="list" @row-click="handleRowClick" @row-dblclick="handleView" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
+      <el-table ref="tableRef" :data="list" @row-click="handleRowClick" @row-dblclick="handleView" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
         <el-table-column prop="id" label="ID" width="60" align="center" />
         <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
@@ -233,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -495,6 +495,21 @@ const appendShouhoucs = (text: string) => {
 }
 
 onMounted(() => { loadList() })
+
+// ========== 表格固定列重排（缩放应用后由 layout 通知 doLayout） ==========
+const tableRef = ref<any>()
+const relayoutTable = () => {
+  nextTick(() => {
+    try { tableRef.value?.doLayout?.() } catch (e) { /* 忽略布局异常 */ }
+  })
+}
+onMounted(() => {
+  window.addEventListener('page-scale-applied', relayoutTable)
+  // 等 layout 完成缩放后再布局一次（路由切换回来时固定列可能错位）
+  nextTick(() => setTimeout(relayoutTable, 350))
+})
+onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable))
+
 </script>
 
 <style scoped>

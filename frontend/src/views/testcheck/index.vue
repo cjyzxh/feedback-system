@@ -183,7 +183,7 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="55" align="center">
+        <el-table-column label="图片" width="55" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
           </template>
@@ -191,135 +191,9 @@
       </el-table>
     </el-card>
 
-    <!-- 查看问题对话框（只读） -->
-    <el-dialog v-model="viewDialogVisible" title="查看问题" width="900px" :close-on-click-modal="false" destroy-on-close>
-      <el-form :model="form" label-width="100px">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="问题ID号">
-              <el-input v-model="form.id" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="录入时间">
-              <el-input :model-value="formatDate(form.lvrusj)" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="10">
-            <el-form-item label="紧急程度">
-              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="软件版本">
-              <el-input v-model="form.banben" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="16">
-            <el-form-item label="医院名称">
-              <el-input v-model="form.yiyuanmc" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="模块">
-              <el-input v-model="form.mokuai" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="窗体">
-              <el-input v-model="form.chuangtimc" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="跟进人员">
-              <el-input v-model="form.shishiry" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="工程师">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈人">
-              <el-input v-model="form.szcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈渠道">
-              <el-input v-model="form.FanKuiQD" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="问题说明">
-          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
-        </el-form-item>
-        
-        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
-          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <el-form-item label="测试意见" v-if="form.shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <!-- 处理信息 -->
-        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
-        <el-row v-if="form.xgsj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="处理人">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="处理时间">
-              <el-input :model-value="formatDate(form.xgsj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <!-- 测试返回信息 -->
-        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="form.cssj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="测试人员">
-              <el-input v-model="form.shcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item v-if="form.shouhoucs" label="测试结果">
-          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
-        </el-form-item>
-        
-        <!-- 问题截图（只读） -->
-        <el-form-item label="问题截图" v-if="detailImages.length > 0">
-          <div class="view-images">
-            <img v-for="(img, index) in detailImages" :key="index" :src="img" class="view-image" @click="handleViewImage(img)" style="cursor: zoom-in;" />
-          </div>
-        </el-form-item>
-        
-        <div class="view-dialog-actions">
-          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
-            <el-icon><Back /></el-icon> 返回列表
-          </el-button>
-        </div>
-      </el-form>
-    </el-dialog>
+    <!-- 查看问题（三页统一窗体） -->
+    <ViewProblemDialog v-model="viewDialogVisible" :problem="viewProblem" />
+
     <!-- 图片预览弹窗 -->
     <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
@@ -364,6 +238,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back } from '@element-plus/icons-vue'
 import axios from 'axios'
 import TemplatePicker from '@/components/TemplatePicker.vue'
+import ViewProblemDialog from '@/components/ViewProblemDialog.vue'
 
 // ============ 页面状态变量 ============
 const list = ref<any[]>([])      // 待测试问题列表
@@ -474,6 +349,7 @@ const handleRowClick = async (row: any) => {
 // ============ 图片查看 ============
 const previewVisible = ref(false)
 const viewDialogVisible = ref(false)  // 查看对话框是否显示
+const viewProblem = ref<any>(null)        // 当前查看的问题行数据（传给统一查看窗体）
 const detailImages = ref<string[]>([])  // 查看详情图片列表
   // 轮播预览窗口是否显示
 const previewImages = ref<string[]>([])  // 轮播图片数组
@@ -499,24 +375,9 @@ const viewImages = async (row: any) => {
     } else { ElMessage.warning("暂无图片") }
   } catch (err) { console.error("加载图片失败", err) }
 }
-// 双击行查看问题详情：把整行数据塞进 form（只读展示），再加载该问题的图片
-const handleView = async (row: any) => {
-  const rowCopy = JSON.parse(JSON.stringify(row))
-  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital
-  rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
-  rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
-  Object.assign(form, rowCopy)
-  detailImages.value = []
-  try {
-    const res = await axios.get(`/api/feedback/images/${row.id}`)
-    const imgs = res.data
-    if (imgs && imgs.length > 0) {
-      detailImages.value = imgs.map((img: any) => {
-        const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return `/api/feedback/uploads/${name}`
-      })
-    }
-  } catch (err) { console.error('加载图片失败:', err) }
+// 查看问题：把行数据传给统一窗体（组件内部自动加载详情/附件/售后到期日）
+const handleView = (row: any) => {
+  viewProblem.value = row
   viewDialogVisible.value = true
 }
 
@@ -708,12 +569,12 @@ onMounted(() => { loadList() })
 .info-item { background: #f8f9fa; padding: 8px 12px; border-radius: 6px; }
 .info-item.small { padding: 6px 8px; }
 .info-item.large { padding: 12px 16px; background: #fff; border: 1px solid #e4e7ed; height: 180px; display: flex; flex-direction: column; }
-.info-label { font-size: 11px; color: #909399; margin-bottom: 4px; }
-.info-label.big { font-size: 13px; font-weight: 600; color: #303133; }
+.info-label { font-size: calc(var(--el-font-size-base) - 3px); color: #909399; margin-bottom: 4px; }
+.info-label.big { font-size: calc(var(--el-font-size-base) - 1px); font-weight: 600; color: #303133; }
 .info-label.required::before { content: '*'; color: #f56c6c; margin-right: 4px; }
-.info-value { font-size: 12px; color: #303133; font-weight: 500; }
+.info-value { font-size: calc(var(--el-font-size-base) - 2px); color: #303133; font-weight: 500; }
 .info-value.textarea { white-space: pre-wrap; word-break: break-all; flex: 1; overflow-y: auto; overflow-x: hidden; }
-.large-text { font-size: 14px; line-height: 1.6; }
+.large-text { font-size: var(--el-font-size-base); line-height: 1.6; }
 .test-result-input { flex: 1; display: flex; flex-direction: column; }
 .test-result-input :deep(.el-textarea) { flex: 1; }
 .test-result-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }

@@ -146,6 +146,10 @@ import { User, Lock, Iphone, Message, Monitor, Delete } from '@element-plus/icon
 import axios from 'axios'
 import { APP_VERSION } from '../../version'
 import { setToken, clearToken } from '@/utils/auth'
+import { applySystemFontSize } from '@/utils/theme'
+
+// 登录页也应用系统全局字号（其它设置 → 字体字号）
+applySystemFontSize()
 
 const router = useRouter()
 const appVersion = APP_VERSION

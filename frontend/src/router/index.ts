@@ -12,6 +12,7 @@ import Settings from '@/views/settings/index.vue'
 import ModuleManage from '@/views/settings/module.vue'
 import FormManage from '@/views/settings/form.vue'
 import TemplateManage from '@/views/settings/template.vue'
+import OtherSettings from '@/views/settings/other.vue'
 import UserManage from '@/views/user/index.vue'
 import RoleManage from '@/views/role/index.vue'
 import DiscussList from '@/views/discuss/index.vue'
@@ -60,6 +61,7 @@ const routes: RouteRecordRaw[] = [
           { path: 'module', name: 'ModuleManage', component: ModuleManage, meta: { title: '模块维护', permission: 'settings' } },
           { path: 'form', name: 'FormManage', component: FormManage, meta: { title: '窗体维护', permission: 'settings' } },
           { path: 'template', name: 'TemplateManage', component: TemplateManage, meta: { title: '模板维护', permission: 'settings' } },
+          { path: 'other', name: 'OtherSettings', component: OtherSettings, meta: { title: '其它设置', permission: 'settings' } },
           { path: 'user', name: 'UserManage', component: UserManage, meta: { title: '用户管理', permission: 'user', requireAdmin: true } },
           { path: 'role', name: 'RoleManage', component: RoleManage, meta: { title: '角色管理', permission: 'role', requireAdmin: true } }
         ]

@@ -186,4 +186,21 @@ setTimeout(() => {
     const success = this.configService.saveSystemTheme(theme);
     return { success, message: success ? '系统默认样式保存成功' : '保存失败' };
   }
+
+  // 获取系统全局字体字号
+  @Get('font-size')
+  getFontSize() {
+    this.logger.log('获取系统字体字号');
+    const fontSize = this.configService.getFontSize();
+    return { fontSize };
+  }
+
+  // 保存系统全局字体字号
+  @Post('font-size')
+  saveFontSize(@Body() body: any) {
+    const fontSize = body.fontSize || 'standard';
+    this.logger.log('保存系统字体字号:', fontSize);
+    const success = this.configService.saveFontSize(fontSize);
+    return { success, message: success ? '系统字体字号保存成功' : '保存失败' };
+  }
 }

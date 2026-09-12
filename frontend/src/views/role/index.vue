@@ -130,7 +130,8 @@ const menuTree = [
       { id: '/settings/role', label: '角色管理' },
       { id: '/settings/module', label: '模块维护' },
       { id: '/settings/form', label: '窗体维护' },
-      { id: '/settings/template', label: '模板维护' }
+      { id: '/settings/template', label: '模板维护' },
+      { id: '/settings/other', label: '其它设置' }
     ]
   }
 ]

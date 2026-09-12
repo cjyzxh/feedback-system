@@ -299,4 +299,29 @@ export class DatabaseConfigService {
       return false;
     }
   }
+
+  // 获取系统全局字体字号（small/standard/large/xlarge，默认 standard=14px）
+  getFontSize(): string {
+    try {
+      const configs = this.getAllConfigs();
+      return configs.fontSize || 'standard';
+    } catch (error) {
+      this.logger.error('获取系统字体字号失败:', error);
+      return 'standard';
+    }
+  }
+
+  // 保存系统全局字体字号
+  saveFontSize(size: string): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.fontSize = size || 'standard';
+      this.saveAllConfigs(configs);
+      this.logger.log('系统字体字号已保存:', size);
+      return true;
+    } catch (error) {
+      this.logger.error('保存系统字体字号失败:', error);
+      return false;
+    }
+  }
 }

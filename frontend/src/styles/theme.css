@@ -1,5 +1,6 @@
 ﻿/* 清新简约主题 - 青绿色/薄荷绿主色调 */
 :root {
+  /* 全局基础字号：由"其它设置 → 字体字号"控制（默认 14px），此处不写死 */
   /* 莫兰迪模式主色（复选框/单选框/开关/标签/分页/日期/输入框聚焦等） */
   --el-color-primary: #7A9E7A;
   --el-color-primary-light-3: #8FAF8F;
@@ -1979,3 +1980,17 @@ body.theme-dark .selected-row td { font-weight: 600 !important; }
 .view-images { display: flex !important; flex-wrap: wrap !important; gap: 12px !important; }
 .view-image { width: 120px !important; height: 120px !important; object-fit: cover !important; border-radius: 6px !important; border: 1px solid #dcdfe6 !important; transition: all 0.3s !important; }
 .view-image:hover { transform: scale(1.05) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+
+/* ========== 按钮高度：默认尺寸统一加高2px（全局） ========== */
+.el-button:not(.el-button--small):not(.el-button--large) {
+  height: calc(var(--el-component-size, 32px) + 2px);
+}
+
+
+/* ===== 表格文字禁止选中（点击不出现蓝底高亮，像桌面程序） ===== */
+.el-table__body td .cell,
+.el-table th .cell,
+.el-table__header th .cell {
+  -webkit-user-select: none;
+  user-select: none;
+}

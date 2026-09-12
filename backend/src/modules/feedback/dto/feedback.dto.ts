@@ -267,4 +267,7 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   xggcsBM?: string;
+
+  @IsOptional()
+  relatedBM?: string;  // 相关人编码：跟进/工程师/反馈人/测试人任一编码匹配即命中
 }

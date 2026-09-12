@@ -28,13 +28,6 @@
         </el-alert>
         
         <el-form label-width="120px">
-          <el-form-item label="界面风格">
-            <el-radio-group v-model="themeMode" @change="handleThemeChange">
-              <el-radio :value="'morandi'">莫兰迪系</el-radio>
-              <el-radio :value="'light'">浅色系</el-radio>
-              <el-radio :value="'dark'">深色系</el-radio>
-            </el-radio-group>
-          </el-form-item>
           <el-form-item label="数据库类型">
               <el-radio-group v-model="dbSettings.type">
                 <el-radio :value="'mysql'">MySQL</el-radio>
@@ -137,53 +130,6 @@ const isAdmin = computed(() => {
 })
 
 const isSubRoute = computed(() => route.path !== '/settings')
-
-// ========== 界面风格主题切换 ==========
-// 三种主题：morandi(莫兰迪系-默认) / light(浅色系-白底Logo蓝) / dark(深色系)
-const themeMode = ref(localStorage.getItem('themeMode') || 'morandi')
-
-const applyTheme = (mode: string) => {
-  // 先清除所有主题class
-  document.body.classList.remove('theme-light', 'theme-dark')
-  if (mode === 'light') {
-    document.body.classList.add('theme-light')
-  } else if (mode === 'dark') {
-    document.body.classList.add('theme-dark')
-  }
-  // morandi 为默认主题，不加 class
-}
-
-const handleThemeChange = async (val: string) => {
-  // 保存到后端系统配置（database-config.json）
-  try {
-    await api.post('/config/system-theme', { theme: val })
-    const labels: Record<string, string> = { morandi: '莫兰迪系', light: '浅色系', dark: '深色系' }
-    ElMessage.success(`系统默认样式已保存为${labels[val] || val}`)
-
-    // 如果当前用户是"跟随系统"（个人themeMode为空），则保存后立即应用新的系统默认样式
-    const userThemeMode = localStorage.getItem('userThemeMode') || ''
-    if (!userThemeMode) {
-      localStorage.setItem('themeMode', val)
-      applyTheme(val)
-    }
-    // 如果用户有个人样式，则只保存系统默认，不影响当前页面
-  } catch (e) {
-    console.error('保存系统默认样式失败:', e)
-    ElMessage.error('保存系统默认样式失败')
-  }
-}
-
-// 从后端获取系统默认样式（仅用于显示单选框选中状态，不应用到当前页面）
-const fetchSystemTheme = async () => {
-  try {
-    const response = await api.get('/config/system-theme')
-    if (response.data && response.data.theme) {
-      themeMode.value = response.data.theme  // 只更新单选框显示，不 applyTheme
-    }
-  } catch (error) {
-    console.error('获取系统默认样式失败:', error)
-  }
-}
 
 // 应用运行状态
 const appStatus = reactive({
@@ -434,7 +380,6 @@ watch(() => dbSettings.type, (newType, oldType) => {
 
 // 页面加载时初始化
 onMounted(() => {
-  fetchSystemTheme();  // 从后端加载系统默认样式
   fetchAppStatus();
   initDbSettings();
   fetchUploadPath();

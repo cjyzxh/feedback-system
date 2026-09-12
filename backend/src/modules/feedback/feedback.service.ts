@@ -85,7 +85,7 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, relatedBM, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
       
       const where: any = {};
       
@@ -181,6 +181,14 @@ export class FeedbackService {
       const qb = this.feedbackRepository.createQueryBuilder('feedback');
       if (Object.keys(where).length) {
         qb.where(where);
+      }
+      // 相关人编码：不勾"查看所有问题"时，当前用户编码与跟进/工程师/反馈人/测试人任一相等即显示
+      // 用 andWhere 字符串条件实现 OR 组合（对象式 where 无法表达多字段 OR）
+      if (relatedBM) {
+        qb.andWhere(
+          '(feedback.shishiryBM = :relatedBM OR feedback.xggcsBM = :relatedBM OR feedback.szcsgcsBM = :relatedBM OR feedback.shcsgcsBM = :relatedBM)',
+          { relatedBM }
+        );
       }
       qb.addOrderBy("CASE WHEN feedback.jingjicd = '紧急' THEN 0 WHEN feedback.jingjicd = '急' THEN 1 ELSE 2 END", 'ASC');
       qb.addOrderBy('feedback.lvrusj', 'DESC');

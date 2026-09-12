@@ -59,6 +59,7 @@
           <div class="btn-group-2">
             <el-form-item v-if="canViewOthers && !isCustomerUser" class="check-item">
               <el-checkbox v-model="viewAll" @change="handleSearch">查看所有问题</el-checkbox>
+              <el-checkbox v-model="myRelated" @change="handleSearch">与我有关</el-checkbox>
             </el-form-item>
           </div>
         </div>
@@ -118,7 +119,7 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="45" align="center">
+        <el-table-column label="图片" width="45" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
           </template>
@@ -316,151 +317,9 @@
       </el-form>
     </el-dialog>
     
-    <!-- 查看问题对话框（只读） -->
-    <el-dialog v-model="viewDialogVisible" width="900px" :close-on-click-modal="false" destroy-on-close>
-      <template #header>
-        <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 24px;">
-          <span style="font-size: 18px; font-weight: 600; color: var(--el-text-color-primary);">查看问题</span>
-          <span :style="viewStatusStyle">{{ viewStatusText }}</span>
-        </div>
-      </template>
-      <el-form :model="form" label-width="100px">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="问题ID号">
-              <el-input v-model="form.id" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="录入时间">
-              <el-input :model-value="formatDate(form.lvrusj)" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="10">
-            <el-form-item label="紧急程度">
-              <el-tag :type="getJingjiType(form.jingjicd)">{{ form.jingjicd || '-' }}</el-tag>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="软件版本">
-              <el-input v-model="form.banben" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="问题类型">
-              <el-input v-model="form.wentilx" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="医院名称">
-              <el-input v-model="form.yiyuanmc" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="模块">
-              <el-input v-model="form.mokuai" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="窗体">
-              <el-input v-model="form.chuangtimc" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="跟进人员">
-              <el-input v-model="form.shishiry" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="工程师">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈人">
-              <el-input v-model="form.szcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="反馈渠道">
-              <el-input v-model="form.FanKuiQD" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="问题说明">
-          <el-input v-model="form.wentism" type="textarea" :rows="4" readonly />
-        </el-form-item>
-        
-        <el-form-item label="工程师处理意见" v-if="form.gongcscs">
-          <el-input v-model="form.gongcscs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <el-form-item label="测试意见" v-if="form.shouzhongcs">
-          <el-input v-model="form.shouzhongcs" type="textarea" :rows="3" readonly />
-        </el-form-item>
-        
-        <!-- 处理信息 -->
-        <el-divider v-if="form.xgsj" content-position="left">处理信息</el-divider>
-        <el-row v-if="form.xgsj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="处理人">
-              <el-input v-model="form.xggcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="处理时间">
-              <el-input :model-value="formatDate(form.xgsj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <!-- 测试返回信息 -->
-        <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="form.cssj" :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="测试人员">
-              <el-input v-model="form.shcsgcs" readonly />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" readonly />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item v-if="form.shouhoucs" label="测试结果">
-          <el-input v-model="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
-        </el-form-item>
-        
-        <!-- 问题附件（只读） -->
-        <el-form-item label="问题附件" v-if="detailItems.length > 0">
-          <div class="view-images">
-            <template v-for="(item, index) in detailItems" :key="index">
-              <img v-if="item.type === 'image'" :src="item.url" class="view-image" @click="handleViewImage(item.url)" style="cursor: zoom-in;" />
-              <div v-else class="view-file" @click="handleViewImage(item.url)">
-                <el-icon><Document /></el-icon><span>{{ item.name }}</span>
-              </div>
-            </template>
-          </div>
-        </el-form-item>
-        
-        <div class="view-dialog-actions">
-          <el-button class="morandi-btn btn-cancel" @click="viewDialogVisible = false">
-            <el-icon><Back /></el-icon> 返回列表
-          </el-button>
-        </div>
-      </el-form>
-    </el-dialog>
+    <!-- 查看问题（三页统一窗体） -->
+    <ViewProblemDialog v-model="viewDialogVisible" :problem="viewProblem" />
+
     
     <!-- 附件预览弹窗 -->
     <el-dialog v-model="previewVisible" title="问题附件" width="960px" destroy-on-close class="preview-dialog">
@@ -526,12 +385,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
 import TemplatePicker from '@/components/TemplatePicker.vue'
+import ViewProblemDialog from '@/components/ViewProblemDialog.vue'
 
 // ============ 页面状态变量（类比 VB6 的窗体级变量） ============
 const loading = ref(false)          // 列表加载中（控制转圈动画）
 const submitting = ref(false)       // 保存提交中（防止连点两次重复提交）
 const dialogVisible = ref(false)    // 新增/编辑 对话框是否显示
 const viewDialogVisible = ref(false)// 查看 对话框是否显示
+const viewProblem = ref<any>(null)        // 当前查看的问题行数据（传给统一查看窗体）
 const detailItems = ref<any[]>([])      // 查看详情附件列表（含类型/文件名）
 const previewVisible = ref(false)   // 附件轮播预览窗口是否显示
 const previewItems = ref<any[]>([]) // 轮播预览的附件数组 [{url, type, name}]
@@ -727,6 +588,7 @@ const handleDateChange = (val: any) => {
   handleSearch()
 }
 const viewAll = ref(false)  // "查看所有问题"复选框：默认false（只查自己跟进的）
+const myRelated = ref(true)  // "与我有关"复选框：默认勾选，按当前用户编码匹配跟进/工程师/反馈人/测试人任一
 const selectedShishiry = ref('')  // 勾选查看所有后，可再选一个跟进人员来筛
 
 // computed = 计算属性：依赖的值变了它自动重算（类比 VB6 里由其它控件事件刷新的 Label）
@@ -1004,7 +866,13 @@ const loadData = async () => {
     //   不勾"查看所有问题" -> 只查自己跟进的问题（shishiry=当前登录者）
     //   勾了"查看所有问题" -> 可选跟进人员过滤；不选就是全部
     if (!viewAll.value) {
-      params.shishiryBM = localStorage.getItem('userCode') || ''  // 只看自己跟进（按编码）
+      // 与我有关（默认勾选）：当前用户编码与 跟进人/工程师/反馈人/测试人 任一相等即显示
+      // 不勾：只查自己跟进（shishiryBM）
+      if (myRelated.value) {
+        params.relatedBM = localStorage.getItem('userCode') || ''
+      } else {
+        params.shishiryBM = localStorage.getItem('userCode') || ''
+      }
     } else if (selectedShishiry.value) {
       params.shishiryBM = selectedShishiry.value  // 选定跟进人员（编码）
     }
@@ -1150,28 +1018,10 @@ const handleAdd = async () => {
   onVersionChange('HIS问题')
 }
 
-// 查看问题详情：把整行数据塞进 form（只读展示），再加载该问题的图片
-const handleView = async (row: any) => {
-  // JSON 深拷贝：避免直接改表格行数据影响列表
-  const rowCopy = JSON.parse(JSON.stringify(row))
-  rowCopy.yiyuanmc = rowCopy.yiyuanmc || rowCopy.hospital  // 字段名兼容
-  rowCopy.mokuai = rowCopy.mokuai || rowCopy.module
-  rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
-  rowCopy.wentilx = rowCopy.wentilx || '其它问题'  // 老数据没有问题类型的兜底
-  Object.assign(form, rowCopy)  // 把行的所有字段复制到 form
-  detailItems.value = []
-  try {
-    const res = await axios.get(`/api/feedback/images/${row.id}`)
-    const imgs = res.data
-    if (imgs && imgs.length > 0) {
-      // 兼容字符串数组和对象数组，统一转成附件项（图片/视频/其他）
-      detailItems.value = imgs.map((img: any) => {
-        const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return toAttachItem(name)
-      })
-    }
-  } catch (err) { console.error('加载附件失败:', err) }
-  viewDialogVisible.value = true  // 打开查看对话框
+// 查看问题：把行数据传给统一窗体（组件内部自动加载详情/附件/售后到期日）
+const handleView = (row: any) => {
+  viewProblem.value = row
+  viewDialogVisible.value = true
 }
 
 const handleViewImage = (url: string) => {
@@ -1452,7 +1302,8 @@ onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
 <style scoped>
 .feedback-container { padding: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
-.search-form { margin-bottom: 10px; }
+.search-form { margin-bottom: 10px; flex-wrap: nowrap; white-space: nowrap; }
+.search-form .el-form-item { flex-shrink: 0; }  /* 查询行不换行：宽度不足时由整页缩放处理 */
 /* 查询条件第二行：问题说明 + 录入日期 */
 .search-row-2 { display: flex; flex-wrap: nowrap; align-items: center; gap: 0; width: 100%; }
 /* 第二行控件间距 1px */

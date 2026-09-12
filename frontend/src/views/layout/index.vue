@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="scale-wrap">
+  <div class="scale-wrap" ref="wrapRef">
   <div class="layout-container" :style="containerScaleStyle">
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
@@ -72,6 +72,10 @@
           <el-menu-item index="/settings/template" v-if="hasMenuPermission('/settings/template')">
             <el-icon><Collection /></el-icon style="font-size:14px">
             <template #title>模板维护</template>
+          </el-menu-item>
+          <el-menu-item index="/settings/other" v-if="hasMenuPermission('/settings/other')">
+            <el-icon><Tools /></el-icon style="font-size:14px">
+            <template #title>其它设置</template>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>
@@ -177,29 +181,61 @@ import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFill
 import { authApi } from '@/api'
 import axios from 'axios'
 import { clearToken } from '@/utils/auth'
+import { applySystemFontSize } from '@/utils/theme'
 
 const router = useRouter()
 const route = useRoute()
 
-// ========== 分辨率适配：满屏 + 等比放大（分辨率高→界面大、字大、显示内容多） ==========
-// 页面始终占满屏幕（充分利用当前最大分辨率），按 2560 设计宽度等比缩放：
-//   4K(3840)  → 1.5 倍：字、控件同步放大，显示内容最多
-//   2K(2560)  → 1.0 倍：原尺寸
-//   1K(1920)  → 0.75 倍：等比缩小，保证不换行变形
-// 缩放范围 0.55 ~ 1.5（避免极端屏过度缩放）
+// ========== 分辨率适配：放得下保持原始大小，放不下才等比缩小 ==========
+// 规则（用户确认）：
+//   1. 界面保持原始大小（字/控件不缩小、清晰）
+//   2. 只有查询行在当前宽度放不下（会换行/溢出）时，才整体等比缩小到恰好放得下
+//   3. 查询行由各页面 CSS 强制不换行；表格列多时表格内部自行滚动（不参与缩放）
+// 实现：临时 zoom=1 测量查询行真实宽度（不换行时），scale = min(1, 视口宽/内容宽)
 const scaleRatio = ref(1)
+const wrapRef = ref<HTMLElement>()
 const containerScaleStyle = computed(() => ({
-  width: '2560px',
-  margin: '0 auto', // 缩放后恰好等于视口宽度，自动占满
+  width: (100 / scaleRatio.value) + '%',   // 布局宽 = 视口/scale，zoom 后渲染恰好 = 视口宽
+  margin: '0 auto',
   zoom: scaleRatio.value,
   height: (100 / scaleRatio.value) + 'vh'
 }))
 
 const applyPageScale = () => {
-  const baseWidth = 2560
-  const w = document.documentElement.clientWidth
-  let s = w / baseWidth
-  s = Math.max(0.55, Math.min(1.5, s))
+  const wrap = wrapRef.value
+  if (!wrap) return
+  // 关键：缩放容器（layout-container）的 width/zoom 是响应式绑定的当前缩放值。
+  // 测量前必须临时恢复原始大小（zoom=1、width=100%），否则测到的是被放大过的宽度，
+  // 会导致每次计算出的比例越来越小、界面逐次缩小（“点一次菜单缩一次”的根因）。
+  const layoutEl = wrap.querySelector<HTMLElement>('.layout-container') as HTMLElement | null
+  const prevZoom = layoutEl ? layoutEl.style.zoom : ''
+  const prevWidth = layoutEl ? layoutEl.style.width : ''
+  if (layoutEl) { layoutEl.style.zoom = '1'; layoutEl.style.width = '100%' }
+  // 换行型布局（inline 表单/flex wrap）宽度不足时会自动换行消化溢出，
+  // 测量时临时禁止这些行换行，让真实宽度暴露出来，测完立即恢复
+  const saved: Array<{ el: HTMLElement; ws: string; fw: string }> = []
+  const noWrapEls = wrap.querySelectorAll<HTMLElement>('.el-form--inline, .header-filters, .card-header')
+  noWrapEls.forEach(el => {
+    saved.push({ el, ws: el.style.whiteSpace, fw: el.style.flexWrap })
+    el.style.whiteSpace = 'nowrap'
+    el.style.flexWrap = 'nowrap'
+  })
+  // 只量查询行/头部（表格不参与：列宽由 el-table 内部滚动处理，不拖累整页缩放）
+  let maxContentW = 0
+  noWrapEls.forEach(el => { maxContentW = Math.max(maxContentW, el.scrollWidth) })
+  saved.forEach(({ el, ws, fw }) => { el.style.whiteSpace = ws; el.style.flexWrap = fw })
+  // 测量完恢复缩放容器原状（若 scaleRatio 不变，Vue 不会重渲染，必须手动恢复）
+  if (layoutEl) { layoutEl.style.zoom = prevZoom; layoutEl.style.width = prevWidth }
+  // 左侧导航栏占宽
+  const sidebarEl = wrap.querySelector<HTMLElement>('.sidebar')
+  const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 210
+  const vw = document.documentElement.clientWidth
+  // 内容区可用宽 = 视口宽 - 侧边栏宽（侧边栏独立占位，不参与内容缩放）
+  const contentW = vw - sidebarW
+  // 需要放下查询行的最小宽度：max(内容区宽, 查询行真实宽)，只缩不放大
+  const needW = Math.max(contentW, maxContentW)
+  let s = contentW / (needW || contentW)
+  s = Math.max(0.4, Math.min(1, s))  // 只缩小不放大；下限 0.4 防极端屏
   scaleRatio.value = Math.round(s * 100) / 100
 }
 const profileFormRef = ref()
@@ -685,9 +721,17 @@ onMounted(() => {
   window.addEventListener('focus', handlePageFocus)
   // 启动消息提醒
   startReminder()
-  // 分辨率适配：初始计算一次，窗口大小变化时重算
+  // 应用系统全局字体字号（其它设置里配置）
+  applySystemFontSize()
+  // 分辨率适配：子页面懒加载完成后才能测到查询行，延迟重测确保准确
   applyPageScale()
+  setTimeout(() => applyPageScale(), 300)
   window.addEventListener('resize', applyPageScale)
+})
+
+// 路由切换后子页面懒加载渲染完成，重新计算缩放
+watch(() => route.path, () => {
+  nextTick(() => setTimeout(() => applyPageScale(), 300))
 })
 
 onUnmounted(() => {

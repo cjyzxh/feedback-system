@@ -71,19 +71,19 @@
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">问题说明</div>
-              <div class="info-value textarea large-text">{{ form.wentism || '-' }}</div>
+              <div class="info-value textarea large-text zoomable" @dblclick="openZoom('问题说明', form, 'wentism', true)">{{ form.wentism || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">测试说明</div>
-              <div class="info-value textarea large-text">{{ form.shouzhongcs || '-' }}</div>
+              <div class="info-value textarea large-text zoomable" @dblclick="openZoom('测试说明', form, 'shouzhongcs', true)">{{ form.shouzhongcs || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">处理意见</div>
-              <div class="info-value textarea large-text">{{ form.gongcscs || '暂无' }}</div>
+              <div class="info-value textarea large-text zoomable" @dblclick="openZoom('处理意见', form, 'gongcscs', true)">{{ form.gongcscs || '暂无' }}</div>
             </div>
           </el-col>
           <el-col :span="6">
@@ -96,6 +96,7 @@
                 type="textarea"
                 :rows="5"
                 placeholder="请录入测试结果..."
+                @dblclick="openZoom('测试结果', form, 'shouhoucs', false)"
                 />
                 <TemplatePicker :lx="'测试结果'" @select="appendShouhoucs" />
               </div>
@@ -104,6 +105,18 @@
         </el-row>
       </div>
     </el-card>
+
+    <!-- 文本框双击放大查看/编辑弹窗 -->
+    <el-dialog v-model="zoomState.visible" width="900px" top="8vh" :show-close="false">
+      <template #header>
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
+          <span>{{ zoomState.title }}</span>
+          <el-button class="morandi-red" size="large" @click="zoomState.visible = false">返回列表</el-button>
+        </div>
+      </template>
+      <el-input v-model="zoomState.model[zoomState.field]" type="textarea" :rows="18" :readonly="zoomState.readonly" resize="none" />
+      <div style="color:#909399; font-size:12px; margin-top:8px;">{{ zoomState.readonly ? '只读查看：关闭后自动回到原内容' : '可编辑：修改后自动同步回原输入框' }}</div>
+    </el-dialog>
 
     <!-- 下部：待测试问题列表 -->
     <el-card class="table-card">
@@ -291,6 +304,17 @@ const formatDate = (date: any) => {
 const form = reactive({
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any
 })
+
+// ============ 文本框双击放大查看/编辑 ============
+const zoomState = reactive({ visible: false, title: '', model: null as any, field: '', readonly: false })
+const openZoom = (title: string, model: any, field: string, readonly = false) => {
+  zoomState.title = title
+  zoomState.model = model
+  zoomState.field = field
+  zoomState.readonly = readonly
+  zoomState.visible = true
+}
+// ============ 文本框双击放大结束 ============
 
 // ============ 核心：加载待测试问题列表 ============
 // 本页显示"待测试"的问题：工程师已处理完(gongchengsbz='Y') 但还没测试(shouhoubz='N')
@@ -593,6 +617,8 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .test-result-input { flex: 1; display: flex; flex-direction: column; }
 .test-result-input :deep(.el-textarea) { flex: 1; }
 .test-result-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
+/* 可双击放大的文本框：鼠标提示 */
+.zoomable { cursor: zoom-in; }
 .table-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin: 0; }
 .table-card :deep(.el-card__body) { flex: 1; overflow: hidden; padding: 0; }
 :deep(.selected-row) {

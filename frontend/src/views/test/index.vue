@@ -77,13 +77,13 @@
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">问题说明</div>
-              <div class="info-value textarea large-text">{{ form.wentism || '-' }}</div>
+              <div class="info-value textarea large-text zoomable" @dblclick="openZoom('问题说明', form, 'wentism', true)">{{ form.wentism || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="6">
             <div class="info-item large">
               <div class="info-label big">测试说明</div>
-              <div class="info-value textarea large-text">
+              <div class="info-value textarea large-text zoomable" @dblclick="openZoom('测试说明', form, 'shouzhongcs', true)">
                 <template v-if="form.shouzhongcs">
                   <div v-for="(line, i) in shouzhongcsLines(form.shouzhongcs)" :key="i" :style="assignLineStyle(line)">{{ line }}</div>
                 </template>
@@ -94,14 +94,14 @@
           <el-col :span="4" v-if="form.shouhoucs">
             <div class="info-item large test-result-box">
               <div class="info-label big">测试结果（返回原因）</div>
-              <div class="info-value textarea large-text" style="color: #f56c6c; font-weight: 500;">{{ form.shouhoucs }}</div>
+              <div class="info-value textarea large-text zoomable" style="color: #f56c6c; font-weight: 500;" @dblclick="openZoom('测试结果（返回原因）', form, 'shouhoucs', true)">{{ form.shouhoucs }}</div>
             </div>
           </el-col>
           <el-col :span="8">
             <div class="info-item large">
               <div class="info-label big required">处理意见</div>
               <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
-                <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." />
+                <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." @dblclick="openZoom('处理意见', form, 'gongcscs', false)" />
                 <TemplatePicker :lx="'处理意见'" @select="appendGongcscs" />
               </div>
             </div>
@@ -109,6 +109,18 @@
         </el-row>
       </div>
     </el-card>
+
+    <!-- 文本框双击放大查看/编辑弹窗 -->
+    <el-dialog v-model="zoomState.visible" width="900px" top="8vh" :show-close="false">
+      <template #header>
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
+          <span>{{ zoomState.title }}</span>
+          <el-button class="morandi-red" size="large" @click="zoomState.visible = false">返回列表</el-button>
+        </div>
+      </template>
+      <el-input v-model="zoomState.model[zoomState.field]" type="textarea" :rows="18" :readonly="zoomState.readonly" resize="none" />
+      <div style="color:#909399; font-size:12px; margin-top:8px;">{{ zoomState.readonly ? '只读查看：关闭后自动回到原内容' : '可编辑：修改后自动同步回原输入框' }}</div>
+    </el-dialog>
 
     <!-- 下部：待处理问题列表 -->
     <el-card class="table-card">
@@ -358,6 +370,17 @@ const getJingjiType = (type: string) => {
 const form = reactive({
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any
 })
+
+// ============ 文本框双击放大查看/编辑 ============
+const zoomState = reactive({ visible: false, title: '', model: null as any, field: '', readonly: false })
+const openZoom = (title: string, model: any, field: string, readonly = false) => {
+  zoomState.title = title
+  zoomState.model = model
+  zoomState.field = field
+  zoomState.readonly = readonly
+  zoomState.visible = true
+}
+// ============ 文本框双击放大结束 ============
 
 // 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
@@ -736,6 +759,8 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .opinion-input { flex: 1; display: flex; flex-direction: column; }
 .opinion-input :deep(.el-textarea) { flex: 1; }
 .opinion-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
+/* 可双击放大的文本框：鼠标提示 */
+.zoomable { cursor: zoom-in; }
 
 /* 测试返回信息样式 */
 .test-return-info { background: #fef0f0 !important; border: 1px solid #fbc4c4; }

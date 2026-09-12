@@ -79,8 +79,11 @@ export class Feedback {
   @Column({ name: 'shcsgcs', nullable: true, length: 50 })  // 测试人（谁测试的）
   shcsgcs: string;
 
-  @Column({ name: 'cssj', nullable: true })  // 测试时间（确认测试/返回测试时写入）
+  @Column({ name: 'cssj', nullable: true })  // 测试时间（确认测试通过时写入）
   cssj: Date;
+
+  @Column({ name: 'fanhuisj', nullable: true })  // 问题返回时间（返回测试时写入，二次返回覆盖更新）
+  fanhuisj: Date;
 
   @Column({ name: 'shishiryBM', nullable: true, length: 50 })  // 跟进人员编码（sys_user.username）
   shishiryBM: string;

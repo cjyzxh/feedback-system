@@ -241,6 +241,7 @@ export class FeedbackService {
       // 记录状态旧值，用于保存后判断"发生了什么操作"（决定给谁发通知）
       const oldGongchengsbz = feedback.gongchengsbz;
       const oldShouhoubz = feedback.shouhoubz;
+      const oldTaolunbz = feedback.taolunbz;
       
       // 直接合并字段并保存（dto 里传了哪个字段就改哪个，没传的不动）
       // 这样处理页只传 {gongchengsbz:'Y'} 就能只改状态位，不影响其它字段
@@ -267,8 +268,14 @@ export class FeedbackService {
       if (dto.shcsgcs !== undefined) feedback.shcsgcs = dto.shcsgcs;
       if (dto.shcsgcsBM !== undefined) feedback.shcsgcsBM = dto.shcsgcsBM;
       if (dto.cssj !== undefined) feedback.cssj = dto.cssj;
+      // 问题返回时间：仅"返回测试"动作显式传 fanhuisj 时才写入/覆盖，避免其它操作误触发
+      if (dto.fanhuisj !== undefined) feedback.fanhuisj = dto.fanhuisj;
       
-      feedback.xgsj = new Date();  // 每次更新自动刷新"修改时间"
+      // 修改时间：仅在"工程师确认处理"(gongchengsbz -> Y) 或"待讨论"(taolunbz -> Y)
+      // 这两个状态动作时写入，其它任何更新都不刷新 xgsj
+      const isHandleAction = dto.gongchengsbz === 'Y' && oldGongchengsbz !== 'Y';
+      const isTaolunAction = dto.taolunbz === 'Y' && oldTaolunbz !== 'Y';
+      if (isHandleAction || isTaolunAction) feedback.xgsj = new Date();
       
       const saved = await this.feedbackRepository.save(feedback);
       console.log('更新成功 ID:', saved.id);
@@ -289,7 +296,7 @@ export class FeedbackService {
           if (saved.shishiryBM) await this.addTzxx(saved.id, '测试', saved.shishiryBM, nr, saved.shcsgcsBM);
         }
         // 场景3：返回测试（测试不过退回工程师 gongchengsbz: Y -> N）→ 通知工程师 + 反馈人
-        else if (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y' && (dto.cssj || dto.shouhoucs)) {
+        else if (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y') {
           const nr = `【测试返回#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
           if (saved.xggcsBM) await this.addTzxx(saved.id, '返回', saved.xggcsBM, nr, saved.shcsgcsBM);
           if (saved.szcsgcsBM) await this.addTzxx(saved.id, '返回', saved.szcsgcsBM, nr, saved.shcsgcsBM);

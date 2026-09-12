@@ -143,11 +143,11 @@
             <el-button class="morandi-btn morandi-green" @click="handleSubmit" :loading="submitting">
               <el-icon><Check /></el-icon> 确认处理
             </el-button>
+            <el-button class="morandi-btn morandi-blue" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进</el-button>
+            <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改</el-button>
             <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
               <el-icon><Picture /></el-icon> 查看图片
             </el-button>
-            <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改</el-button>
-            <el-button class="morandi-btn morandi-blue" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进</el-button>
             <el-button class="morandi-btn morandi-red" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
           </div>
         </div>
@@ -343,7 +343,7 @@ const assignLineStyle = (line: string) => {
 const getRowClass = ({ row }: { row: any }) => {
   if (selected.value?.id === row.id) return 'selected-row'
   // 测试后返回的问题：工程师标志被重置为 N 且有过测试时间
-  if (row.gongchengsbz === 'N' && row.cssj) return 'test-returned-row'
+  if (row.gongchengsbz === 'N' && row.fanhuisj) return 'test-returned-row'
   return ''
 }
 
@@ -356,12 +356,12 @@ const getJingjiType = (type: string) => {
 // ============ 上方详情表单（点击列表行后填充） ============
 // gongcscs = 工程师处理意见（处理人填写的核心字段）
 const form = reactive({
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, lvrusj: null as any
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any
 })
 
 // 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, lvrusj: null
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null, lvrusj: null
 }
 
 // ============ 核心：加载待处理问题列表 ============
@@ -575,7 +575,7 @@ const handleSubmit = async () => {
     selected.value = null
     hasImages.value = false
     // 重置表单
-    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null })
+    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null })
     loadList()
   } catch (err) { ElMessage.error('处理失败') }
   finally { submitting.value = false }

@@ -114,16 +114,16 @@
       </el-row>
 
       <!-- 测试返回信息 -->
-      <el-divider v-if="form.cssj" content-position="left">测试返回信息</el-divider>
-      <el-row v-if="form.cssj" :gutter="10">
+      <el-divider v-if="form.fanhuisj" content-position="left">测试返回信息</el-divider>
+      <el-row v-if="form.fanhuisj" :gutter="10">
         <el-col :span="8">
           <el-form-item label="测试人员">
             <el-input :model-value="form.shcsgcs" readonly />
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="测试返回时间">
-            <el-input :model-value="formatDate(form.cssj)" readonly />
+          <el-form-item label="返回时间">
+            <el-input :model-value="formatDate(form.fanhuisj)" readonly />
           </el-form-item>
         </el-col>
       </el-row>
@@ -290,7 +290,8 @@ const formatDate = (date: any) => {
   const day = String(d.getDate()).padStart(2, '0')
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
+  const seconds = String(d.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 </script>
 

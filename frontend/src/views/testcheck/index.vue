@@ -470,14 +470,14 @@ const handleReset = async () => {
     const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
     
     // 返回：gongchengsbz='N'（问题回到工程师待处理）、shouhoucs=返回原因、
-    //       shcsgcs=当前操作员、cssj=当前时间（记录这次测试打回）
+    //       shcsgcs=当前操作员、fanhuisj=返回时间（仅此动作显式传，避免其它操作误写）
     // 注意：shouzhongcs（测试说明）数据库值不动，只清界面显示
     const updateData: any = {
       gongchengsbz: 'N',
       shouhoucs: form.shouhoucs || '',
       shcsgcs: currentUserName,
       shcsgcsBM: localStorage.getItem('userCode') || '',
-      cssj: new Date()
+      fanhuisj: new Date()
     }
     
     await axios.put('/api/feedback/' + form.id, updateData)

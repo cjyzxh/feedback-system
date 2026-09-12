@@ -106,9 +106,9 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="cssj" label="测试返回时间" width="160">
+        <el-table-column prop="fanhuisj" label="测试返回时间" width="160">
           <template #default="{ row }">
-            <span v-if="row.cssj">{{ formatDate(row.cssj) }}</span>
+            <span v-if="row.fanhuisj">{{ formatDate(row.fanhuisj) }}</span>
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
@@ -268,16 +268,16 @@
         </el-row>
         
         <!-- 测试信息（编辑时显示，只读） -->
-        <el-divider v-if="isEdit && form.cssj" content-position="left">测试返回信息</el-divider>
-        <el-row v-if="isEdit && form.cssj" :gutter="6">
+        <el-divider v-if="isEdit && form.fanhuisj" content-position="left">测试返回信息</el-divider>
+        <el-row v-if="isEdit && form.fanhuisj" :gutter="6">
           <el-col :span="8">
             <el-form-item label="测试人员">
               <el-input v-model="form.shcsgcs" disabled />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="测试返回时间">
-              <el-input :model-value="formatDate(form.cssj)" disabled />
+            <el-form-item label="返回时间">
+              <el-input :model-value="formatDate(form.fanhuisj)" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -551,7 +551,7 @@ const getDefaultDateRange = () => {
   const end = new Date()
   const start = new Date()
   start.setFullYear(start.getFullYear() - 1)
-  // 把 Date 对象格式化成 YYYY-MM-DD 字符串（类比 VB6 的 Format(Now, "yyyy-mm-dd")）
+  // 把 Date 对象格式化成 yyyy-MM-dd 字符串（类比 VB6 的 Format(Now, "yyyy-mm-dd")）
   const formatDate = (d: Date) => {
     const year = d.getFullYear()
     const month = String(d.getMonth() + 1).padStart(2, '0') // padStart 补零：1 -> "01"
@@ -632,7 +632,8 @@ const form = reactive({
   shouzhongcs: '',     // 售后（测试）说明
   shouhoucs: '',       // 处理意见（售后处理）
   shcsgcs: '',         // 反馈人（提交问题的人）
-  cssj: null as any,   // 测试时间
+  cssj: null as any,   // 测试时间（确认测试通过时写入）
+  fanhuisj: null as any, // 问题返回时间（返回测试时写入）
   lvrusj: null as any, // 录入时间
   xgsj: null as any    // 修改时间
 })
@@ -789,10 +790,10 @@ onMounted(() => {
   window.addEventListener('resize', measureWentismWidth)
 })
 
-// 行颜色：选中行用主题浅色；测试后"打回"的问题（工程师标志被重置为 N 且有过测试时间）整行淡红色
+// 行颜色：选中行用主题浅色；测试后"打回"的问题（工程师标志被重置为 N 且有返回时间）整行淡红色
 const getTableRowClassName = ({ row }: { row: any }) => {
   if (selectedId.value === row.id) return 'selected-row'
-  if (row.gongchengsbz === 'N' && row.cssj) {
+  if (row.gongchengsbz === 'N' && row.fanhuisj) {
     return 'test-returned-row'
   }
   return ''
@@ -1010,6 +1011,7 @@ const handleAdd = async () => {
   form.shouhoucs = ''
   form.shcsgcs = ''
   form.cssj = null
+  form.fanhuisj = null
   uploadFileList.value = []
   forms.value = []
   dialogVisible.value = true  // 弹出新增对话框

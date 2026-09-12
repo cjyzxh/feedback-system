@@ -179,6 +179,9 @@ export class UpdateFeedbackDto {
   cssj?: Date;
 
   @IsOptional()
+  fanhuisj?: Date;  // 问题返回时间（仅"返回测试"动作显式传入，二次返回覆盖）
+
+  @IsOptional()
   lurusr?: string;
 
   @IsOptional()

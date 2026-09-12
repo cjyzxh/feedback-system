@@ -5,7 +5,7 @@
       <div class="form-content">
         <!-- 第一行：基础信息（缩小显示，一行显示） -->
         <el-row :gutter="12" class="basic-info">
-          <el-col :span="1">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">问题ID号</div>
               <div class="info-value">{{ form.id || '-' }}</div>
@@ -17,7 +17,7 @@
               <el-tag :type="getJingjiType(form.jingjicd)" size="small">{{ form.jingjicd || '-' }}</el-tag>
             </div>
           </el-col>
-          <el-col :span="1">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">版本</div>
               <div class="info-value">{{ form.banben || '-' }}</div>
@@ -47,7 +47,7 @@
               <div class="info-value">{{ form.shishiry || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="2">
+          <el-col :span="1">
             <div class="info-item small">
               <div class="info-label">工程师</div>
               <div class="info-value">{{ form.xggcs || '-' }}</div>

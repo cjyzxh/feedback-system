@@ -131,16 +131,15 @@
         <el-input :model-value="form.shouhoucs" type="textarea" :rows="2" readonly style="color: #f56c6c" />
       </el-form-item>
 
-      <!-- 问题附件（图片/视频/文件，三页统一） -->
-      <el-form-item label="问题附件" v-if="attachItems.length > 0">
-        <div class="view-images">
-          <template v-for="(item, index) in attachItems" :key="index">
-            <img v-if="item.type === 'image'" :src="item.url" class="view-image" @click="openImageViewer(item.url)" style="cursor: zoom-in;" />
-            <div v-else class="view-file" @click="openFile(item)">
-              <el-icon><Document /></el-icon>
-              <span>{{ item.name }}</span>
-            </div>
-          </template>
+      <!-- 附件操作区：查看图片 / 下载文件（同问题测试页逻辑，有内容才可用） -->
+      <el-form-item v-if="attachItems.length > 0 || fileAttachItems.length > 0">
+        <div style="display: flex; gap: 8px;">
+          <el-button class="morandi-btn morandi-blue" :disabled="!hasImages" @click="openImagesViewer">
+            <el-icon><Picture /></el-icon> 查看图片
+          </el-button>
+          <el-button class="morandi-btn morandi-blue" :disabled="!hasFiles" @click="filesDialogVisible = true">
+            <el-icon><FolderOpened /></el-icon> 下载文件
+          </el-button>
         </div>
       </el-form-item>
 
@@ -151,16 +150,59 @@
       </div>
     </el-form>
 
+    <!-- 问题截图窗体（查看图片按钮打开，带上一张/下一张/查看原图） -->
+    <el-dialog v-model="imagesDialogVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
+      <div class="carousel-container">
+        <div class="carousel-wrapper" v-if="attachImages.length > 0">
+          <img :src="attachImages[viewerIndex].url" class="carousel-image" @click="openFullImage" style="cursor: zoom-in;" />
+        </div>
+        <el-empty v-else description="暂无图片" />
+        <div class="carousel-controls" v-if="attachImages.length > 1">
+          <el-button circle :disabled="viewerIndex === 0" @click="viewerIndex--"><el-icon><ArrowLeft /></el-icon></el-button>
+          <span class="indicator">{{ viewerIndex + 1 }} / {{ attachImages.length }}</span>
+          <el-button circle :disabled="viewerIndex === attachImages.length - 1" @click="viewerIndex++"><el-icon><ArrowRight /></el-icon></el-button>
+        </div>
+        <div class="carousel-actions" v-if="attachImages.length > 0" style="margin-top: 16px; text-align: center;">
+          <el-button type="primary" @click="openFullImage">
+            <el-icon><ZoomIn /></el-icon> 查看原图
+          </el-button>
+          <el-button type="info" plain @click="imagesDialogVisible = false">
+            <el-icon><Back /></el-icon> 返回列表
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
+
     <!-- 全屏图片查看器 -->
     <el-image-viewer v-if="viewerVisible" :url-list="imageUrlList" :initial-index="viewerIndex" @close="viewerVisible = false" />
+
+    <!-- 下载文件弹窗：列出全部文件（新增页视频/文档 + 处理页上传附件），查看/下载按钮跟在后面 -->
+    <el-dialog v-model="filesDialogVisible" width="680px" top="12vh" :show-close="false">
+      <template #header>
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
+          <span>问题文件</span>
+          <el-button class="morandi-btn morandi-blue" @click="filesDialogVisible = false">返回列表</el-button>
+        </div>
+      </template>
+      <div class="view-attach-list">
+        <div v-for="(item, index) in allFiles" :key="'af' + index" class="view-attach-item">
+          <el-icon><Document /></el-icon>
+          <span class="view-attach-name" :title="item.name">{{ item.name }}</span>
+          <el-button link type="primary" @click="viewAttachItem(item)">查看</el-button>
+          <el-button link type="success" @click="downloadAttachItem(item)">下载</el-button>
+        </div>
+        <el-empty v-if="allFiles.length === 0" description="暂无文件" :image-size="60" />
+      </div>
+    </el-dialog>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { Back, Document } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Back, Document, Picture, FolderOpened, ArrowLeft, ArrowRight, ZoomIn } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { downloadWithSaveDialog } from '@/utils/saveFile'
 
 // ============ 属性/事件（类比 VB6 窗体的属性与事件参数） ============
 const props = defineProps<{
@@ -221,6 +263,30 @@ const toAttachItem = (name: string) => {
   const url = `/api/feedback/uploads/${name}`
   return { url, type: getAttachType(name), name }
 }
+const fileAttachItems = ref<any[]>([])  // 问题处理页上传的文件附件（fileUploadPath 目录）
+
+// 问题附件区拆成两类：图片保持小图预览，视频/文件走列表
+const attachImages = computed(() => attachItems.value.filter(i => i.type === 'image'))
+const attachFiles = computed(() => attachItems.value.filter(i => i.type !== 'image'))
+
+// 查看页附件操作按钮状态：查看图片 / 下载文件
+const hasImages = computed(() => attachImages.value.length > 0)
+const allFiles = computed(() => [...attachFiles.value, ...fileAttachItems.value])
+const hasFiles = computed(() => allFiles.value.length > 0)
+const filesDialogVisible = ref(false)  // 下载文件弹窗
+const imagesDialogVisible = ref(false)  // 问题截图窗体（查看图片按钮打开）
+
+// 打开"问题截图"窗体
+const openImagesViewer = () => {
+  if (!hasImages.value) { ElMessage.warning('暂无图片'); return }
+  viewerIndex.value = 0
+  imagesDialogVisible.value = true
+}
+
+// 问题截图窗体里的"查看原图"：全屏查看器
+const openFullImage = () => {
+  viewerVisible.value = true
+}
 const loadDetail = async () => {
   if (!props.problem) return
   const rowCopy = JSON.parse(JSON.stringify(props.problem))
@@ -230,6 +296,7 @@ const loadDetail = async () => {
   rowCopy.wentilx = rowCopy.wentilx || '其它问题'  // 老数据没有问题类型的兜底
   Object.assign(form, rowCopy)
   attachItems.value = []
+  fileAttachItems.value = []
   // 售后到期日：按医院名称查询（接口 /api/hospital/syq）
   syq.value = '-'
   if (form.yiyuanmc) {
@@ -249,6 +316,17 @@ const loadDetail = async () => {
       })
     }
   } catch (err) { console.error('加载附件失败:', err) }
+  // 加载问题文件附件（问题处理页上传，fileUploadPath 目录）
+  try {
+    const fRes = await axios.get(`/api/feedback/files/${props.problem.id}`)
+    const fList = fRes.data
+    if (fList && fList.length > 0) {
+      fileAttachItems.value = fList.map((f: any) => {
+        const name = f.name || f.filename
+        return { url: `/api/feedback/file-uploads/${encodeURIComponent(f.filename || name)}`, type: getAttachType(name), name }
+      })
+    }
+  } catch (err) { console.error('加载文件附件失败:', err) }
 }
 watch(() => props.modelValue, (v) => { if (v) loadDetail() })
 
@@ -262,18 +340,38 @@ const openImageViewer = (url: string) => {
 // 文件（含视频）：浏览器可直接渲染的新窗口打开，其余提示下载
 const canPreviewInBrowser = (name: string) => /\.(txt|md|html|htm|pdf)$/i.test(name || '')
 const openFile = async (item: any) => {
-  if (item.type === 'video' || canPreviewInBrowser(item.name)) {
+  if (item.type === 'image' || item.type === 'video' || canPreviewInBrowser(item.name)) {
     window.open(item.url, '_blank')
     return
   }
   try {
     await ElMessageBox.confirm(
-      `文件「${item.name}」无法在浏览器中直接预览，点击"下载打开"后将下载到本地，请使用 Word/Excel/WPS 等程序打开。`,
+      `文件「${item.name}」无法在浏览器中直接预览，点击"下载打开"后选择保存位置，请使用 Word/Excel/WPS 等程序打开。`,
       '打开文件',
       { type: 'info', confirmButtonText: '下载打开', cancelButtonText: '取消' }
     )
-    window.open(item.url, '_blank')
+    const ok = await downloadWithSaveDialog(item.url, item.name)
+    if (ok === true) ElMessage.success('文件已保存')
   } catch (e) { /* 用户取消下载 */ }
+}
+
+// 附件"查看"按钮：图片全屏查看；视频/可直接预览的文件新窗口打开；其余提示下载
+const viewAttachItem = async (item: any) => {
+  if (item.type === 'image') {
+    openImageViewer(item.url)
+    return
+  }
+  if (item.type === 'video' || canPreviewInBrowser(item.name)) {
+    window.open(item.url, '_blank')
+    return
+  }
+  await openFile(item)
+}
+
+// 附件"下载"按钮：弹出"另存为"让用户选择保存位置
+const downloadAttachItem = async (item: any) => {
+  const ok = await downloadWithSaveDialog(item.url, item.name)
+  if (ok === true) ElMessage.success('文件已保存')
 }
 
 // ============ 通用工具 ============
@@ -301,5 +399,17 @@ const formatDate = (date: any) => {
 .view-image:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .view-file { display: flex; align-items: center; gap: 6px; width: 150px; height: 120px; border: 1px dashed #dcdfe6; border-radius: 6px; padding: 8px; cursor: pointer; color: var(--el-color-primary); font-size: 13px; word-break: break-all; background: #f8f9fa; transition: all 0.3s; }
 .view-file:hover { border-color: var(--el-color-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+/* 附件文件列表方式（查看/下载按钮跟在文件名后） */
+.view-attach-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+/* 问题截图窗体（同问题测试页） */
+.carousel-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.carousel-wrapper { width: 100%; height: 560px; display: flex; justify-content: center; align-items: center; overflow: hidden; flex-shrink: 0; }
+.carousel-image { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.carousel-controls { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.carousel-actions { display: flex; justify-content: center; gap: 1px; flex-shrink: 0; }
+.view-attach-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #e4e7ed; border-radius: 6px; background: #fafafa; }
+.view-attach-item .el-icon { color: var(--el-color-primary); flex-shrink: 0; }
+.view-attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.view-attach-item .el-button { margin-left: 0; flex-shrink: 0; }
 .view-dialog-actions { display: flex; justify-content: center; align-items: center; margin-top: 20px; width: 100%; text-align: center; }
 </style>

@@ -10,6 +10,26 @@ import { isVideoFile, probeVideoCodec, transcodeToH264 } from '../../common/ffmp
 
 // 全局上传路径变量，应用启动时初始化
 let globalUploadPath = './uploads';
+let globalFileUploadPath = './file-uploads';
+
+// 修复 multer 中文文件名乱码：busboy 默认按 latin1 解码 filename，
+// 中文名（UTF-8 字节）会被显示成 è¯¥ 这类乱码，需还原回 UTF-8。
+// 若文件名本身已是正常 UTF-8（含非 latin1 字符），则原样返回。
+function fixOriginalName(name: string): string {
+  let hasHigh = false;
+  for (let i = 0; i < name.length; i++) {
+    if (name.charCodeAt(i) > 255) { hasHigh = true; break; }
+  }
+  if (hasHigh) return name;
+  try {
+    const fixed = Buffer.from(name, 'latin1').toString('utf8');
+    // 还原后出现替换符（U+FFFD）说明并非 latin1 误读，保持原名
+    if (fixed.includes('\uFFFD')) return name;
+    return fixed;
+  } catch {
+    return name;
+  }
+}
 
 // 控制器（类比 VB6 的窗体事件过程：前端请求 -> 这里接 -> 调 Service 处理）
 // @Controller('feedback') = 本控制器所有路由都以 /api/feedback 开头
@@ -23,6 +43,7 @@ export class FeedbackController {
   ) {
     // 构造函数中初始化上传路径
     globalUploadPath = this.configService.getUploadPath();
+    globalFileUploadPath = this.configService.getFileUploadPath();
   }
 
   // 上传图片（POST /api/feedback/upload）
@@ -88,6 +109,83 @@ export class FeedbackController {
     }
     
     return { url: `/feedback/uploads/${finalName}`, filename: finalName };
+  }
+
+  // ============ 问题处理页文件附件（与图片分开存储） ============
+  // 文件名规则：{id}-{序号}#{原文件名}（# 后保留原文件名，便于列表展示；序号从 # 前解析）
+
+  // 上传文件附件（POST /api/feedback/upload-file）
+  @Post('upload-file')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: (req, file, cb) => {
+        if (!fs.existsSync(globalFileUploadPath)) {
+          fs.mkdirSync(globalFileUploadPath, { recursive: true });
+        }
+        cb(null, globalFileUploadPath);
+      },
+      filename: (req, file, cb) => {
+        cb(null, file.originalname);  // 先按原名落盘，下面再改名
+      },
+    }),
+  }))
+  async uploadFile(@UploadedFile() file: any, @Body() body: any) {
+    // 每次上传时重新读取配置，确保路径是最新的
+    globalFileUploadPath = this.configService.getFileUploadPath();
+    const id = parseInt(body?.id) || parseInt(body?.feedbackId) || 0;
+    const tpnum = parseInt(body?.tpnum) || 1;
+    if (!id) return { success: false, error: '缺少问题ID' };
+
+    // 清洗原文件名：只取文件名（去路径），修复中文乱码，替换 # ? * < > | " : \ / 等非法字符，限制长度
+    let baseName = file.originalname.replace(/^.*[\\/]/, '');
+    baseName = fixOriginalName(baseName);
+    baseName = baseName.replace(/[#?*<>|":\\/]/g, '_');
+    if (baseName.length > 80) {
+      const dotIdx = baseName.lastIndexOf('.');
+      if (dotIdx > 0) baseName = baseName.substring(0, 60) + baseName.substring(dotIdx);
+      else baseName = baseName.substring(0, 80);
+    }
+
+    const filename = `${id}-${tpnum}#${baseName}`;
+    const oldPath = file.path;
+    const newPath = join(globalFileUploadPath, filename);
+    if (fs.existsSync(oldPath)) {
+      fs.renameSync(oldPath, newPath);
+    }
+    return { success: true, url: `/feedback/file-uploads/${encodeURIComponent(filename)}`, filename, name: baseName };
+  }
+
+  // 获取问题文件附件列表（GET /api/feedback/files/:id）
+  @Get('files/:id')
+  async getFiles(@Param('id') id: string) {
+    return this.feedbackService.getFilesById(parseInt(id));
+  }
+
+  // 删除单个文件附件（DELETE /api/feedback/file/:filename）
+  @Delete('file/:filename')
+  async deleteFile(@Param('filename') filename: string) {
+    try {
+      const fileUploadPath = this.configService.getFileUploadPath();
+      const filePath = join(fileUploadPath, filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return { success: true };
+      }
+      return { success: false, error: 'file not found' };
+    } catch (err) {
+      return { success: false, error: err };
+    }
+  }
+
+  // 访问/下载文件附件（GET /api/feedback/file-uploads/:filename）
+  @Get('file-uploads/:filename')
+  getFileAttachment(@Param('filename') filename: string, @Res() res: any) {
+    const fileUploadPath = this.configService.getFileUploadPath();
+    const filePath = join(fileUploadPath, filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filename, { root: fileUploadPath });
+    }
+    return res.status(404).send('File not found');
   }
 
   // 获取问题的所有图片 - 从目录中检索

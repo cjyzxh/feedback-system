@@ -231,6 +231,31 @@ export class DatabaseConfigService {
     }
   }
 
+  // 获取文件上传路径配置（与图片分开，问题处理页附件用）
+  getFileUploadPath(): string {
+    try {
+      const configs = this.getAllConfigs();
+      return configs.fileUploadPath || './file-uploads';
+    } catch (error) {
+      this.logger.error('获取文件上传路径失败:', error);
+      return './file-uploads';
+    }
+  }
+
+  // 保存文件上传路径配置
+  saveFileUploadPath(fileUploadPath: string): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.fileUploadPath = fileUploadPath || './file-uploads';
+      this.saveAllConfigs(configs);
+      this.logger.log('文件上传路径已保存:', fileUploadPath);
+      return true;
+    } catch (error) {
+      this.logger.error('保存文件上传路径失败:', error);
+      return false;
+    }
+  }
+
   // 获取短信服务配置
   getSmsConfig(): any {
     try {

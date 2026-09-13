@@ -139,6 +139,22 @@ setTimeout(() => {
     return { success, message: success ? '图片上传路径保存成功' : '保存失败' };
   }
 
+  // 获取文件上传路径（问题处理页附件，与图片分开）
+  @Get('file-upload-path')
+  getFileUploadPath() {
+    const fileUploadPath = this.configService.getFileUploadPath();
+    return { fileUploadPath };
+  }
+
+  // 保存文件上传路径
+  @Post('file-upload-path')
+  saveFileUploadPath(@Body() body: any) {
+    const fileUploadPath = body.fileUploadPath || './file-uploads';
+    this.logger.log('保存文件上传路径:', fileUploadPath);
+    const success = this.configService.saveFileUploadPath(fileUploadPath);
+    return { success, message: success ? '文件上传路径保存成功' : '保存失败' };
+  }
+
   // 获取短信服务配置
   @Get('sms')
   getSmsConfig() {

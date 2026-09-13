@@ -79,6 +79,26 @@
           </el-form-item>
         </el-form>
 
+        <!-- 文件上传路径配置（问题处理页附件，与图片分开） -->
+        <el-divider content-position="left">文件存储配置</el-divider>
+        <el-form label-width="120px">
+          <el-form-item label="文件存储路径">
+            <el-input v-model="fileUploadPath" placeholder="例如: ./file-uploads 或 D:/wtfk-file-uploads" />
+          </el-form-item>
+          <el-form-item label="当前路径">
+            <span style="color: #67c23a; font-weight: 500;">{{ fileUploadPath || './file-uploads (默认)' }}</span>
+          </el-form-item>
+          <el-form-item>
+            <el-button class="morandi-btn morandi-green" @click="handleSaveFileUploadPath">保存文件路径</el-button>
+            <el-button class="morandi-btn morandi-orange" @click="resetFileUploadPath">恢复默认</el-button>
+          </el-form-item>
+          <el-form-item>
+            <div style="color: #909399; font-size: 12px; line-height: 1.8;">
+              <p>说明：问题处理页上传的文件附件（图片/视频/文档）保存在此路径，与新增问题页的图片分开存放。</p>
+            </div>
+          </el-form-item>
+        </el-form>
+
         <!-- 短信服务配置 -->
         <el-divider content-position="left">短信服务配置</el-divider>
         <el-form label-width="120px">
@@ -194,6 +214,41 @@ const handleSaveUploadPath = async () => {
 // 恢复默认图片上传路径
 const resetUploadPath = () => {
   uploadPath.value = './uploads'
+  ElMessage.info('已恢复默认路径，点击保存生效')
+}
+
+// ========== 文件上传路径（问题处理页附件，与图片分开） ==========
+const fileUploadPath = ref('./file-uploads')
+
+// 加载文件上传路径
+const fetchFileUploadPath = async () => {
+  try {
+    const response = await api.get('/config/file-upload-path')
+    if (response.data && response.data.fileUploadPath) {
+      fileUploadPath.value = response.data.fileUploadPath
+    }
+  } catch (error) {
+    console.error('获取文件上传路径失败:', error)
+  }
+}
+
+// 保存文件上传路径
+const handleSaveFileUploadPath = async () => {
+  try {
+    const response = await api.post('/config/file-upload-path', { fileUploadPath: fileUploadPath.value })
+    if (response.data.success) {
+      ElMessage.success('文件上传路径已保存')
+    } else {
+      ElMessage.error('保存失败: ' + (response.data.message || '未知错误'))
+    }
+  } catch (error) {
+    ElMessage.error('保存文件上传路径失败')
+  }
+}
+
+// 恢复默认文件上传路径
+const resetFileUploadPath = () => {
+  fileUploadPath.value = './file-uploads'
   ElMessage.info('已恢复默认路径，点击保存生效')
 }
 
@@ -383,6 +438,7 @@ onMounted(() => {
   fetchAppStatus();
   initDbSettings();
   fetchUploadPath();
+  fetchFileUploadPath();
   fetchSmsConfig();
 });
 </script>

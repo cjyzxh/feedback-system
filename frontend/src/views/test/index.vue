@@ -102,7 +102,12 @@
               <div class="info-label big required">处理意见</div>
               <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
                 <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." @dblclick="openZoom('处理意见', form, 'gongcscs', false)" />
-                <TemplatePicker :lx="'处理意见'" @select="appendGongcscs" />
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <TemplatePicker :lx="'处理意见'" @select="appendGongcscs" />
+                  <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
+                    <el-icon><FolderOpened /></el-icon> 上传附件
+                  </el-button>
+                </div>
               </div>
             </div>
           </el-col>
@@ -120,6 +125,31 @@
       </template>
       <el-input v-model="zoomState.model[zoomState.field]" type="textarea" :rows="18" :readonly="zoomState.readonly" resize="none" />
       <div style="color:#909399; font-size:12px; margin-top:8px;">{{ zoomState.readonly ? '只读查看：关闭后自动回到原内容' : '可编辑：修改后自动同步回原输入框' }}</div>
+    </el-dialog>
+
+    <!-- 附件管理弹窗（文件上传/查看/下载/删除，选择后立即上传） -->
+    <el-dialog v-model="attachDialog.visible" width="720px" top="8vh" :show-close="false">
+      <template #header>
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
+          <span>{{ '附件管理（问题ID: ' + (form.id || '-') + '）' }}</span>
+          <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
+        </div>
+      </template>
+      <div class="attach-tip">已上传文件（图片/视频/文档，单个≤50MB）：</div>
+      <div class="attach-list">
+        <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
+          <el-icon><Document /></el-icon>
+          <span class="attach-name" :title="f.name">{{ f.name }}</span>
+          <el-button link type="primary" @click="previewAttach(f)">查看</el-button>
+          <el-button link type="success" @click="downloadAttach(f)">下载</el-button>
+          <el-button link type="danger" @click="removeAttach(f)">删除</el-button>
+        </div>
+        <el-empty v-if="attachFiles.length === 0" description="暂无文件" :image-size="60" />
+      </div>
+      <el-upload drag multiple :auto-upload="false" :show-file-list="false" :on-change="onAttachChange">
+        <el-icon class="upload-icon" style="font-size:32px; color:#909399;"><Upload /></el-icon>
+        <div style="color:#909399; font-size:13px;">拖拽文件到此处或点击选择（支持所有类型，单个≤50MB）<br/>支持 Ctrl+V 粘贴图片或文件</div>
+      </el-upload>
     </el-dialog>
 
     <!-- 下部：待处理问题列表 -->
@@ -285,8 +315,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back } from '@element-plus/icons-vue'
+import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back, Document, Download, Upload, Delete, FolderOpened } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { downloadWithSaveDialog } from '@/utils/saveFile'
 import TemplatePicker from '@/components/TemplatePicker.vue'
 import ViewProblemDialog from '@/components/ViewProblemDialog.vue'
 
@@ -381,6 +412,80 @@ const openZoom = (title: string, model: any, field: string, readonly = false) =>
   zoomState.visible = true
 }
 // ============ 文本框双击放大结束 ============
+
+// ============ 文件附件管理（上传到 fileUploadPath，与图片分开） ============
+// 文件名规则：{id}-{序号}#{原文件名}，列表展示 # 后的原文件名
+const attachDialog = reactive({ visible: false })
+const attachFiles = ref<any[]>([])  // [{ filename: 磁盘名, name: 原文件名, seq: 序号 }]
+
+const openAttachDialog = () => {
+  if (!form.id) { ElMessage.warning('请先选择问题'); return }
+  attachDialog.visible = true
+  loadAttachFiles()
+}
+
+// 加载该问题的文件附件列表
+const loadAttachFiles = async () => {
+  if (!form.id) { attachFiles.value = []; return }
+  try {
+    const res = await axios.get(`/api/feedback/files/${form.id}`)
+    attachFiles.value = res.data || []
+  } catch (e) {
+    console.error('加载文件附件失败:', e)
+    attachFiles.value = []
+  }
+}
+
+// 选择文件后立即上传（自动续接序号）
+const onAttachChange = async (file: any) => {
+  if (!form.id) { ElMessage.warning('请先选择问题'); return }
+  const fileObj = file.raw || file.rawFile
+  if (!fileObj) return
+  if (fileObj.size > 50 * 1024 * 1024) {
+    ElMessage.warning(`文件「${fileObj.name}」超过 50MB，已跳过上传`)
+    return
+  }
+  const maxSeq = attachFiles.value.reduce((m, f) => Math.max(m, f.seq || 0), 0)
+  const fd = new FormData()
+  fd.append('file', fileObj)
+  fd.append('id', String(form.id))
+  fd.append('tpnum', String(maxSeq + 1))
+  try {
+    await axios.post('/api/feedback/upload-file', fd)
+    ElMessage.success(`「${fileObj.name}」上传成功`)
+    loadAttachFiles()
+  } catch (e) {
+    console.error('文件上传失败:', e)
+    ElMessage.error(`「${fileObj.name}」上传失败: ${(e as any)?.message || ''}`)
+  }
+}
+
+// 新窗口预览/打开（图片/视频/可预览文件直接显示，Office 等提示下载）
+const previewAttach = (f: any) => {
+  window.open(`/api/feedback/file-uploads/${encodeURIComponent(f.filename)}`, '_blank')
+}
+
+// 下载文件（弹出"另存为"让用户选择保存位置）
+const downloadAttach = async (f: any) => {
+  const ok = await downloadWithSaveDialog(`/api/feedback/file-uploads/${encodeURIComponent(f.filename)}`, f.name)
+  if (ok === true) ElMessage.success('文件已保存')
+}
+
+// 删除文件
+const removeAttach = async (f: any) => {
+  try {
+    await ElMessageBox.confirm(`确定删除文件「${f.name}」？`, '删除确认', { type: 'warning' })
+  } catch { return }
+  try {
+    await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`)
+    ElMessage.success('已删除')
+    loadAttachFiles()
+  } catch (e) {
+    console.error('删除文件失败:', e)
+    ElMessage.error('删除失败')
+  }
+}
+// ============ 文件附件管理结束 ============
 
 // 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
@@ -761,6 +866,14 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .opinion-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
 /* 可双击放大的文本框：鼠标提示 */
 .zoomable { cursor: zoom-in; }
+/* 附件管理弹窗 */
+.attach-tip { color: #606266; font-size: 13px; margin-bottom: 8px; }
+.attach-list { max-height: 260px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 6px; padding: 8px; margin-bottom: 12px; }
+.attach-item { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px dashed #ebeef5; }
+.attach-item:last-child { border-bottom: none; }
+.attach-item .el-icon { color: #1E5DA2; flex-shrink: 0; }
+.attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.attach-item .el-button { margin-left: 0; }
 
 /* 测试返回信息样式 */
 .test-return-info { background: #fef0f0 !important; border: 1px solid #fbc4c4; }

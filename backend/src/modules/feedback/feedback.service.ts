@@ -351,6 +351,27 @@ export class FeedbackService {
     }
   }
 
+  // 获取问题文件附件列表（问题处理页上传：{id}-{序号}#{原文件名}，在 fileUploadPath 目录下查找）
+  // 返回 [{ filename: 磁盘文件名, name: 原文件名, seq: 序号 }]
+  async getFilesById(id: number): Promise<{ filename: string; name: string; seq: number }[]> {
+    const fileUploadPath = this.configService.getFileUploadPath();
+    const fileDir = path.isAbsolute(fileUploadPath) ? fileUploadPath : path.join(process.cwd(), fileUploadPath);
+    if (!fs.existsSync(fileDir)) {
+      return [];
+    }
+    const result: { filename: string; name: string; seq: number }[] = [];
+    for (const f of fs.readdirSync(fileDir).filter(f => f.startsWith(`${id}-`))) {
+      // 拆分：{id}-{序号}#{原文件名} → 逻辑名(#前) + 原文件名(#后)
+      const hashIdx = f.indexOf('#');
+      const logical = hashIdx > -1 ? f.substring(0, hashIdx) : f;
+      const origin = hashIdx > -1 ? f.substring(hashIdx + 1) : f;
+      const seqMatch = logical.match(/^\d+-(\d+)$/);
+      result.push({ filename: f, name: origin, seq: seqMatch ? parseInt(seqMatch[1]) : 0 });
+    }
+    result.sort((a, b) => a.seq - b.seq);
+    return result;
+  }
+
   // ===== 事件通知查询 =====
   // 前端每10秒轮询"我的未读通知"：新增/处理/测试/返回 四类事件写入 xt_tzxx，接收人=本人且未读的返回
   // 注意：全部按用户编码（jsrbm）过滤，与姓名无关

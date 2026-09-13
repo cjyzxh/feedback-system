@@ -1,0 +1,119 @@
+    您好，我是北京创佳益软件有限公司 张晓华 18611583377 我司2004年成立于北京 专注于医疗行业软件研发与销售，非常期待与您合作
+    我司自主研发并销售：医院信息管理系统HIS、结构化电子病历系统EMR、医院客户关系管理系统CRM，销售：实验室数据管理系统LIS、影像传输系统PACS/RIS、健康体检管理系统PEIS等，欢迎您详细了解
+
+
+
+
+update zd_YongHu set mima='d41d8cd98f00b204e9800998ecf8427e'
+
+On Error GoTo PROC_ERR
+
+PROC_EXIT:
+    Exit Sub
+PROC_ERR:
+    If ERR.Number <> 0 Then
+        ShowError Me.Caption, "UpdateHZXX", ERR.Number, ERR.Description, True
+     End If
+     GOTO PROC_EXIT
+
+
+' 封装安全版调用（新增代码用）
+Sub SafeCallGetRs(strSQL As String)
+    Dim rst As ADODB.Recordset
+    Set rst = objExecuteSQL.GetRs(strSQL)
+    
+    ' 执行业务逻辑（比如读取数据）
+    If Not rst Is Nothing And rst.RecordCount > 0 Then
+        ' 处理数据...
+    End If
+    
+    ' 自动释放（不用手动记）
+    If Not rst Is Nothing Then
+        If rst.State = adStateOpen Then rst.Close
+        Set rst = Nothing
+    End If
+End Sub
+
+
+    If Not rstYPKC Is Nothing Then ' 第一层：判断对象是否存在
+        If rstYPKC.State = adStateOpen Then ' 第二层：判断对象是否打开
+            rstYPKC.Close
+        End If
+        Set rstYPKC = Nothing
+    End If
+
+CJY:
+    If Not rstData Is Nothing Then ' 第一层：判断对象是否存在
+        If rstData.State = adStateOpen Then ' 第二层：判断对象是否打开
+            rstData.Close
+        End If
+        Set rstData = Nothing
+    End If
+
+On Error GoTo ERR
+
+CJY:
+    Exit Sub
+ERR:
+    If ERR.Number <> 0 Then
+        ShowError Me.Caption, "UpdateHZXX", ERR.Number, ERR.Description, True
+     End If
+     GOTO CJY
+
+CJY:
+    If Not rst Is Nothing Then ' 第一层：判断对象是否存在
+        If rst.State = adStateOpen Then ' 第二层：判断对象是否打开
+            rst.Close
+        End If
+        Set rst = Nothing
+    End If
+
+updaTE xt_Config SET CenterName='霸州市津胜医院'
+updaTE xt_Config SET CenterName='北京景萍骨科医院'
+updaTE xt_Config SET CenterName='武安市仁慈医院'
+updaTE xt_Config SET CenterName='北京创佳益软件有限公司'
+updaTE xt_Config SET CenterName='南宁市青秀区南湖凤岭北社区卫生服务中心'
+
+84145660000000000001 塞来昔布胶囊
+
+11122231000000000001 盐酸异丙肾上腺素注射液
+
+12399990000000000001 阿莫西林
+
+12312340000000000001 5%葡萄糖
+
+12312350000000000001 炉甘石洗剂
+
+12312360000000000001 每次医嘱圆整(小范)
+12312370000000000001 每天圆整(片剂-包装单位)
+12312380000000000001 每天圆整(片剂-最小单位)
+
+
+
+
+
+
+
+g_strSQL = objExecuteSQL.CreateInsertSQL("yw_YiZhuZuoFei", ColInsert)
+
+
+
+
+
+
+北京创佳益软件有限公司于2004年成立，创立至今二十多年始终致力于医疗信息化产品的研发及服务，历经了医疗信息化从技术到市场不断的变革和创新。目前信息化产品覆盖了医疗业务的所有流程，结合互联网医疗、智慧医疗、大数据云计算等先进的理念和技术，为用户提供更加完善的产品和服务。
+产品线包括：医院管理系统（HIS，含集团版解决方案）、电子病历系统（EMR）、医患关系管理系统（CRM）、检验管理系统（LIS）、影像管理系统（PACS）、体检管理系统（ PEIS ）等。
+本着“天道酬勤、商道酬信”的企业经营理念，以创新活力及优良服务为企业根基，坚持走自主研发之路，与用户在医疗信息化建设上共同成长
+
+售后服务承诺
+1、电话服务
+用户通过售后服务电话（010-60777177转0）可直接和售后人员进行技术咨询。
+电话响应时间：售后电话专线接听、专人负责并做售后咨询记录，一般咨询类、数据查询类、操作类问题即时或当天内解决问题，如遇复杂问题需工程师修改程序的，售后与研发部沟通后24小时内给出解决此问题所需时间并在售后服务群中告知甲方。甲方也可通过售后服务群反馈问题，售后服务群处理问题时效同电话处理时效
+2、远程服务
+公司售后服务人员通过网络远程工具进行技术服务，即时解决问题（需甲方配合远程环境）。
+技术服务 HIS售后服务QQ:139139050 可进行远程控制、远程维护。
+技术服务邮箱：139139050@qq.com
+售后服务应急电话：18911551889
+技术服务投诉电话：18611583377
+3、上门服务
+在上面二种方式不能解决问题的情况下，我公司可安排技术人员上门服务，北京响应时间4小时、北京周边12小时内、外省市48小时内。

@@ -1,7 +1,7 @@
 <template>
   <span>
-    <el-button class="morandi-btn morandi-blue" @click="openPicker">
-      <el-icon style="margin-right: 4px"><Collection /></el-icon>模板
+    <el-button class="morandi-btn morandi-blue" size="large" @click="openPicker">
+      <el-icon style="margin-right: 4px"><Collection /></el-icon>选择模板
     </el-button>
 
     <el-dialog :title="lx + '模板'" v-model="dialogVisible" width="600px" custom-class="tp-dialog tp-dialog-fixed" style="height:600px; display:flex; flex-direction:column" append-to-body>

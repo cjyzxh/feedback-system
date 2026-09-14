@@ -152,6 +152,12 @@ export class FeedbackController {
     if (fs.existsSync(oldPath)) {
       fs.renameSync(oldPath, newPath);
     }
+
+    // 写入附件信息表（记录上传者编码/姓名，前端从登录态带过来）
+    const uploadUser = body?.uploadUser || '';
+    const uploadName = body?.uploadName || '';
+    await this.feedbackService.saveFileRecord(id, filename, baseName, tpnum, uploadUser, uploadName);
+
     return { success: true, url: `/feedback/file-uploads/${encodeURIComponent(filename)}`, filename, name: baseName };
   }
 
@@ -162,13 +168,31 @@ export class FeedbackController {
   }
 
   // 删除单个文件附件（DELETE /api/feedback/file/:filename）
+  // 权限：仅上传者本人可删（管理员也不例外的）；老数据无上传者 → 拒绝删除
   @Delete('file/:filename')
-  async deleteFile(@Param('filename') filename: string) {
+  async deleteFile(@Param('filename') filename: string, @Body() body: any) {
     try {
       const fileUploadPath = this.configService.getFileUploadPath();
       const filePath = join(fileUploadPath, filename);
+
+      // 权限校验：查 zd_fjxx 记录，比对当前用户编码
+      const currentUser = body?.currentUser || '';
+      const record = await this.feedbackService.findFileRecord(filename);
+      if (record) {
+        if (!record.uploadUser) {
+          return { success: false, error: '该附件无上传者信息，不允许删除' };
+        }
+        if (record.uploadUser !== currentUser) {
+          return { success: false, error: '仅上传者本人可删除该附件' };
+        }
+      } else {
+        // 表里没有记录（未初始化）→ 视为老附件，无上传者信息，不允许删除
+        return { success: false, error: '该附件无上传者信息，不允许删除' };
+      }
+
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        await this.feedbackService.deleteFileRecord(filename);
         return { success: true };
       }
       return { success: false, error: 'file not found' };

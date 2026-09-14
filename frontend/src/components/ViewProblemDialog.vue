@@ -188,6 +188,7 @@
         <div v-for="(item, index) in allFiles" :key="'af' + index" class="view-attach-item">
           <el-icon><Document /></el-icon>
           <span class="view-attach-name" :title="item.name">{{ item.name }}</span>
+          <span v-if="item.uploadName" class="view-attach-uploader" :title="'上传者：' + item.uploadName">上传者：{{ item.uploadName }}</span>
           <el-button link type="primary" @click="viewAttachItem(item)">查看</el-button>
           <el-button link type="success" @click="downloadAttachItem(item)">下载</el-button>
         </div>
@@ -410,6 +411,7 @@ const formatDate = (date: any) => {
 .view-attach-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #e4e7ed; border-radius: 6px; background: #fafafa; }
 .view-attach-item .el-icon { color: var(--el-color-primary); flex-shrink: 0; }
 .view-attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.view-attach-uploader { flex-shrink: 0; color: #909399; font-size: 12px; white-space: nowrap; }
 .view-attach-item .el-button { margin-left: 0; flex-shrink: 0; }
 .view-dialog-actions { display: flex; justify-content: center; align-items: center; margin-top: 20px; width: 100%; text-align: center; }
 </style>

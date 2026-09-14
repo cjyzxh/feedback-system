@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
 import { Tzxx } from './tzxx.entity';
+import { Fjxx } from './fjxx.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
 
@@ -18,6 +19,8 @@ export class FeedbackService {
     private feedbackRepository: Repository<Feedback>,
     @InjectRepository(Tzxx)
     private tzxxRepository: Repository<Tzxx>,
+    @InjectRepository(Fjxx)
+    private fjxxRepository: Repository<Fjxx>,
     private configService: DatabaseConfigService,  // 读上传目录配置等
   ) {}
 
@@ -351,25 +354,78 @@ export class FeedbackService {
     }
   }
 
-  // 获取问题文件附件列表（问题处理页上传：{id}-{序号}#{原文件名}，在 fileUploadPath 目录下查找）
-  // 返回 [{ filename: 磁盘文件名, name: 原文件名, seq: 序号 }]
-  async getFilesById(id: number): Promise<{ filename: string; name: string; seq: number }[]> {
+  // 获取问题文件附件列表（问题处理页上传：{id}-{序号}#{原文件名}）
+  // 优先查 zd_fjxx 表（含上传者信息）；表里没有该问题时回退扫描目录（兼容未初始化场景）
+  // 返回 [{ filename, name, seq, uploadUser, uploadName, lrsj }]
+  async getFilesById(id: number): Promise<{ filename: string; name: string; seq: number; uploadUser: string; uploadName: string; lrsj: Date }[]> {
+    try {
+      const records = await this.fjxxRepository.find({
+        where: { wentiId: id },
+        order: { seq: 'ASC' },
+      });
+      if (records.length > 0) {
+        return records.map(r => ({
+          filename: r.filename,
+          name: r.baseName || r.filename,
+          seq: r.seq || 0,
+          uploadUser: r.uploadUser || '',
+          uploadName: r.uploadName || '',
+          lrsj: r.lrsj,
+        }));
+      }
+    } catch (err) {
+      console.error('查询附件表失败，回退目录扫描:', err);
+    }
+
+    // 回退：扫描目录（老数据未初始化时）
     const fileUploadPath = this.configService.getFileUploadPath();
     const fileDir = path.isAbsolute(fileUploadPath) ? fileUploadPath : path.join(process.cwd(), fileUploadPath);
     if (!fs.existsSync(fileDir)) {
       return [];
     }
-    const result: { filename: string; name: string; seq: number }[] = [];
+    const result: { filename: string; name: string; seq: number; uploadUser: string; uploadName: string; lrsj: Date }[] = [];
     for (const f of fs.readdirSync(fileDir).filter(f => f.startsWith(`${id}-`))) {
-      // 拆分：{id}-{序号}#{原文件名} → 逻辑名(#前) + 原文件名(#后)
       const hashIdx = f.indexOf('#');
       const logical = hashIdx > -1 ? f.substring(0, hashIdx) : f;
       const origin = hashIdx > -1 ? f.substring(hashIdx + 1) : f;
       const seqMatch = logical.match(/^\d+-(\d+)$/);
-      result.push({ filename: f, name: origin, seq: seqMatch ? parseInt(seqMatch[1]) : 0 });
+      result.push({ filename: f, name: origin, seq: seqMatch ? parseInt(seqMatch[1]) : 0, uploadUser: '', uploadName: '', lrsj: null });
     }
     result.sort((a, b) => a.seq - b.seq);
     return result;
+  }
+
+  // 上传附件成功后写入 zd_fjxx 记录（含上传者编码/姓名）
+  async saveFileRecord(wentiId: number, filename: string, baseName: string, seq: number, uploadUser: string, uploadName: string): Promise<void> {
+    try {
+      await this.fjxxRepository.save(this.fjxxRepository.create({
+        wentiId, filename, baseName, seq,
+        uploadUser: uploadUser || null,
+        uploadName: uploadName || null,
+        lrsj: new Date(),
+      }));
+    } catch (err) {
+      console.error('写入附件记录失败:', err);
+    }
+  }
+
+  // 按磁盘文件名查附件记录（删除时校验上传者）
+  async findFileRecord(filename: string): Promise<Fjxx | null> {
+    try {
+      return await this.fjxxRepository.findOne({ where: { filename } });
+    } catch (err) {
+      console.error('查询附件记录失败:', err);
+      return null;
+    }
+  }
+
+  // 删除附件记录（删文件成功后调用）
+  async deleteFileRecord(filename: string): Promise<void> {
+    try {
+      await this.fjxxRepository.delete({ filename });
+    } catch (err) {
+      console.error('删除附件记录失败:', err);
+    }
   }
 
   // ===== 事件通知查询 =====

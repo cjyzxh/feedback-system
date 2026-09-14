@@ -101,7 +101,7 @@
                 <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
                   <TemplatePicker class="tp-btn-wrap" :lx="'测试结果'" @select="appendShouhoucs" />
                   <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
-                    <el-icon><FolderOpened /></el-icon> 上传附件
+                    <el-icon><FolderOpened /></el-icon> 附件管理
                   </el-button>
                   <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
                     <el-icon><Picture /></el-icon> 查看图片
@@ -160,9 +160,6 @@
             </el-button>
             <el-button class="morandi-btn morandi-red" @click="handleReset">
               <el-icon><RefreshLeft /></el-icon> 返回问题
-            </el-button>
-            <el-button class="morandi-btn morandi-red" @click="openFileDialog(form)" :disabled="!hasFiles">
-              <el-icon><FolderOpened /></el-icon> 下载文件
             </el-button>
           </div>
         </div>
@@ -264,9 +261,10 @@
         <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
           <el-icon><Document /></el-icon>
           <span class="attach-name" :title="f.name">{{ f.name }}</span>
+          <span v-if="f.uploadName" class="attach-uploader" :title="'上传者：' + f.uploadName">上传者：{{ f.uploadName }}</span>
           <el-button link type="primary" @click="previewAttach(f)">查看</el-button>
           <el-button link type="success" @click="downloadAttach(f)">下载</el-button>
-          <el-button link type="danger" @click="removeAttach(f)">删除</el-button>
+          <el-button v-if="f.uploadUser && f.uploadUser === currentUserCode" link type="danger" @click="removeAttach(f)">删除</el-button>
         </div>
         <el-empty v-if="attachFiles.length === 0" description="暂无文件" :image-size="60" />
       </div>
@@ -276,25 +274,6 @@
       </el-upload>
     </el-dialog>
 
-    <!-- 文件附件查看/下载弹窗（问题处理页上传的文件） -->
-    <el-dialog v-model="fileDialogVisible" width="680px" top="12vh" :show-close="false">
-      <template #header>
-        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
-          <span>{{ '问题文件附件（问题ID: ' + (form.id || '-') + '）' }}</span>
-          <el-button class="morandi-btn morandi-blue" @click="fileDialogVisible = false">返回列表</el-button>
-        </div>
-      </template>
-      <div class="attach-tip">已上传文件（点击"查看"新窗口打开，可预览或下载）：</div>
-      <div class="attach-list">
-        <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
-          <el-icon><Document /></el-icon>
-          <span class="attach-name" :title="f.name">{{ f.name }}</span>
-          <el-button link type="primary" @click="previewAttach(f)">查看</el-button>
-          <el-button link type="success" @click="downloadAttach(f)">下载</el-button>
-        </div>
-        <el-empty v-if="attachFiles.length === 0" description="暂无文件" :image-size="60" />
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -427,22 +406,23 @@ const handleRowClick = async (row: any) => {
     console.error("查询图片失败", err)
     hasImages.value = false
   }
-  // 查询该问题是否有文件附件（处理页上传）
+  // 预加载该问题附件（打开"附件管理"弹窗时直接显示）
   try {
     const res = await axios.get("/api/feedback/files/" + row.id)
     attachFiles.value = res.data || []
-    hasFiles.value = attachFiles.value.length > 0
   } catch (err) {
     console.error("查询文件附件失败", err)
     attachFiles.value = []
-    hasFiles.value = false
   }
 }
 
-// ============ 文件附件查看/下载（问题处理页上传的文件） ============
-const fileDialogVisible = ref(false)
-const attachFiles = ref<any[]>([])  // [{ filename: 磁盘名, name: 原文件名, seq: 序号 }]
-const hasFiles = ref(false)  // 当前选中问题是否有文件（控制下载文件按钮可用性）
+// ============ 文件附件管理（上传/查看/下载/删除，与问题处理页一致） ============
+const attachFiles = ref<any[]>([])  // [{ filename, name, seq, uploadUser, uploadName }]
+
+// 当前登录用户（编码/姓名）——上传时记录上传者、删除时校验本人
+const loginUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch (e) { return {} } })()
+const currentUserCode = localStorage.getItem('userCode') || ''
+const currentUserName = loginUser.realName || loginUser.username || localStorage.getItem('username') || ''
 
 // 附件管理弹窗（上传/删除，与问题处理页一致）
 const attachDialog = reactive({ visible: false })
@@ -455,15 +435,13 @@ const openAttachDialog = () => {
 
 // 加载该问题的文件附件列表
 const loadAttachFiles = async () => {
-  if (!form.id) { attachFiles.value = []; hasFiles.value = false; return }
+  if (!form.id) { attachFiles.value = []; return }
   try {
     const res = await axios.get(`/api/feedback/files/${form.id}`)
     attachFiles.value = res.data || []
-    hasFiles.value = attachFiles.value.length > 0
   } catch (e) {
     console.error('加载文件附件失败:', e)
     attachFiles.value = []
-    hasFiles.value = false
   }
 }
 
@@ -479,6 +457,8 @@ const onAttachChange = async (file: any) => {
   const maxSeq = attachFiles.value.reduce((m, f) => Math.max(m, f.seq || 0), 0)
   const fd = new FormData()
   fd.append('file', fileObj)
+  fd.append('uploadUser', currentUserCode)   // 记录上传者编码（权限过滤用）
+  fd.append('uploadName', currentUserName)   // 记录上传者姓名（列表显示用）
   fd.append('id', String(form.id))
   fd.append('tpnum', String(maxSeq + 1))
   try {
@@ -497,24 +477,12 @@ const removeAttach = async (f: any) => {
     await ElMessageBox.confirm(`确定删除文件「${f.name}」？`, '删除确认', { type: 'warning' })
   } catch { return }
   try {
-    await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`)
+    await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`, { data: { currentUser: currentUserCode } })
     ElMessage.success('已删除')
     loadAttachFiles()
   } catch (e) {
     console.error('删除文件失败:', e)
     ElMessage.error('删除失败')
-  }
-}
-
-const openFileDialog = (row: any) => {
-  if (!hasFiles.value) { ElMessage.warning("暂无文件"); return }
-  fileDialogVisible.value = true
-  // 打开时刷新列表（若当前行附件已变化）
-  if (row?.id) {
-    axios.get("/api/feedback/files/" + row.id).then((res: any) => {
-      attachFiles.value = res.data || []
-      hasFiles.value = attachFiles.value.length > 0
-    }).catch(() => {})
   }
 }
 
@@ -528,7 +496,7 @@ const downloadAttach = async (f: any) => {
   const ok = await downloadWithSaveDialog(`/api/feedback/file-uploads/${encodeURIComponent(f.filename)}`, f.name)
   if (ok === true) ElMessage.success('文件已保存')
 }
-// ============ 文件附件查看/下载结束 ============
+// ============ 文件附件管理结束 ============
 
 // ============ 图片查看 ============
 const previewVisible = ref(false)
@@ -792,6 +760,7 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .attach-item:last-child { border-bottom: none; }
 .attach-item .el-icon { color: #1E5DA2; flex-shrink: 0; }
 .attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.attach-uploader { flex-shrink: 0; color: #909399; font-size: 12px; white-space: nowrap; }
 .attach-item .el-button { margin-left: 0; }
 .table-card { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin: 0; }
 .table-card :deep(.el-card__body) { flex: 1; overflow: hidden; padding: 0; }

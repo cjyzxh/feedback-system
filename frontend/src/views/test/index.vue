@@ -105,7 +105,7 @@
                 <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
                   <TemplatePicker class="tp-btn-wrap" :lx="'处理意见'" @select="appendGongcscs" />
                   <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
-                    <el-icon><FolderOpened /></el-icon> 上传附件
+                    <el-icon><FolderOpened /></el-icon> 附件管理
                   </el-button>
                   <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
                     <el-icon><Picture /></el-icon> 查看图片
@@ -143,9 +143,10 @@
         <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
           <el-icon><Document /></el-icon>
           <span class="attach-name" :title="f.name">{{ f.name }}</span>
+          <span v-if="f.uploadName" class="attach-uploader" :title="'上传者：' + f.uploadName">上传者：{{ f.uploadName }}</span>
           <el-button link type="primary" @click="previewAttach(f)">查看</el-button>
           <el-button link type="success" @click="downloadAttach(f)">下载</el-button>
-          <el-button link type="danger" @click="removeAttach(f)">删除</el-button>
+          <el-button v-if="f.uploadUser && f.uploadUser === currentUserCode" link type="danger" @click="removeAttach(f)">删除</el-button>
         </div>
         <el-empty v-if="attachFiles.length === 0" description="暂无文件" :image-size="60" />
       </div>
@@ -416,7 +417,12 @@ const openZoom = (title: string, model: any, field: string, readonly = false) =>
 // ============ 文件附件管理（上传到 fileUploadPath，与图片分开） ============
 // 文件名规则：{id}-{序号}#{原文件名}，列表展示 # 后的原文件名
 const attachDialog = reactive({ visible: false })
-const attachFiles = ref<any[]>([])  // [{ filename: 磁盘名, name: 原文件名, seq: 序号 }]
+const attachFiles = ref<any[]>([])  // [{ filename, name, seq, uploadUser, uploadName }]
+
+// 当前登录用户（编码/姓名）——上传时记录上传者、删除时校验本人
+const loginUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch (e) { return {} } })()
+const currentUserCode = localStorage.getItem('userCode') || ''
+const currentUserName = loginUser.realName || loginUser.username || localStorage.getItem('username') || ''
 
 const openAttachDialog = () => {
   if (!form.id) { ElMessage.warning('请先选择问题'); return }
@@ -450,6 +456,8 @@ const onAttachChange = async (file: any) => {
   fd.append('file', fileObj)
   fd.append('id', String(form.id))
   fd.append('tpnum', String(maxSeq + 1))
+  fd.append('uploadUser', currentUserCode)   // 记录上传者编码（权限过滤用）
+  fd.append('uploadName', currentUserName)   // 记录上传者姓名（列表显示用）
   try {
     await axios.post('/api/feedback/upload-file', fd)
     ElMessage.success(`「${fileObj.name}」上传成功`)
@@ -477,7 +485,7 @@ const removeAttach = async (f: any) => {
     await ElMessageBox.confirm(`确定删除文件「${f.name}」？`, '删除确认', { type: 'warning' })
   } catch { return }
   try {
-    await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`)
+    await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`, { data: { currentUser: currentUserCode } })
     ElMessage.success('已删除')
     loadAttachFiles()
   } catch (e) {
@@ -877,6 +885,7 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .attach-item:last-child { border-bottom: none; }
 .attach-item .el-icon { color: #1E5DA2; flex-shrink: 0; }
 .attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.attach-uploader { flex-shrink: 0; color: #909399; font-size: 12px; white-space: nowrap; }
 .attach-item .el-button { margin-left: 0; }
 
 /* 测试返回信息样式 */

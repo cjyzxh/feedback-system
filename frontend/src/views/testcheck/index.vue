@@ -98,10 +98,13 @@
                 placeholder="请录入测试结果..."
                 @dblclick="openZoom('测试结果', form, 'shouhoucs', false)"
                 />
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                  <TemplatePicker :lx="'测试结果'" @select="appendShouhoucs" />
+                <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
+                  <TemplatePicker class="tp-btn-wrap" :lx="'测试结果'" @select="appendShouhoucs" />
                   <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
                     <el-icon><FolderOpened /></el-icon> 上传附件
+                  </el-button>
+                  <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
+                    <el-icon><Picture /></el-icon> 查看图片
                   </el-button>
                 </div>
               </div>
@@ -157,9 +160,6 @@
             </el-button>
             <el-button class="morandi-btn morandi-red" @click="handleReset">
               <el-icon><RefreshLeft /></el-icon> 返回问题
-            </el-button>
-            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
-              <el-icon><Picture /></el-icon> 查看图片
             </el-button>
             <el-button class="morandi-btn morandi-red" @click="openFileDialog(form)" :disabled="!hasFiles">
               <el-icon><FolderOpened /></el-icon> 下载文件
@@ -781,6 +781,10 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .test-result-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
 /* 可双击放大的文本框：鼠标提示 */
 .zoomable { cursor: zoom-in; }
+/* 意见区按钮列：与问题处理页一致（选择模板/上传附件/查看图片同宽左对齐） */
+.opinion-btn-col { width: 117px; flex-shrink: 0; }
+.opinion-btn-col :deep(.tp-btn-wrap) { display: block; width: 100%; }
+.opinion-btn-col :deep(.el-button) { width: 100%; margin-left: 0 !important; }
 /* 文件附件列表 */
 .attach-tip { color: #606266; font-size: 13px; margin-bottom: 8px; }
 .attach-list { max-height: 380px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 6px; padding: 8px; }

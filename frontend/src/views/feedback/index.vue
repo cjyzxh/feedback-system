@@ -289,7 +289,7 @@
           <div @paste.capture.stop="handlePaste" class="upload-area">
             <el-upload ref="uploadRef" v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
               <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">拖拽或点击选择<br/>支持图片/视频/文档（单个≤50MB）<br/>Ctrl+V 粘贴图片或文件</div>
+              <div class="upload-text">拖拽或点击选择<br/>支持图片/视频/文档（单个≤50MB）<br/>图片/视频存图片库，文档存附件库，自动分类<br/>Ctrl+V 粘贴图片或文件</div>
               <template #file="{ file }">
                 <div class="file-card" @click="handlePreview(file)">
                   <img v-if="getAttachType(file.name) === 'image'" :src="file.url" class="file-thumb" alt="" />
@@ -412,6 +412,13 @@ const getAttachType = (name: string) => {
 const toAttachItem = (name: string) => {
   const url = `/api/feedback/uploads/${name}`
   return { url, type: getAttachType(name), name }
+}
+// 自动分类：图片/视频走图片渠道，其余文档走附件渠道
+const isMediaFile = (f: any) => {
+  const t = (f?.type || '').toLowerCase()
+  if (t.startsWith('image/') || t.startsWith('video/')) return true
+  const n = (f?.name || '').toLowerCase()
+  return /\.(jpg|jpeg|png|gif|bmp|webp|svg|ico|mp4|mov|avi|mkv|webm|flv|m4v|wmv|3gp)$/.test(n)
 }
 // 当前正在预览的附件（用于模板里按类型渲染）
 const currentItem = computed(() => previewItems.value[currentIndex.value] || { url: '', type: 'image', name: '' })
@@ -1062,10 +1069,26 @@ const handleEdit = async (row: any) => {
       // 兼容两种格式：字符串数组 ['11-1.png'] 或对象数组 [{filename: '11-1.png', url: '...'}]
       uploadFileList.value = imgs.map((img: any) => {
         const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return { name, url: `/api/feedback/uploads/${name}`, status: 'success' }
+        return { name, url: `/api/feedback/uploads/${name}`, status: 'success', channel: 'image' }
       })
     }
   } catch (err) { console.error('加载图片失败:', err) }
+  // 同时加载附件渠道文件（文档等，zd_fjxx 表）
+  try {
+    const fRes = await axios.get(`/api/feedback/files/${row.id}`)
+    const fList = fRes.data
+    if (fList && fList.length > 0) {
+      const attachItems = fList.map((f: any) => ({
+        name: f.name || f.filename,
+        filename: f.filename,
+        url: `/api/feedback/file-uploads/${encodeURIComponent(f.filename || f.name)}`,
+        status: 'success',
+        channel: 'file',
+        seq: f.seq || 0
+      }))
+      uploadFileList.value = [...uploadFileList.value, ...attachItems]
+    }
+  } catch (err) { console.error('加载文件附件失败:', err) }
   if (form.mokuai) {
     try { const res = await axios.get(`/api/dict/forms?module=${encodeURIComponent(form.mokuai)}`); forms.value = res.data.data || [] }
     catch (err) { console.error('加载窗体失败:', err) }
@@ -1127,9 +1150,14 @@ const handleRemove = async (file: any, fileList: any) => {
   try {
     await ElMessageBox.confirm('确定要删除当前附件吗？', '提示', { type: 'warning' })
     if (file.url && file.name) {
-      const filename = file.name || file.url.split('/').pop()
+      const filename = file.filename || file.name || file.url.split('/').pop()
       if (filename) {
-        await axios.delete(`/api/feedback/image/${filename}`)
+        if (file.channel === 'file') {
+          // 附件渠道：走附件删除接口，仅上传者本人可删
+          await axios.delete(`/api/feedback/file/${encodeURIComponent(filename)}`, { data: { currentUser: currentUserCode.value } })
+        } else {
+          await axios.delete(`/api/feedback/image/${filename}`)
+        }
       }
     }
     const idx = uploadFileList.value.findIndex(f => f.url === file.url)
@@ -1147,6 +1175,11 @@ const handleFileChange = (file: any) => {
     ElMessage.warning(`文件「${raw.name}」超过 50MB，不能上传`)
     const idx = uploadFileList.value.findIndex(f => f.uid === file.uid)
     if (idx > -1) uploadFileList.value.splice(idx, 1)
+  }
+  // 自动分类：图片/视频 -> 图片渠道，其它文档 -> 附件渠道
+  if (raw) {
+    const item = uploadFileList.value.find(f => f.uid === file.uid)
+    if (item) item.channel = isMediaFile(raw) ? 'image' : 'file'
   }
 }
 
@@ -1172,7 +1205,7 @@ const handlePaste = (event: ClipboardEvent) => {
       continue
     }
     const url = URL.createObjectURL(f)
-    uploadFileList.value.push({ name: f.name, url, raw: f, status: 'ready' })
+    uploadFileList.value.push({ name: f.name, url, raw: f, status: 'ready', channel: isMediaFile(f) ? 'image' : 'file' })
   }
 }
 
@@ -1254,21 +1287,27 @@ const handleSubmit = async () => {
     // 更健壮的文件过滤：支持 raw、rawFile 或 File 对象
     const rawFiles = uploadFileList.value.filter(f => f.raw || f.rawFile || (f instanceof File))
     const existingFiles = uploadFileList.value.filter(f => !(f.raw || f.rawFile || (f instanceof File)))
-    console.log('需要上传的图片数:', rawFiles.length, '已存在的图片数:', existingFiles.length)
-    
-    let maxTpnum = 0
+    // 自动分类：图片/视频 -> 图片渠道(upload)，其它文档 -> 附件渠道(upload-file)
+    const mediaFiles = rawFiles.filter(f => isMediaFile(f.raw || f.rawFile || f))
+    const docFiles = rawFiles.filter(f => !isMediaFile(f.raw || f.rawFile || f))
+    console.log('需要上传文件数:', rawFiles.length, '（图片/视频:', mediaFiles.length, '文档:', docFiles.length, '）已存在:', existingFiles.length)
+
+    let maxTpnum = 0  // 图片序号（{id}-{n}.{ext}）
+    let maxSeq = 0    // 附件序号（{id}-{n}#{原名} / zd_fjxx.seq）
     existingFiles.forEach(f => {
-      if (f.name) {
+      if (f.channel !== 'file' && f.name) {
         const match = f.name.match(/^\d+-(\d+)\./)
         if (match) {
           const num = parseInt(match[1])
           if (num > maxTpnum) maxTpnum = num
         }
       }
+      if (f.seq && f.seq > maxSeq) maxSeq = f.seq
     })
-    for (let i = 0; i < rawFiles.length; i++) {
+    // 1) 图片/视频 -> 图片渠道（upload，视频自动转码）
+    for (let i = 0; i < mediaFiles.length; i++) {
       const formData = new FormData()
-      const fileObj = rawFiles[i].raw || rawFiles[i].rawFile || rawFiles[i]
+      const fileObj = mediaFiles[i].raw || mediaFiles[i].rawFile || mediaFiles[i]
       // 上传前再次校验大小（选择时已校验，这里兜底）
       if (fileObj.size > 50 * 1024 * 1024) {
         ElMessage.warning(`文件「${fileObj.name}」超过 50MB，已跳过上传`)
@@ -1279,11 +1318,31 @@ const handleSubmit = async () => {
       formData.append('yiyuanmc', form.yiyuanmc || '')
       formData.append('tpnum', String(maxTpnum + i + 1))
       try {
-        console.log('上传附件:', i + 1, '/', rawFiles.length, '文件名:', fileObj.name)
-        const uploadRes = await axios.post('/api/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-        console.log('附件上传成功:', uploadRes.data)
-      } catch (err) { 
-        console.error('上传附件失败:', err) 
+        console.log('上传图片/视频:', i + 1, '/', mediaFiles.length, '文件名:', fileObj.name)
+        await axios.post('/api/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } catch (err) {
+        console.error('上传图片/视频失败:', err)
+        ElMessage.error('图片/视频上传失败: ' + (err as any)?.message)
+      }
+    }
+    // 2) 文档等 -> 附件渠道（upload-file，写入 zd_fjxx 并记录上传者）
+    for (let i = 0; i < docFiles.length; i++) {
+      const formData = new FormData()
+      const fileObj = docFiles[i].raw || docFiles[i].rawFile || docFiles[i]
+      if (fileObj.size > 50 * 1024 * 1024) {
+        ElMessage.warning(`文件「${fileObj.name}」超过 50MB，已跳过上传`)
+        continue
+      }
+      formData.append('file', fileObj)
+      formData.append('id', String(idToUse))
+      formData.append('tpnum', String(maxSeq + i + 1))
+      formData.append('uploadUser', currentUserCode.value)
+      formData.append('uploadName', currentUserName.value)
+      try {
+        console.log('上传附件:', i + 1, '/', docFiles.length, '文件名:', fileObj.name)
+        await axios.post('/api/feedback/upload-file', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } catch (err) {
+        console.error('附件上传失败:', err)
         ElMessage.error('附件上传失败: ' + (err as any)?.message)
       }
     }

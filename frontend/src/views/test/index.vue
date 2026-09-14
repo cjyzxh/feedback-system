@@ -138,7 +138,7 @@
           <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
         </div>
       </template>
-      <div class="attach-tip">已上传文件（图片/视频/文档，单个≤50MB）：</div>
+      <div class="attach-tip">已上传文件（视频/文档，单个≤50MB；图片请用"查看图片"查看）：</div>
       <div class="attach-list">
         <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
           <el-icon><Document /></el-icon>
@@ -260,7 +260,8 @@
     <el-dialog v-model="previewVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
         <div class="carousel-wrapper" v-if="previewImages.length > 0">
-          <img :src="previewImages[currentIndex]" class="carousel-image" @click="openImageViewer" style="cursor: zoom-in;" />
+          <img v-if="previewImages[currentIndex]?.type === 'image'" :src="previewImages[currentIndex].url" class="carousel-image" @click="openImageViewer" style="cursor: zoom-in;" />
+          <video v-else :src="previewImages[currentIndex].url" class="carousel-image" controls autoplay muted></video>
         </div>
         <el-empty v-else description="暂无图片" />
         <div class="carousel-controls" v-if="previewImages.length > 1">
@@ -269,7 +270,7 @@
           <el-button circle :disabled="currentIndex === previewImages.length - 1" @click="currentIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="previewImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button type="primary" @click="openImageViewer">
+          <el-button v-if="previewImages[currentIndex]?.type === 'image'" type="primary" @click="openImageViewer">
             <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
           <el-button type="info" plain @click="previewVisible = false">
@@ -285,8 +286,8 @@
     <!-- 全屏图片查看器（支持鼠标滚轮缩放、拖拽、全屏） -->
     <el-image-viewer
       v-if="imageViewerVisible"
-      :url-list="previewImages"
-      :initial-index="currentIndex"
+      :url-list="previewImageUrls"
+      :initial-index="imageViewerIndex"
       :hide-on-click-modal="true"
       :z-index="9999"
       @close="imageViewerVisible = false"
@@ -430,12 +431,21 @@ const openAttachDialog = () => {
   loadAttachFiles()
 }
 
-// 加载该问题的文件附件列表
+// 加载附件列表：附件渠道(zd_fjxx)全部文件 + 图片渠道(uploads)中的非图片文件（视频/文档）
 const loadAttachFiles = async () => {
   if (!form.id) { attachFiles.value = []; return }
   try {
-    const res = await axios.get(`/api/feedback/files/${form.id}`)
-    attachFiles.value = res.data || []
+    const [fRes, iRes] = await Promise.all([
+      axios.get(`/api/feedback/files/${form.id}`),
+      axios.get(`/api/feedback/images/${form.id}`)
+    ])
+    const fileList = (fRes.data || []).map((f: any) => ({ ...f, source: 'file' }))
+    const imgList = (iRes.data || []).map((n: any) => {
+      const name = typeof n === 'string' ? n : (n.filename || n.name)
+      if (getMediaType(name) === 'image') return null  // 图片走"查看图片"，不在此列
+      return { filename: name, name, seq: 0, uploadUser: form.shishiryBM || '', uploadName: form.shishiry || '', source: 'image', url: `/api/feedback/uploads/${name}` }
+    }).filter(Boolean)
+    attachFiles.value = [...fileList, ...imgList]
   } catch (e) {
     console.error('加载文件附件失败:', e)
     attachFiles.value = []
@@ -470,12 +480,14 @@ const onAttachChange = async (file: any) => {
 
 // 新窗口预览/打开（图片/视频/可预览文件直接显示，Office 等提示下载）
 const previewAttach = (f: any) => {
-  window.open(`/api/feedback/file-uploads/${encodeURIComponent(f.filename)}`, '_blank')
+  const base = f.source === 'image' ? '/api/feedback/uploads/' : '/api/feedback/file-uploads/'
+  window.open(base + encodeURIComponent(f.filename), '_blank')
 }
 
 // 下载文件（弹出"另存为"让用户选择保存位置）
 const downloadAttach = async (f: any) => {
-  const ok = await downloadWithSaveDialog(`/api/feedback/file-uploads/${encodeURIComponent(f.filename)}`, f.name)
+  const base = f.source === 'image' ? '/api/feedback/uploads/' : '/api/feedback/file-uploads/'
+  const ok = await downloadWithSaveDialog(base + encodeURIComponent(f.filename), f.name)
   if (ok === true) ElMessage.success('文件已保存')
 }
 
@@ -647,16 +659,26 @@ const confirmAssignFollower = async () => {
 }
 
 
-// ============ 图片查看 ============
-const previewImages = ref<string[]>([])
+// ============ 图片/视频查看 ============
+// 媒体类型：按扩展名判断（图片/视频），其它不进查看器
+const getMediaType = (name: string) => {
+  const n = (name || '').toLowerCase()
+  if (/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/.test(n)) return 'image'
+  if (/\.(mp4|avi|mov|wmv|mkv|flv|webm|m4v)$/.test(n)) return 'video'
+  return 'other'
+}
+const previewImages = ref<any[]>([])  // 轮播项 {url, type}
+const previewImageUrls = computed(() => previewImages.value.filter(i => i.type === 'image').map(i => i.url))
+const imageViewerIndex = ref(0)       // 全屏查看器初始下标（图片列表内）
 const currentIndex = ref(0)
 const imageViewerVisible = ref(false)  // 全屏图片查看器状态
 
-// 打开全屏图片查看器（支持鼠标滚轮缩放、拖拽、全屏）
+// 打开全屏图片查看器（仅图片可全屏；视频在轮播内直接播放）
 const openImageViewer = () => {
-  if (previewImages.value.length > 0) {
-    imageViewerVisible.value = true
-  }
+  const item = previewImages.value[currentIndex.value]
+  if (!item || item.type !== 'image') return
+  imageViewerIndex.value = Math.max(0, previewImageUrls.value.indexOf(item.url))
+  imageViewerVisible.value = true
 }
 
 const viewImages = async (row: any) => {
@@ -664,7 +686,10 @@ const viewImages = async (row: any) => {
     const res = await axios.get("/api/feedback/images/" + row.id)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewImages.value = imgs.map((name: string) => "/api/feedback/uploads/" + name)
+      previewImages.value = imgs.map((name: any) => {
+        const n = typeof name === 'string' ? name : (name.filename || name.name)
+        return { url: "/api/feedback/uploads/" + n, type: getMediaType(n) }
+      })
       currentIndex.value = 0
       previewVisible.value = true
     } else { ElMessage.warning("暂无图片") }

@@ -154,7 +154,8 @@
     <el-dialog v-model="imagesDialogVisible" title="问题截图" width="960px" destroy-on-close class="preview-dialog">
       <div class="carousel-container">
         <div class="carousel-wrapper" v-if="attachImages.length > 0">
-          <img :src="attachImages[viewerIndex].url" class="carousel-image" @click="openFullImage" style="cursor: zoom-in;" />
+          <img v-if="attachImages[viewerIndex].type === 'image'" :src="attachImages[viewerIndex].url" class="carousel-image" @click="openFullImage" style="cursor: zoom-in;" />
+          <video v-else :src="attachImages[viewerIndex].url" class="carousel-image" controls autoplay muted></video>
         </div>
         <el-empty v-else description="暂无图片" />
         <div class="carousel-controls" v-if="attachImages.length > 1">
@@ -163,7 +164,7 @@
           <el-button circle :disabled="viewerIndex === attachImages.length - 1" @click="viewerIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="attachImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button type="primary" @click="openFullImage">
+          <el-button v-if="attachImages[viewerIndex]?.type === 'image'" type="primary" @click="openFullImage">
             <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
           <el-button type="info" plain @click="imagesDialogVisible = false">
@@ -174,7 +175,7 @@
     </el-dialog>
 
     <!-- 全屏图片查看器 -->
-    <el-image-viewer v-if="viewerVisible" :url-list="imageUrlList" :initial-index="viewerIndex" @close="viewerVisible = false" />
+    <el-image-viewer v-if="viewerVisible" :url-list="imageUrlList" :initial-index="imageViewerIndex" @close="viewerVisible = false" />
 
     <!-- 下载文件弹窗：列出全部文件（新增页视频/文档 + 处理页上传附件），查看/下载按钮跟在后面 -->
     <el-dialog v-model="filesDialogVisible" width="680px" top="12vh" :show-close="false">
@@ -215,7 +216,8 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 const form = reactive<any>({})
 const attachItems = ref<any[]>([])  // 附件列表（图片/视频/文件）
 const viewerVisible = ref(false)    // 全屏图片查看器
-const viewerIndex = ref(0)
+const viewerIndex = ref(0)          // 媒体轮播当前项（图片+视频）
+const imageViewerIndex = ref(0)     // 全屏查看器初始下标（仅图片列表内）
 const syq = ref('-')                // 售后到期日（按医院名称查 xt_ConfigServer.SYQ）
 
 const handleClose = () => emit('update:modelValue', false)
@@ -266,11 +268,11 @@ const toAttachItem = (name: string) => {
 }
 const fileAttachItems = ref<any[]>([])  // 问题处理页上传的文件附件（fileUploadPath 目录）
 
-// 问题附件区拆成两类：图片保持小图预览，视频/文件走列表
-const attachImages = computed(() => attachItems.value.filter(i => i.type === 'image'))
+// 问题附件区拆成两类：图片+视频走"查看图片"（媒体查看器），其它文档走"下载文件"
+const attachImages = computed(() => attachItems.value.filter(i => i.type === 'image' || i.type === 'video'))
 const attachFiles = computed(() => attachItems.value.filter(i => i.type !== 'image'))
 
-// 查看页附件操作按钮状态：查看图片 / 下载文件
+// 查看页附件操作按钮状态：查看图片（含视频） / 下载文件
 const hasImages = computed(() => attachImages.value.length > 0)
 const allFiles = computed(() => [...attachFiles.value, ...fileAttachItems.value])
 const hasFiles = computed(() => allFiles.value.length > 0)
@@ -284,8 +286,11 @@ const openImagesViewer = () => {
   imagesDialogVisible.value = true
 }
 
-// 问题截图窗体里的"查看原图"：全屏查看器
+// 问题截图窗体里的"查看原图"：仅图片可全屏（视频直接播放）
 const openFullImage = () => {
+  const item = attachImages.value[viewerIndex.value]
+  if (!item || item.type !== 'image') return
+  imageViewerIndex.value = Math.max(0, imageUrlList.value.indexOf(item.url))
   viewerVisible.value = true
 }
 const loadDetail = async () => {
@@ -313,7 +318,11 @@ const loadDetail = async () => {
       // 兼容字符串数组和对象数组，统一转成附件项（图片/视频/文件）
       attachItems.value = imgs.map((img: any) => {
         const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return toAttachItem(name)
+        const item = toAttachItem(name)
+        // 新增页上传的附件：上传者默认取问题反馈人（shishiry）
+        item.uploadName = form.shishiry || ''
+        item.uploadUser = form.shishiryBM || ''
+        return item
       })
     }
   } catch (err) { console.error('加载附件失败:', err) }
@@ -324,7 +333,7 @@ const loadDetail = async () => {
     if (fList && fList.length > 0) {
       fileAttachItems.value = fList.map((f: any) => {
         const name = f.name || f.filename
-        return { url: `/api/feedback/file-uploads/${encodeURIComponent(f.filename || name)}`, type: getAttachType(name), name }
+        return { url: `/api/feedback/file-uploads/${encodeURIComponent(f.filename || name)}`, type: getAttachType(name), name, uploadName: f.uploadName || '', uploadUser: f.uploadUser || '' }
       })
     }
   } catch (err) { console.error('加载文件附件失败:', err) }

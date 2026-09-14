@@ -179,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive, watch, nextTick, h } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import { ChatDotRound, Tools, CircleCheck, Setting, DataAnalysis, User, UserFilled, Position, Grid, Document, Key, Bell, TrendCharts, Fold, Expand } from '@element-plus/icons-vue'
@@ -564,20 +564,44 @@ const checkNewProblems = async () => {
       '返回': { page: '/test', type: 'error' }          // 测试返回：去处理页重新处理
     }
 
+    // 按类别分组：一个类别弹一个通知，内容列表限制高度滚动显示
+    const groups = new Map<string, any[]>()
     newList.forEach((t: any) => {
-      const cfg = tzConfig[t.lx] || { page: '/feedback', type: 'info' }
+      const key = t.lx || '消息'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(t)
+    })
+    const MAX_SHOW = 6  // 弹窗内最多显示条数，超出提示"等N条"
+
+    groups.forEach((items, lx) => {
+      const cfg = tzConfig[lx] || { page: '/feedback', type: 'info' }
+      const ids = items.map((t: any) => t.id)
       const onClick = () => {
-        axios.post('/api/feedback/reminder/read', { id: t.id }).catch(() => {})
+        // 点击弹窗：该类别全部标记已读并跳转对应页面
+        ids.forEach((id: number) => axios.post('/api/feedback/reminder/read', { id }).catch(() => {}))
         router.push(cfg.page)
         stopTitleBlink()
       }
+      const showItems = items.slice(0, MAX_SHOW)
+      const moreCount = items.length - showItems.length
+
       if (document.hidden) {
-        sendSystemNotification('【' + (t.lx || '消息') + '提醒】', t.nr || '', onClick)
+        // 浏览器最小化/切走：系统通知每类别一条，正文汇总
+        const body = showItems.map((t: any) => t.nr).join('\n') + (moreCount > 0 ? `\n…等${items.length}条` : '')
+        sendSystemNotification(`【${lx}提醒】(${items.length}条)`, body, onClick)
         startTitleBlink('有新消息')
       } else {
+        // 页面内通知：VNode 渲染列表，容器限高滚动，避免弹窗无限高
+        const lines = showItems.map((t: any) =>
+          h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, t.nr || '')
+        )
+        if (moreCount > 0) {
+          lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${items.length}条，点击查看全部`))
+        }
+        const messageVNode = h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, lines)
         const notification = ElNotification({
-          title: '【' + (t.lx || '消息') + '提醒】',
-          message: t.nr || '',
+          title: `【${lx}提醒】(${items.length}条)`,
+          message: messageVNode,
           type: cfg.type,
           duration: 15000,
           position: 'bottom-right',

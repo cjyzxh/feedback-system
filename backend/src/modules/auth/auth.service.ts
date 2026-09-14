@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -105,7 +106,10 @@ export class AuthService {
     
     // 4. 生成 JWT Token（有效期24小时）
     // Token 包含用户信息，前端会存储在 localStorage 中
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    // 会话标识 sessionId：每次登录生成新值写入用户表，实现"同账号只能一处登录"（新登录顶掉旧登录）
+    const sessionId = randomUUID();
+    await this.userService.updateSessionId(user.id, sessionId);
+    const payload = { sub: user.id, username: user.username, role: user.role, sessionId };
     const token = this.jwtService.sign(payload);
     
     // 5. 返回用户信息（不包含密码字段）
@@ -254,7 +258,10 @@ export class AuthService {
     this.codeStore.delete(phone);
     
     // 7. 生成 JWT Token（手机号登录有效期为6小时，与前端约定一致）
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    // 同样带会话标识 sessionId，与账号登录互斥（同账号任何方式登录都顶掉旧的）
+    const sessionId = randomUUID();
+    await this.userService.updateSessionId(user.id, sessionId);
+    const payload = { sub: user.id, username: user.username, role: user.role, sessionId };
     const token = this.jwtService.sign(payload, { expiresIn: '6h' });
     
     // 8. 返回用户信息（不含密码）

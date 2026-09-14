@@ -23,13 +23,15 @@ instance.interceptors.request.use((config) => {
 // ========== 响应拦截器 ==========
 // 统一处理响应错误
 instance.interceptors.response.use((response) => response, (error) => {
-  // 如果是 401 未授权（Token过期或无效），并且当前不在登录页
+  // 如果是 401 未授权（Token过期/无效/被顶下线），并且当前不在登录页
   if (error.response?.status === 401 && router.currentRoute.value.path !== '/login') {
+    // 区分"被顶下线"和"登录过期"
+    const kicked = error.response?.data?.code === 'SESSION_KICKED'
     // 清除本地存储的 token 和用户信息
     clearToken()
     localStorage.removeItem('user')
-    // 提示用户重新登录
-    ElMessage.warning('登录已过期，请重新登录')
+    // 提示用户（被顶下线 / 正常过期）
+    ElMessage.warning(kicked ? '您的账号已在其他设备登录，已强制下线' : '登录已过期，请重新登录')
     // 跳转到登录页
     router.push('/login')
   }
@@ -52,7 +54,9 @@ export const authApi = {
   // 退出登录
   logout(): Promise<any> { return api.post('/auth/logout') },
   // 获取当前登录用户信息
-  getUserInfo(): Promise<any> { return api.get('/auth/userInfo') }
+  getUserInfo(): Promise<any> { return api.get('/auth/userInfo') },
+  // 会话有效性校验（登录互斥轮询用：被顶下线时返回 401）
+  sessionCheck(): Promise<any> { return api.get('/auth/session-check') }
 }
 
 // ========== 用户管理 API（对应后端 /api/user 接口） ==========

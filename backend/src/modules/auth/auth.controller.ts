@@ -121,4 +121,20 @@ export class AuthController {
       data: null,
     };
   }
+
+  // ======================================================
+  // 会话有效性轻量校验（前端每 30 秒轮询一次，用于登录互斥）
+  // 地址：GET /api/auth/session-check
+  // 说明：挂了 JwtAuthGuard，token 无效/被顶下线时返回 401（code=SESSION_KICKED），
+  //       有效时返回 { valid: true }，前端据此判断是否需要登出
+  // ======================================================
+  @UseGuards(JwtAuthGuard)
+  @Get('session-check')
+  async sessionCheck() {
+    return {
+      code: 200,
+      message: 'ok',
+      data: { valid: true },
+    };
+  }
 }

@@ -64,7 +64,7 @@ export class UserService {
   async findById(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'isShishi', 'isYanfa', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'isShishi', 'isYanfa', 'status', 'sessionId', 'createTime', 'updateTime'],
     });
     
     if (!user) {
@@ -72,6 +72,20 @@ export class UserService {
     }
     
     return user;
+  }
+
+  // 查询用户当前会话标识（登录互斥校验用：只查 sessionId 一列）
+  async findSession(id: number): Promise<string | null> {
+    const row = await this.userRepository.findOne({
+      where: { id },
+      select: ['id', 'sessionId'],
+    });
+    return row ? row.sessionId : null;
+  }
+
+  // 更新用户会话标识（每次登录生成新的 sessionId 写入，顶掉旧登录）
+  async updateSessionId(id: number, sessionId: string): Promise<void> {
+    await this.userRepository.update(id, { sessionId });
   }
 
   // 更新用户

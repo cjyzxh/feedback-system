@@ -800,11 +800,26 @@ const logout = () => {
   router.push('/login')
 }
 
+// ========== 登录互斥：30秒轮询 + 页面聚焦立即校验 ==========
+// 会话被顶下线时 session-check 返回 401（code=SESSION_KICKED），由 api 拦截器统一清登录态并跳登录页
+let sessionTimer: number | undefined = undefined
+const checkSession = () => {
+  authApi.sessionCheck().catch(() => { /* 401 由拦截器处理；网络错误忽略，不登出 */ })
+}
+const startSessionPolling = () => {
+  checkSession()
+  sessionTimer = window.setInterval(checkSession, 30 * 1000)
+}
+
 onMounted(() => {
   // 请求浏览器通知权限（用于操作系统级通知，浏览器最小化也能看到）
   requestNotificationPermission()
   // 页面获得焦点时停止标题闪烁
   window.addEventListener('focus', handlePageFocus)
+  // 页面切回前台时立即校验会话（被顶下线马上登出）
+  window.addEventListener('focus', checkSession)
+  // 启动会话轮询（登录互斥，30秒一次）
+  startSessionPolling()
   // 启动消息提醒
   startReminder()
   // 应用系统全局字体字号（其它设置里配置）
@@ -823,6 +838,9 @@ watch(() => route.path, () => {
 onUnmounted(() => {
   // 移除页面焦点事件监听
   window.removeEventListener('focus', handlePageFocus)
+  window.removeEventListener('focus', checkSession)
+  // 停止会话轮询
+  if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = undefined }
   // 停止标题闪烁
   stopTitleBlink()
   // 停止消息提醒

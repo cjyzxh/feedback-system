@@ -53,6 +53,9 @@ export class User {
   @Column({ type: 'int', default: 1 })
   status: number; // 0: 禁用, 1: 正常
 
+  @Column({ length: 64, nullable: true })
+  sessionId: string; // 当前登录会话标识（登录互斥：新登录顶掉旧登录）
+
   @CreateDateColumn()
   createTime: Date;
 

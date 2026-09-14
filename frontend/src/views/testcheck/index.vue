@@ -180,8 +180,8 @@
           <template #default="{ row }">{{ row.wentilx || '其它问题' }}</template>
         </el-table-column>
         <el-table-column prop="yiyuanmc" label="医院名称" min-width="50" />
-        <el-table-column prop="mokuai" label="模块" width="90" />
-        <el-table-column prop="chuangtimc" label="窗体" width="90" />
+        <el-table-column prop="mokuai" label="模块" width="110" />
+        <el-table-column prop="chuangtimc" label="窗体" width="110" />
         <el-table-column prop="xggcs" label="工程师" width="70" />
         <el-table-column prop="shishiry" label="跟进人" width="70" />
         <el-table-column prop="wentism" label="问题说明" min-width="40" />

@@ -87,8 +87,8 @@
         </el-table-column>
         <el-table-column prop="yiyuanmc" label="医院名称" width="150" />
         <el-table-column prop="shishiry" label="实施人员" width="90" />
-        <el-table-column prop="mokuai" label="模块" width="100" />
-        <el-table-column prop="chuangtimc" label="窗体" width="100" />
+        <el-table-column prop="mokuai" label="模块" width="110" />
+        <el-table-column prop="chuangtimc" label="窗体" width="110" />
         <el-table-column prop="xggcs" label="工程师" width="80" />
         <el-table-column prop="szcsgcs" label="反馈人" width="160" />
         <el-table-column prop="FanKuiQD" label="反馈渠道" width="100" />

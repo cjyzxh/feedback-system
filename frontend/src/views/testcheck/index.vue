@@ -127,7 +127,7 @@
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span><el-icon><List /></el-icon> 待测试问题列表</span>
+          <span><el-icon><List /></el-icon> 问题列表</span>
           <div class="header-filters">
             <el-date-picker
               v-model="startDate"
@@ -148,7 +148,7 @@
               @change="loadList"
               style="width: 140px"
             />
-            <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">查询所有待测试问题</el-checkbox>
+            <el-checkbox v-if="canViewOthers" v-model="viewAll" @change="loadList">全部问题</el-checkbox>
             <el-button class="morandi-btn morandi-blue" size="default" @click="handleRefresh"><el-icon><Refresh /></el-icon> 刷新列表</el-button>
           </div>
           <div class="header-actions">

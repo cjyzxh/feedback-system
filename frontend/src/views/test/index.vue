@@ -102,10 +102,13 @@
               <div class="info-label big required">处理意见</div>
               <div style="display:flex; align-items:flex-start; gap:6px; width:100%">
                 <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." @dblclick="openZoom('处理意见', form, 'gongcscs', false)" />
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                  <TemplatePicker :lx="'处理意见'" @select="appendGongcscs" />
+                <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
+                  <TemplatePicker class="tp-btn-wrap" :lx="'处理意见'" @select="appendGongcscs" />
                   <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
                     <el-icon><FolderOpened /></el-icon> 上传附件
+                  </el-button>
+                  <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
+                    <el-icon><Picture /></el-icon> 查看图片
                   </el-button>
                 </div>
               </div>
@@ -187,9 +190,6 @@
             </el-button>
             <el-button class="morandi-btn morandi-blue" @click="handleAssignFollower"><el-icon><User /></el-icon> 分配跟进</el-button>
             <el-button class="morandi-btn morandi-blue" @click="handleAssign"><el-icon><User /></el-icon> 分配修改</el-button>
-            <el-button class="morandi-btn morandi-yellow" @click="viewImages(form)" :disabled="!hasImages">
-              <el-icon><Picture /></el-icon> 查看图片
-            </el-button>
             <el-button class="morandi-btn morandi-red" @click="handleDiscuss"><el-icon><ChatDotRound /></el-icon> 待讨论</el-button>
           </div>
         </div>
@@ -865,6 +865,10 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .opinion-input :deep(.el-textarea) { flex: 1; }
 .opinion-input :deep(.el-textarea__inner) { height: 138px !important; min-height: 138px !important; max-height: 138px !important; overflow-y: auto; resize: none; }
 /* 可双击放大的文本框：鼠标提示 */
+
+.opinion-btn-col { width: 117px; flex-shrink: 0; }
+.opinion-btn-col :deep(.tp-btn-wrap) { display: block; width: 100%; }
+.opinion-btn-col :deep(.el-button) { width: 100%; margin-left: 0 !important; }
 .zoomable { cursor: zoom-in; }
 /* 附件管理弹窗 */
 .attach-tip { color: #606266; font-size: 13px; margin-bottom: 8px; }

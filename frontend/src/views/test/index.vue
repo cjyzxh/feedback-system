@@ -702,8 +702,8 @@ const handleSubmit = async () => {
     form.gongcscs = ''
     selected.value = null
     hasImages.value = false
-    // 重置表单
-    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null })
+    // 重置表单（统一用 emptyForm 模板，含测试说明/录入时间，避免残留上一问题数据）
+    Object.assign(form, emptyForm)
     loadList()
   } catch (err) { ElMessage.error('处理失败') }
   finally { submitting.value = false }

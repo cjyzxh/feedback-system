@@ -359,6 +359,11 @@ const form = reactive({
   id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any
 })
 
+// 空表单模板：所有清空操作统一用同一套字段，避免遗漏导致残留
+const emptyForm = {
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null, cssj: null, fanhuisj: null, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
+}
+
 // ============ 文本框双击放大查看/编辑 ============
 const zoomState = reactive({ visible: false, title: '', model: null as any, field: '', readonly: false })
 const openZoom = (title: string, model: any, field: string, readonly = false) => {
@@ -403,7 +408,7 @@ const loadList = async () => {
 // 刷新：清空上方表单（只清界面文本，不动数据库）并重新加载列表
 const handleRefresh = () => {
   selected.value = null
-  Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null })
+  Object.assign(form, emptyForm)
   hasImages.value = false
   loadList()
 }
@@ -605,7 +610,9 @@ const handleConfirm = async () => {
     
     await axios.put('/api/feedback/' + form.id, updateData)
     ElMessage.success('测试确认成功')
-    handleReset()  // 清空表单
+    // 直接清空表单（不再调用 handleReset，避免误入"返回问题"逻辑）
+    selected.value = null
+    Object.assign(form, emptyForm)
     loadList()
   } catch (err) { ElMessage.error('提交失败') }
   finally { submitting.value = false }
@@ -618,7 +625,7 @@ const handleReset = async () => {
   if (!form.id) {
     // 没有选中记录：本函数兼当"清空表单"用（确认测试成功后也调它）
     selected.value = null
-    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null })
+    Object.assign(form, emptyForm)
     return
   }
   
@@ -662,7 +669,7 @@ const handleReset = async () => {
     await axios.put('/api/feedback/' + form.id, updateData)
     ElMessage.success('已退回工程师重新处理')
     selected.value = null
-    Object.assign(form, { id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null })
+    Object.assign(form, emptyForm)
     loadList()
   } catch (err) { ElMessage.error('操作失败') }
   finally { submitting.value = false }

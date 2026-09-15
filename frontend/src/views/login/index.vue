@@ -119,7 +119,7 @@
         
         <el-form-item>
           <div class="button-group">
-            <button type="button" class="btn-gradient btn-login" @click="handleLogin">
+            <button type="button" class="btn-gradient btn-login" :disabled="loading" @click="handleLogin">
               <span v-if="loading" class="loading-text">登录中...</span>
               <span v-else>登 录</span>
             </button>
@@ -361,6 +361,8 @@ const sendCode = async () => {
 }
 
 const handleLogin = async () => {
+  // 防重复提交：登录请求进行中时，忽略再次点击/回车，避免并发登录互相顶掉 session
+  if (loading.value) return
   if (loginType.value === 'account') {
     if (!loginForm.username || !loginForm.password) {
       ElMessage.warning('请输入用户名和密码')

@@ -20,9 +20,13 @@ import { Role } from '../role/role.entity';        // 角色表（查权限标�
     SmsModule,    // 引入短信模块，AuthService 里才能用 SmsService
     TypeOrmModule.forFeature([Role]), // 把角色实体注册进本模块（可查 role 表）
     PassportModule.register({ defaultStrategy: 'jwt' }), // 指定默认认证策略
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'u-rFB9tILwn1QcbXWk3-BRk4h6uHlo3TpfU0Y4c0MrXBPwhypQqaao0JuaYC78CB', // 签发密钥
-      signOptions: { expiresIn: '24h' }, // 账号登录 token 默认 24 小时过期（手机号登录在 service 里单独覆盖为 6h）
+    // 用 registerAsync 延迟求值：secret 在应用初始化时（.env 已加载后）读取，
+    // 与 JwtStrategy 的 secretOrKey 保持一致，避免"签发用硬编码、校验用 .env"不一致
+    JwtModule.registerAsync({
+      useFactory: () => ({
+        secret: process.env.JWT_SECRET || 'u-rFB9tILwn1QcbXWk3-BRk4h6uHlo3TpfU0Y4c0MrXBPwhypQqaao0JuaYC78CB', // 签发密钥
+        signOptions: { expiresIn: '24h' }, // 账号登录 token 默认 24 小时过期（手机号登录在 service 里单独覆盖为 6h）
+      }),
     }),
   ],
   controllers: [AuthController],  // 注册接口（路由）

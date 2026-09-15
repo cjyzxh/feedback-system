@@ -21,7 +21,7 @@ import { Role } from '../role/role.entity';        // 角色表（查权限标�
     TypeOrmModule.forFeature([Role]), // 把角色实体注册进本模块（可查 role 表）
     PassportModule.register({ defaultStrategy: 'jwt' }), // 指定默认认证策略
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'feedback-system-secret-key', // 签发密钥
+      secret: process.env.JWT_SECRET || 'u-rFB9tILwn1QcbXWk3-BRk4h6uHlo3TpfU0Y4c0MrXBPwhypQqaao0JuaYC78CB', // 签发密钥
       signOptions: { expiresIn: '24h' }, // 账号登录 token 默认 24 小时过期（手机号登录在 service 里单独覆盖为 6h）
     }),
   ],

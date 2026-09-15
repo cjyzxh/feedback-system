@@ -175,13 +175,15 @@ export class DictService {
     try {
       // 直接查数据库的 PYM 拼音码字段，导入时已生成
       let sql = "SELECT DISTINCT YHMC as name, SYQ as syq, PYM as pinyin FROM xt_ConfigServer WHERE ZuoFeiBZ = '否' AND QY <> '内部'";
+      const sqlParams: any[] = [];
       if (keyword) {
-        // 远程搜索：按医院名称或拼音码模糊查询
-        sql += ` AND (YHMC LIKE '%${keyword}%' OR PYM LIKE '%${keyword.toUpperCase()}%')`;
+        // 远程搜索：按医院名称或拼音码模糊查询（参数化，防 SQL 注入）
+        sql += " AND (YHMC LIKE '%' + ? + '%' OR PYM LIKE '%' + ? + '%')";
+        sqlParams.push(keyword, keyword.toUpperCase());
       }
       sql += " ORDER BY YHMC";
       
-      const results = await this.configRepository.query(sql);
+      const results = await this.configRepository.query(sql, sqlParams);
       
       const hospitals = results.map((r) => ({
         label: r.name,
@@ -218,16 +220,16 @@ export class DictService {
   }
 
   async createForm(formData: { banben: string; mokuai: string; chuangtimc: string }) {
-    // 用 raw query 插入，确保中文正常保存（MSSQL 需要 N 前缀）
+    // 参数化插入（tedious 驱动字符串参数默认 nvarchar，中文无需 N 前缀，且防 SQL 注入）
     const banben = formData.banben || '';
     const mokuai = formData.mokuai;
     const chuangtimc = formData.chuangtimc;
     
     const sql = `INSERT INTO zd_chuangti (banbenh, mokuai, chuangtidm, chuangtimc) 
-                 VALUES (N'${banben}', N'${mokuai}', 0, N'${chuangtimc}');
+                 VALUES (?, ?, 0, ?);
                  SELECT SCOPE_IDENTITY() as id;`;
     
-    const result = await this.formRepository.query(sql);
+    const result = await this.formRepository.query(sql, [banben, mokuai, chuangtimc]);
     const newId = result[0]?.id || result[0]?.[0]?.id || 0;
     
     return { success: true, id: newId };

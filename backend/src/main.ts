@@ -8,6 +8,17 @@ import { ConfigModule } from './modules/config/config.module';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// CORS 白名单：开发端口 + 花生壳外网域名（前后端同源部署时基本用不到，仅兜底）
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://cjysoft.zicp.fun',
+    'http://w291v39035.zicp.vip',
+  ],
+  credentials: true,
+};
+
 // 全局状态：记录当前运行模式
 globalThis.appState = {
   isSafeMode: false,
@@ -142,7 +153,7 @@ async function bootstrap() {
         whitelist: true,
         transform: true,
       }));
-      app.enableCors();
+      app.enableCors(corsOptions);
       
       // 主动测试 DataSource 连接
       try {
@@ -187,7 +198,7 @@ async function startSafeMode(port: string | number, error: string) {
       whitelist: true,
       transform: true,
     }));
-    safeApp.enableCors();
+    safeApp.enableCors(corsOptions);
     
     await safeApp.listen(port);
     console.log(`安全模式已启动: http://localhost:${port}/api`);

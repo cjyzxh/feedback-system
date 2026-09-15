@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       // 验签密钥：与签发时用的密钥必须一致，否则验不过
       // 类比 VB6 的固定密钥，用于生成/校验签名
-      secretOrKey: process.env.JWT_SECRET || 'feedback-system-secret-key',
+      secretOrKey: process.env.JWT_SECRET || 'u-rFB9tILwn1QcbXWk3-BRk4h6uHlo3TpfU0Y4c0MrXBPwhypQqaao0JuaYC78CB',
     });
   }
 

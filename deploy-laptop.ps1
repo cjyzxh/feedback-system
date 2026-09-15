@@ -4,6 +4,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File deploy-laptop.ps1
 # Depends: SSH key auth (id_ed25519, BatchMode)
 # ============================================================
+param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -41,14 +42,14 @@ Invoke-Ssh 'echo SSH_OK'
 Write-Host "    SSH OK." -ForegroundColor Green
 
 # ---------- step 1: build ----------
-if ($cfg.build.frontend -eq $true) {
+if (-not $SkipBuild -and $cfg.build.frontend -eq $true) {
     Write-Host "==> build frontend ..." -ForegroundColor Cyan
     Push-Location (Join-Path $Root 'frontend')
     npm run build
     if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'frontend build failed' }
     Pop-Location
 }
-if ($cfg.build.backend -eq $true) {
+if (-not $SkipBuild -and $cfg.build.backend -eq $true) {
     Write-Host "==> build backend ..." -ForegroundColor Cyan
     Push-Location (Join-Path $Root 'backend')
     npm run build

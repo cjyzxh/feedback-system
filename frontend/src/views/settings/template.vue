@@ -43,8 +43,8 @@
               />
             </div>
             <div class="edit-row">
-              <el-button size="large" class="morandi-btn morandi-blue" @click="handleSave">{{ editingId ? '更新' : '保存' }}</el-button>
-              <el-button size="large" class="btn-cancel" @click="handleClear">清空</el-button>
+              <el-button size="large" class="morandi-btn morandi-blue" @click="handleSave"><el-icon><Check /></el-icon>{{ editingId ? '更新' : '保存' }}</el-button>
+              <el-button size="large" class="morandi-btn morandi-red" @click="handleClear"><el-icon><Delete /></el-icon>清空</el-button>
             </div>
           </div>
 
@@ -93,6 +93,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check, Delete } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -260,11 +261,16 @@ onMounted(() => {
 .template-maintenance .edit-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--qgap);
   margin-bottom: 8px;
 }
 .template-maintenance .edit-row:last-child {
   margin-bottom: 0;
+}
+.template-maintenance .edit-row .el-button {
+  min-width: 110px;
+  margin-left: 0 !important;
+  margin-right: var(--qgap) !important;
 }
 .template-maintenance .edit-tip {
   font-size: 13px;

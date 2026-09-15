@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>用户管理</span>
-          <el-button class="morandi-btn morandi-blue" @click="handleAdd">新增用户</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleAdd"><el-icon><Plus /></el-icon> 新增用户</el-button>
         </div>
       </template>
 
@@ -27,8 +27,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button class="morandi-btn morandi-blue" @click="loadData">查询</el-button>
-          <el-button class="btn-reset" @click="resetQuery">重置</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="loadData"><el-icon><Search /></el-icon> 查询</el-button>
+          <el-button size="large" class="morandi-btn morandi-red" @click="resetQuery"><el-icon><RefreshLeft /></el-icon> 重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -147,8 +147,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
-        <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
+        <el-button size="large" class="morandi-btn morandi-red" @click="dialogVisible = false"><el-icon><Close /></el-icon> 取消</el-button>
+        <el-button size="large" class="morandi-btn morandi-blue" @click="handleSubmit"><el-icon><Check /></el-icon> 确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -157,6 +157,7 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Search, RefreshLeft, Close, Check } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const tableData = ref([])

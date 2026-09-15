@@ -236,7 +236,7 @@ const applyPageScale = () => {
   })
   // 只允许业务主页面参与缩放基准测量：管理/统计页的查询行未做 --qgap 间距适配，
   // 若参与测量会把全局基准(globalMaxW)越拉越大，导致字体越切越小
-  const MEASURE_PATHS = ['/feedback', '/test', '/testcheck', '/discuss']
+  const MEASURE_PATHS = ['/feedback', '/test', '/testcheck']
   if (!MEASURE_PATHS.includes(route.path)) {
     saved.forEach(({ el, ws, fw }) => { el.style.whiteSpace = ws; el.style.flexWrap = fw })
     if (layoutEl) { layoutEl.style.transform = prevTransform; layoutEl.style.width = prevWidth }

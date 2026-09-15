@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <div class="report-container">
     <el-card>
       <template #header>
         <div class="card-header">
           <span><el-icon><DataAnalysis /></el-icon> 数据统计</span>
-          <el-button @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
@@ -20,8 +20,8 @@
           <el-checkbox v-model="viewAll">查询所有人员</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
-          <el-button class="btn-reset" @click="handleReset">重置</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
+          <el-button size="large" class="morandi-btn morandi-red" @click="handleReset"><el-icon><RefreshLeft /></el-icon> 重置</el-button>
         </el-form-item>
       </el-form>
       
@@ -108,7 +108,7 @@
               <el-progress :percentage="row.rate" :stroke-width="8" />
             </template>
           </el-table-column>
-          <el-table-column prop="avgHours" label="平均处理时长(小时)" width="160" align="center" />
+          <el-table-column prop="avgHours" label="平均处理时长(小时)" width="180" align="center" />
         </el-table>
       </el-card>
       
@@ -121,7 +121,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { DataAnalysis, Refresh, Search, Document, CircleCheck, Clock, TrendCharts } from '@element-plus/icons-vue'
+import { DataAnalysis, Refresh, Search, Document, CircleCheck, Clock, TrendCharts, RefreshLeft } from '@element-plus/icons-vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 

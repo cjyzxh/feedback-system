@@ -50,9 +50,9 @@
             <el-input v-model="dbSettings.password" type="password" placeholder="请输入数据库密码" show-password autocomplete="new-password" />
           </el-form-item>
           <el-form-item>
-            <el-button class="morandi-btn morandi-green" @click="handleSaveDbSettings">保存数据库配置</el-button>
-            <el-button class="morandi-btn morandi-blue" @click="testDbConnection">测试连接</el-button>
-            <el-button class="morandi-btn morandi-orange" @click="restartService">重启服务</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="handleSaveDbSettings"><el-icon><Check /></el-icon>保存数据库配置</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="testDbConnection"><el-icon><Connection /></el-icon>测试连接</el-button>
+            <el-button size="large" class="morandi-btn morandi-red" @click="restartService"><el-icon><RefreshRight /></el-icon>重启服务</el-button>
           </el-form-item>
         </el-form>
 
@@ -66,8 +66,8 @@
             <span style="color: #67c23a; font-weight: 500;">{{ uploadPath || './uploads (默认)' }}</span>
           </el-form-item>
           <el-form-item>
-            <el-button class="morandi-btn morandi-green" @click="handleSaveUploadPath">保存图片路径</el-button>
-            <el-button class="morandi-btn morandi-orange" @click="resetUploadPath">恢复默认</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="handleSaveUploadPath"><el-icon><Picture /></el-icon>保存图片路径</el-button>
+            <el-button size="large" class="morandi-btn morandi-red" @click="resetUploadPath"><el-icon><RefreshLeft /></el-icon>恢复默认</el-button>
           </el-form-item>
           <el-form-item>
             <div style="color: #909399; font-size: 12px; line-height: 1.8;">
@@ -89,8 +89,8 @@
             <span style="color: #67c23a; font-weight: 500;">{{ fileUploadPath || './file-uploads (默认)' }}</span>
           </el-form-item>
           <el-form-item>
-            <el-button class="morandi-btn morandi-green" @click="handleSaveFileUploadPath">保存文件路径</el-button>
-            <el-button class="morandi-btn morandi-orange" @click="resetFileUploadPath">恢复默认</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="handleSaveFileUploadPath"><el-icon><FolderOpened /></el-icon>保存文件路径</el-button>
+            <el-button size="large" class="morandi-btn morandi-red" @click="resetFileUploadPath"><el-icon><RefreshLeft /></el-icon>恢复默认</el-button>
           </el-form-item>
           <el-form-item>
             <div style="color: #909399; font-size: 12px; line-height: 1.8;">
@@ -115,8 +115,8 @@
             <el-input v-model="smsSettings.apiUrl" placeholder="短信API请求地址" autocomplete="off" />
           </el-form-item>
           <el-form-item>
-            <el-button class="morandi-btn morandi-green" @click="handleSaveSmsConfig">保存短信配置</el-button>
-            <el-button class="morandi-btn morandi-blue" @click="testSmsConfig">测试发送</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="handleSaveSmsConfig"><el-icon><Message /></el-icon>保存短信配置</el-button>
+            <el-button size="large" class="morandi-btn morandi-blue" @click="testSmsConfig"><el-icon><Promotion /></el-icon>测试发送</el-button>
           </el-form-item>
           <el-form-item>
             <div style="color: #909399; font-size: 12px; line-height: 1.8;">
@@ -137,7 +137,7 @@
 import { reactive, computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, UserFilled, Position, Grid, Document, Setting } from '@element-plus/icons-vue'
+import { User, UserFilled, Position, Grid, Document, Setting, Check, Connection, RefreshRight, RefreshLeft, Picture, FolderOpened, Message, Promotion } from '@element-plus/icons-vue'
 import api from '@/api'
 
 const route = useRoute()
@@ -496,7 +496,9 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* 保存 - 莫兰迪绿（柔和、沉稳，表示确认完成） */
-/* 测试连接 - 莫兰迪蓝（柔和、沉稳，表示测试连接） */
-/* 重启服务 - 莫兰迪橙（柔和、温暖，表示操作提醒） */
+/* 按钮规格：主操作=蓝、危险/重启/恢复默认=红；间距全局 6px */
+.settings-manage .el-form-item .el-button {
+  margin-left: 0 !important;
+  margin-right: var(--qgap) !important;
+}
 </style>

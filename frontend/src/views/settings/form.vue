@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>窗体维护</span>
-          <el-button class="morandi-btn morandi-blue" @click="handleAdd">新增</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleAdd"><el-icon><Plus /></el-icon> 新增</el-button>
         </div>
       </template>
 
@@ -88,8 +88,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
-          <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
+          <el-button size="large" class="morandi-btn morandi-red" @click="dialogVisible = false"><el-icon><Close /></el-icon> 取消</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleSubmit"><el-icon><Check /></el-icon> 确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -100,6 +100,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
+import { Plus, Close, Check } from '@element-plus/icons-vue';
 
 const loading = ref(false);
 const allForms = ref<any[]>([]);  // 全量窗体数据

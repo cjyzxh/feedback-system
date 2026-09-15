@@ -134,17 +134,17 @@
       <!-- 附件操作区：查看图片 / 下载文件（同问题测试页逻辑，有内容才可用） -->
       <el-form-item v-if="attachItems.length > 0 || fileAttachItems.length > 0">
         <div style="display: flex; gap: 8px;">
-          <el-button class="morandi-btn morandi-blue" :disabled="!hasImages" @click="openImagesViewer">
+          <el-button size="large" class="morandi-btn morandi-blue" :disabled="!hasImages" @click="openImagesViewer">
             <el-icon><Picture /></el-icon> 查看图片
           </el-button>
-          <el-button class="morandi-btn morandi-blue" :disabled="!hasFiles" @click="filesDialogVisible = true">
+          <el-button size="large" class="morandi-btn morandi-blue" :disabled="!hasFiles" @click="filesDialogVisible = true">
             <el-icon><FolderOpened /></el-icon> 下载文件
           </el-button>
         </div>
       </el-form-item>
 
       <div class="view-dialog-actions">
-        <el-button class="morandi-btn btn-cancel" @click="handleClose">
+        <el-button size="large" class="morandi-btn morandi-red" @click="handleClose">
           <el-icon><Back /></el-icon> 返回列表
         </el-button>
       </div>
@@ -164,10 +164,10 @@
           <el-button circle :disabled="viewerIndex === attachImages.length - 1" @click="viewerIndex++"><el-icon><ArrowRight /></el-icon></el-button>
         </div>
         <div class="carousel-actions" v-if="attachImages.length > 0" style="margin-top: 16px; text-align: center;">
-          <el-button v-if="attachImages[viewerIndex]?.type === 'image'" type="primary" @click="openFullImage">
+          <el-button v-if="attachImages[viewerIndex]?.type === 'image'" size="large" class="morandi-btn morandi-blue" @click="openFullImage">
             <el-icon><ZoomIn /></el-icon> 查看原图
           </el-button>
-          <el-button type="info" plain @click="imagesDialogVisible = false">
+          <el-button size="large" class="morandi-btn morandi-red" @click="imagesDialogVisible = false">
             <el-icon><Back /></el-icon> 返回列表
           </el-button>
         </div>
@@ -182,7 +182,7 @@
       <template #header>
         <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
           <span>问题文件</span>
-          <el-button class="morandi-btn morandi-blue" @click="filesDialogVisible = false">返回列表</el-button>
+          <el-button size="large" class="morandi-btn morandi-red" @click="filesDialogVisible = false"><el-icon><Back /></el-icon> 返回列表</el-button>
         </div>
       </template>
       <div class="view-attach-list">

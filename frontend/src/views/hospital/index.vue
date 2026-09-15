@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>医院维护</span>
-          <el-button class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
       
@@ -13,8 +13,8 @@
           <el-input v-model="searchForm.keyword" placeholder="搜索医院" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
-          <el-button class="morandi-btn morandi-blue" @click="handleSearch">搜索</el-button>
-          <el-button type="success" @click="handleAdd">新增医院</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleSearch"><el-icon><Search /></el-icon> 搜索</el-button>
+          <el-button size="large" class="morandi-btn morandi-blue" @click="handleAdd"><el-icon><Plus /></el-icon> 新增医院</el-button>
         </el-form-item>
       </el-form>
       
@@ -98,8 +98,8 @@
       </el-form>
       
       <template #footer>
-        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
-        <el-button class="morandi-btn morandi-blue" @click="handleSubmit" :loading="submitting">保存</el-button>
+        <el-button size="large" class="morandi-btn morandi-red" @click="dialogVisible = false"><el-icon><Close /></el-icon> 取消</el-button>
+        <el-button size="large" class="morandi-btn morandi-blue" @click="handleSubmit" :loading="submitting"><el-icon><Check /></el-icon> 保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Search, Plus, Close, Check } from '@element-plus/icons-vue'
 import axios from '@/api'
 
 const loading = ref(false)

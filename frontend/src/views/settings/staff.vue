@@ -11,8 +11,8 @@
         </div>
       </template>
       
-      <el-button class="morandi-btn morandi-blue" @click="handleAdd" style="margin-bottom: 15px">
-        新增人员
+      <el-button size="large" class="morandi-btn morandi-blue" @click="handleAdd" style="margin-bottom: 15px">
+        <el-icon><Plus /></el-icon> 新增人员
       </el-button>
       
       <el-table :data="tableData" border stripe>
@@ -92,8 +92,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button class="btn-cancel" @click="dialogVisible = false">取消</el-button>
-        <el-button class="morandi-btn morandi-blue" @click="handleSubmit">确定</el-button>
+        <el-button size="large" class="morandi-btn morandi-red" @click="dialogVisible = false"><el-icon><Close /></el-icon> 取消</el-button>
+        <el-button size="large" class="morandi-btn morandi-blue" @click="handleSubmit"><el-icon><Check /></el-icon> 确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -103,6 +103,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
+import { Plus, Close, Check } from '@element-plus/icons-vue'
 
 const categoryList = ref<string[]>([])
 const tableData = ref([])

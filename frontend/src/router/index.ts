@@ -15,7 +15,6 @@ import TemplateManage from '@/views/settings/template.vue'
 import OtherSettings from '@/views/settings/other.vue'
 import UserManage from '@/views/user/index.vue'
 import RoleManage from '@/views/role/index.vue'
-import DiscussList from '@/views/discuss/index.vue'
 import Report from '@/views/report/index.vue'
 import ModifyStatusReport from '@/views/report/modify-status.vue'
 
@@ -43,8 +42,6 @@ const routes: RouteRecordRaw[] = [
       { path: '/test', name: 'TestHandle', component: TestHandle, meta: { title: '问题处理', permission: 'test' } },
       // 问题测试
       { path: '/testcheck', name: 'TestCheck', component: TestCheck, meta: { title: '问题测试', permission: 'testcheck' } },
-      // 问题讨论（暂时隐藏菜单）
-      { path: '/discuss', name: 'DiscussList', component: DiscussList, meta: { title: '问题讨论', permission: 'test', hidden: true } },
       // 数据统计
       { path: '/report', name: 'Report', component: Report, meta: { title: '数据统计', permission: 'test' } },
       // 修改状态统计（数据统计的子菜单）

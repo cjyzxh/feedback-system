@@ -271,7 +271,7 @@
       </div>
       <el-upload drag multiple :auto-upload="false" :show-file-list="false" :on-change="onAttachChange">
         <el-icon class="upload-icon" style="font-size:32px; color:#909399;"><Upload /></el-icon>
-        <div style="color:#909399; font-size:13px;">拖拽文件到此处或点击选择（支持所有类型，单个≤50MB）<br/>支持 Ctrl+V 粘贴图片或文件</div>
+        <div style="color:#909399; font-size:13px;">支持拖拽、点击、Ctrl+V 三种上传方式，单个附件不超过 50MB</div>
       </el-upload>
     </el-dialog>
 
@@ -281,7 +281,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CircleCheck, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back, Document, Download, FolderOpened, Upload, Delete } from '@element-plus/icons-vue'
+import { Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back, Document, FolderOpened, Upload } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { downloadWithSaveDialog } from '@/utils/saveFile'
 import TemplatePicker from '@/components/TemplatePicker.vue'
@@ -336,7 +336,7 @@ const formatDate = (date: any) => {
 // ============ 上方详情表单（点击列表行后填充） ============
 // shouhoucs = 测试结果（测试员填写：通过内容 或 返回原因）
 const form = reactive({
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any, cssj: null as any, fanhuisj: null as any, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
 })
 
 // 空表单模板：所有清空操作统一用同一套字段，避免遗漏导致残留
@@ -508,7 +508,6 @@ const downloadAttach = async (f: any) => {
 const previewVisible = ref(false)
 const viewDialogVisible = ref(false)  // 查看对话框是否显示
 const viewProblem = ref<any>(null)        // 当前查看的问题行数据（传给统一查看窗体）
-const detailImages = ref<string[]>([])  // 查看详情图片列表
 // 媒体类型：按扩展名判断（图片/视频），其它不进查看器
 const getMediaType = (name: string) => {
   const n = (name || '').toLowerCase()
@@ -550,12 +549,6 @@ const viewImages = async (row: any) => {
 const handleView = (row: any) => {
   viewProblem.value = row
   viewDialogVisible.value = true
-}
-
-const handleViewImage = (url: string) => {
-  previewImages.value = detailImages.value
-  currentIndex.value = previewImages.value.findIndex(u => u === url)
-  previewVisible.value = true
 }
 
 

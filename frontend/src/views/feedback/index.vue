@@ -204,7 +204,7 @@
         <el-row :gutter="6">
           <el-col :span="6">
             <el-form-item label="模块" prop="mokuai">
-              <el-select v-model="form.mokuai" placeholder="请选择" style="width:100%" @change="(val) => onModuleChange(val)">
+              <el-select v-model="form.mokuai" placeholder="请选择" style="width:100%" @change="(val: any) => onModuleChange(val)">
                 <el-option v-for="m in modules" :key="m.value" :label="m.label" :value="m.label" />
               </el-select>
             </el-form-item>
@@ -287,9 +287,9 @@
         
         <el-form-item label="问题附件">
           <div @paste.capture.stop="handlePaste" class="upload-area">
-            <el-upload ref="uploadRef" v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
+            <el-upload v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
               <el-icon class="upload-icon"><Plus /></el-icon>
-              <div class="upload-text">拖拽或点击选择<br/>支持图片/视频/文档（单个≤50MB）<br/>图片/视频存图片库，文档存附件库，自动分类<br/>Ctrl+V 粘贴图片或文件</div>
+              <div class="upload-text">支持拖拽、点击、Ctrl+V 三种上传方式，单个附件不超过 50MB</div>
               <template #file="{ file }">
                 <div class="file-card" @click="handlePreview(file)">
                   <img v-if="getAttachType(file.name) === 'image'" :src="file.url" class="file-thumb" alt="" />
@@ -297,7 +297,7 @@
                     <el-icon><Document /></el-icon>
                     <span class="file-name">{{ file.name }}</span>
                   </div>
-                  <div class="file-card-del" @click.stop="handleRemove(file, uploadFileList)">
+                  <div class="file-card-del" @click.stop="handleRemove(file)">
                     <el-icon><Close /></el-icon>
                   </div>
                 </div>
@@ -382,7 +382,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick, watch , onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
+import { Search, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
 import TemplatePicker from '@/components/TemplatePicker.vue'
 import ViewProblemDialog from '@/components/ViewProblemDialog.vue'
@@ -393,7 +393,6 @@ const submitting = ref(false)       // 保存提交中（防止连点两次重�
 const dialogVisible = ref(false)    // 新增/编辑 对话框是否显示
 const viewDialogVisible = ref(false)// 查看 对话框是否显示
 const viewProblem = ref<any>(null)        // 当前查看的问题行数据（传给统一查看窗体）
-const detailItems = ref<any[]>([])      // 查看详情附件列表（含类型/文件名）
 const previewVisible = ref(false)   // 附件轮播预览窗口是否显示
 const previewItems = ref<any[]>([]) // 轮播预览的附件数组 [{url, type, name}]
 const currentIndex = ref(0)         // 轮播当前是第几个（0 起）
@@ -491,9 +490,7 @@ const deleteCurrentImage = async () => {
   }
 }
 // formRef = 新增/编辑表单的引用（调用 .validate() 做必填校验）
-// uploadRef = 上传组件的引用
 const formRef = ref()
-const uploadRef = ref()
 
 // ============ 下拉字典数据（从后端 /api/dict 加载） ============
 const hospitals = ref<any[]>([])   // 医院列表（拼音码可搜索）
@@ -611,21 +608,9 @@ const isCustomerUser = computed(() => {
   return u.userType === '客户'
 })
 
-// 客户绑定的医院名称（新增问题时自动填进"医院名称"，且不允许改）
-const customerHospital = computed(() => {
-  const u = JSON.parse(localStorage.getItem('user') || '{}')
-  return u.hospital || ''
-})
-
-// 客户绑定的跟进人员（新增问题时自动填进"跟进人员"，且不允许改）
-const customerFollower = computed(() => {
-  const u = JSON.parse(localStorage.getItem('user') || '{}')
-  return u.follower || ''
-})
-
 // ============ 新增/编辑问题的表单数据 ============
 // 字段与数据库 feedback 表一一对应（拼音缩写是历史遗留命名，见下）
-const form = reactive({
+const formBase = {
   id: 0,               // 问题ID（0=还没保存过）
   banben: 'HIS问题',   // 软件版本：HIS问题/医保接口/其它问题
   yiyuanmc: '',        // 医院名称
@@ -643,7 +628,18 @@ const form = reactive({
   fanhuisj: null as any, // 问题返回时间（返回测试时写入）
   lvrusj: null as any, // 录入时间
   xgsj: null as any    // 修改时间
-})
+}
+// 提交时动态附加/后端行数据携带的可选字段（仅类型声明，不产生初始空值键，避免编辑提交覆盖后端值）
+type FeedbackForm = typeof formBase & {
+  shishiryBM?: string   // 跟进人员编码
+  xggcsBM?: string      // 工程师编码
+  szcsgcs?: string      // 反馈人
+  szcsgcsBM?: string    // 反馈人编码
+  FanKuiQD?: string     // 反馈渠道
+  shouzhongbz?: string  // 售后标志
+  gongchengsbz?: string // 工程师处理标志
+}
+const form = reactive<FeedbackForm>(formBase)
 
 // ============ 售后到期日（xt_ConfigServer 表的 SYQ 字段） ============
 // 选择医院后显示：未过期=蓝字，已过期=红字
@@ -732,33 +728,6 @@ const getStatusType = (status: string) => {
   }
 }
 
-// 查看问题对话框右上角的状态标签（待处理/待测试/已处理/待讨论，莫兰迪配色，字号与标题一致）
-const viewStatusText = computed(() => {
-  const s = getProblemStatus(form)
-  if (s === '待修改') return '待处理'
-  if (s === '已修改') return '已处理'
-  return s
-})
-const viewStatusStyle = computed(() => {
-  const colors: Record<string, string> = {
-    待处理: 'linear-gradient(135deg, #7B8FA1, #6A7E90)', // 莫兰迪蓝
-    待测试: 'linear-gradient(135deg, #C9A87C, #B8976B)', // 莫兰迪橙
-    已处理: 'linear-gradient(135deg, #8FAF8F, #7A9E7A)', // 莫兰迪绿（已处理固定绿色）
-    待讨论: 'linear-gradient(135deg, #E08888, #D07070)', // 莫兰迪红
-  }
-  return {
-    background: colors[viewStatusText.value] || '#909399',
-    color: '#ffffff',
-    fontSize: '18px',
-    fontWeight: '600',
-    padding: '6px 18px',
-    borderRadius: '6px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-    lineHeight: '1',
-    whiteSpace: 'nowrap'
-  }
-})
-
 // 当前选中行ID（点击行高亮用，颜色随主题）
 const selectedId = ref<number | null>(null)
 const handleSelectRow = (row: any) => { selectedId.value = row.id }
@@ -770,10 +739,10 @@ const wentismWidth = ref('440px')
 const dateItemWidth = ref('380px')
 const measureWentismWidth = () => {
   nextTick(() => {
-    const form = document.querySelector('.search-form')
+    const form = document.querySelector<HTMLElement>('.search-form')
     if (!form) return
     // 只取 el-form 直接子级（第一行），第二行在 div 里不受影响
-    const items = form.querySelectorAll(':scope > .el-form-item')
+    const items = form.querySelectorAll<HTMLElement>(':scope > .el-form-item')
     if (items.length >= 2) {
       const right = items[1].offsetLeft + items[1].offsetWidth  // 医院右边缘
       const left = items[0].offsetLeft                          // 问题ID号左边缘
@@ -785,7 +754,7 @@ const measureWentismWidth = () => {
       dateItemWidth.value = Math.max(statusRight - modLeft, 300) + 'px'
     }
     // 以查询问题为基准：统一第一行三个按钮的宽高
-    const qBtn = form.querySelector('.btn-group-1 .btn-search')
+    const qBtn = form.querySelector<HTMLElement>('.btn-group-1 .btn-search')
     if (qBtn) {
       form.style.setProperty('--search-btn-w', qBtn.offsetWidth + 'px')
       form.style.setProperty('--search-btn-h', qBtn.offsetHeight + 'px')
@@ -849,7 +818,6 @@ const loadDicts = async () => {
 const loadData = async () => {
   loading.value = true
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const currentUserName = user?.realName || user?.username || localStorage.getItem('username') || ''
   const currentUserType = user?.userType || '内部员工'   // 身份：客户 / 内部员工
   const currentUserHospital = user?.hospital || ''       // 客户绑定的医院
   
@@ -1033,18 +1001,6 @@ const handleView = (row: any) => {
   viewDialogVisible.value = true
 }
 
-const handleViewImage = (url: string) => {
-  previewItems.value = detailItems.value
-  currentIndex.value = previewItems.value.findIndex(u => u.url === url)
-  previewVisible.value = true
-}
-
-const getJingjiType = (level: string) => {
-  if (level === '紧急') return 'danger'
-  if (level === '急') return 'warning'
-  return 'info'
-}
-
 // 编辑问题：先校验权限（只有待修改状态可编辑），再填充表单
 const handleEdit = async (row: any) => {
   // 权限验证：只有待修改状态的问题才能编辑
@@ -1146,7 +1102,7 @@ const handlePreview = (file: any) => {
   previewVisible.value = true
 }
 // 编辑对话框中删除单个附件 - 带确认提示（先删后端文件，再删本地列表项）
-const handleRemove = async (file: any, fileList: any) => {
+const handleRemove = async (file: any) => {
   try {
     await ElMessageBox.confirm('确定要删除当前附件吗？', '提示', { type: 'warning' })
     if (file.url && file.name) {

@@ -152,7 +152,7 @@
       </div>
       <el-upload drag multiple :auto-upload="false" :show-file-list="false" :on-change="onAttachChange">
         <el-icon class="upload-icon" style="font-size:32px; color:#909399;"><Upload /></el-icon>
-        <div style="color:#909399; font-size:13px;">拖拽文件到此处或点击选择（支持所有类型，单个≤50MB）<br/>支持 Ctrl+V 粘贴图片或文件</div>
+        <div style="color:#909399; font-size:13px;">支持拖拽、点击、Ctrl+V 三种上传方式，单个附件不超过 50MB</div>
       </el-upload>
     </el-dialog>
 
@@ -317,7 +317,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back, Document, Download, Upload, Delete, FolderOpened } from '@element-plus/icons-vue'
+import { Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back, Document, Upload, FolderOpened } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { downloadWithSaveDialog } from '@/utils/saveFile'
 import TemplatePicker from '@/components/TemplatePicker.vue'
@@ -401,7 +401,7 @@ const getJingjiType = (type: string) => {
 // ============ 上方详情表单（点击列表行后填充） ============
 // gongcscs = 工程师处理意见（处理人填写的核心字段）
 const form = reactive({
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any, shishiryBM: ''
 })
 
 // ============ 文本框双击放大查看/编辑 ============
@@ -509,7 +509,7 @@ const removeAttach = async (f: any) => {
 
 // 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null, lvrusj: null
+  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null, lvrusj: null, shishiryBM: ''
 }
 
 // ============ 核心：加载待处理问题列表 ============
@@ -572,14 +572,13 @@ const handleRowClick = async (row: any) => {
 const previewVisible = ref(false)
 const viewDialogVisible = ref(false)  // 查看对话框是否显示
 const viewProblem = ref<any>(null)        // 当前查看的问题行数据（传给统一查看窗体）
-const detailImages = ref<string[]>([])  // 查看详情图片列表
 
 const hasImages = ref(false)  // 当前选中问题是否有图片
 
 
 // ============ 分配修改人 / 分配跟进人 ============
-const yanfaList = ref([])   // 研发人员列表（sys_user isYanfa=1）——"分配修改"选人用
-const shishiList = ref([])  // 实施人员列表（sys_user isShishi=1）——"分配跟进"选人用
+const yanfaList = ref<any[]>([])   // 研发人员列表（sys_user isYanfa=1）——"分配修改"选人用
+const shishiList = ref<any[]>([])  // 实施人员列表（sys_user isShishi=1）——"分配跟进"选人用
 const showDevSelect = ref(false)       // 分配修改人弹窗是否显示
 const selectedDev = ref('')            // 选中的研发人员
 const showFollowerSelect = ref(false)  // 分配跟进人弹窗是否显示
@@ -699,12 +698,6 @@ const viewImages = async (row: any) => {
 const handleView = (row: any) => {
   viewProblem.value = row
   viewDialogVisible.value = true
-}
-
-const handleViewImage = (url: string) => {
-  previewImages.value = detailImages.value
-  currentIndex.value = previewImages.value.findIndex(u => u === url)
-  previewVisible.value = true
 }
 
 

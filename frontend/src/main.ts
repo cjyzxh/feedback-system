@@ -1,7 +1,9 @@
 import { createApp } from 'vue'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import './styles/theme.css'  // 清新简约主题样式
+import './styles/theme.css'        // 基础样式 + 莫兰迪主题（默认，body 无 class）
+import './styles/theme-light.css'  // 浅色主题覆盖（body.theme-light，Logo蓝）
+import './styles/theme-dark.css'   // 深色主题覆盖（body.theme-dark，深蓝）
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'

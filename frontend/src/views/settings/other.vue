@@ -42,8 +42,8 @@ import api from '@/api'
 import { applyFontSize, FONT_SIZE_MAP, FONT_SIZE_LABELS } from '@/utils/theme'
 
 // ========== 界面风格（系统默认样式，从系统管理页迁移至此） ==========
-// 三种主题：morandi(莫兰迪系-默认) / light(浅色系-白底Logo蓝) / dark(深色系)
-const themeMode = ref(localStorage.getItem('themeMode') || 'morandi')
+// 三种主题：morandi(莫兰迪系) / light(浅色系-默认) / dark(深色系)
+const themeMode = ref(localStorage.getItem('themeMode') || 'light')
 
 const applyTheme = (mode: string) => {
   // 先清除所有主题class
@@ -53,7 +53,7 @@ const applyTheme = (mode: string) => {
   } else if (mode === 'dark') {
     document.body.classList.add('theme-dark')
   }
-  // morandi 为默认主题，不加 class
+  // morandi 为莫兰迪主题，不加 class
 }
 
 const handleThemeChange = async (val: string) => {

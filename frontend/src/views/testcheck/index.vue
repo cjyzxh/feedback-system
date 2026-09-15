@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="check-page">
     <!-- 上部：测试问题表单 -->
     <el-card class="form-card">
@@ -41,16 +41,16 @@
               <div class="info-value">{{ form.chuangtimc || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="1">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">跟进人</div>
-              <div class="info-value">{{ form.shishiry || '-' }}</div>
+              <div class="info-value" :title="form.shishiry">{{ form.shishiry || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="1">
+          <el-col :span="2">
             <div class="info-item small">
               <div class="info-label">工程师</div>
-              <div class="info-value">{{ form.xggcs || '-' }}</div>
+              <div class="info-value" :title="form.xggcs">{{ form.xggcs || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="3">
@@ -729,8 +729,9 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .basic-info { margin-bottom: 8px; }
 .info-item { background: #f8f9fa; padding: 8px 12px; border-radius: 6px; }
 .info-item.small { padding: 6px 8px; }
+.info-item.small .info-value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .info-item.large { padding: 12px 16px; background: #fff; border: 1px solid #e4e7ed; height: 180px; display: flex; flex-direction: column; }
-.info-label { font-size: calc(var(--el-font-size-base) - 3px); color: #909399; margin-bottom: 4px; }
+.info-label { font-size: calc(var(--el-font-size-base) - 3px); color: #909399; margin-bottom: 4px; white-space: nowrap; }
 .info-label.big { font-size: calc(var(--el-font-size-base) - 1px); font-weight: 600; color: #303133; }
 .info-label.required::before { content: '*'; color: #f56c6c; margin-right: 4px; }
 .info-value { font-size: calc(var(--el-font-size-base) - 2px); color: #303133; font-weight: 500; }

@@ -197,7 +197,7 @@ setTimeout(() => {
   // 保存系统默认界面样式
   @Post('system-theme')
   saveSystemTheme(@Body() body: any) {
-    const theme = body.theme || 'morandi';
+    const theme = body.theme || 'light';
     this.logger.log('保存系统默认样式:', theme);
     const success = this.configService.saveSystemTheme(theme);
     return { success, message: success ? '系统默认样式保存成功' : '保存失败' };

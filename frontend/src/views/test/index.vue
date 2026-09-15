@@ -846,33 +846,6 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
   text-overflow: ellipsis !important;
 }
 
-/* ========== 莫兰迪色系按钮 - 低饱和度、柔和、高级 ========== */
-.morandi-btn {
-  border: none !important;
-  color: #ffffff !important;
-  font-weight: 500;
-  border-radius: 6px !important;
-  padding: 8px 16px !important;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-.morandi-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-  color: #ffffff !important;
-}
-.morandi-btn:active {
-  transform: translateY(0);
-}
-.morandi-btn:disabled,
-.morandi-btn.is-disabled {
-  background: #909399 !important;
-  color: #ffffff !important;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
 /* 确认处理 - 莫兰迪绿（柔和、沉稳，表示完成确认） */
 /* 查看图片 - 莫兰迪黄（柔和、温暖，表示查看浏览） */
 /* 分配修改人 - 莫兰迪蓝（沉稳、专业，表示分配任务） */

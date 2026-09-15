@@ -1444,10 +1444,8 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
   opacity: 1;
 }
 
-/* 莫兰迪色系按钮 */
-.morandi-btn { border: none !important; color: #ffffff !important; font-weight: 500; border-radius: 6px !important; padding: 10px 22px !important; font-size: 14px !important; transition: all 0.3s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 5px; }
-.morandi-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); color: #ffffff !important; }
-.morandi-btn:disabled { background: #dcdfe6 !important; color: #909399 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+/* 莫兰迪按钮 - 仅尺寸定制（本页按钮整体偏大）；配色/悬停/禁用/主题切换统一走全局 theme.css */
+.morandi-btn { padding: 10px 22px !important; font-size: 14px !important; margin: 0 5px; }
 /* 紧急程度和售后到期日同一行，左右分布 */
 .priority-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 .priority-box { display: flex; gap: 8px; }

@@ -141,8 +141,8 @@ body {
 }
 .morandi-btn:active { transform: translateY(0); }
 .morandi-btn:disabled, .morandi-btn.is-disabled {
-  background: #909399 !important;
-  color: #ffffff !important;
+  background: #dcdfe6 !important;
+  color: #909399 !important;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;

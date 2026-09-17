@@ -29,6 +29,15 @@
           </el-radio-group>
           <div class="tip">全局字体字号：立即对系统所有页面生效（按钮/输入框/表格等）</div>
         </el-form-item>
+
+        <!-- 缩放模式（系统默认） -->
+        <el-form-item label="缩放模式">
+          <el-radio-group v-model="scaleMode" @change="handleScaleModeChange">
+            <el-radio value="auto">等比缩放</el-radio>
+            <el-radio value="none">原始缩放</el-radio>
+          </el-radio-group>
+          <div class="tip">系统默认缩放模式：个人未设置个人偏好时生效；个人可在右上角"个人信息"中选择。等比缩放=内容整体按比例缩小适配屏幕；原始缩放=按原始尺寸显示（查询行保持不换行，放不下时横向滚动）</div>
+        </el-form-item>
       </el-form>
     </el-card>
   </div>
@@ -115,9 +124,39 @@ const handleFontSizeChange = async (val: string) => {
   }
 }
 
+// ========== 缩放模式（系统默认） ==========
+const scaleMode = ref('auto')
+
+// 从后端加载系统默认缩放模式
+const fetchScaleMode = async () => {
+  try {
+    const response = await api.get('/config/scale-mode')
+    if (response.data && response.data.scaleMode) {
+      scaleMode.value = response.data.scaleMode
+    }
+  } catch (error) {
+    console.error('获取系统缩放模式失败:', error)
+  }
+}
+
+// 保存系统默认缩放模式；当前用户若为"跟随系统"，立即生效
+const handleScaleModeChange = async (val: string) => {
+  try {
+    await api.post('/config/scale-mode', { scaleMode: val })
+    const label = val === 'auto' ? '等比缩放' : '原始缩放'
+    ElMessage.success(`系统默认缩放模式已保存为${label}`)
+    // 通知布局页重新计算（个人为"跟随系统"的用户立即生效）
+    window.dispatchEvent(new CustomEvent('system-scale-mode-changed', { detail: { scaleMode: val } }))
+  } catch (e) {
+    console.error('保存系统缩放模式失败:', e)
+    ElMessage.error('保存系统缩放模式失败')
+  }
+}
+
 onMounted(() => {
   fetchSystemTheme()   // 从后端加载系统默认样式
   fetchFontSize()      // 从后端加载系统字号
+  fetchScaleMode()     // 从后端加载系统缩放模式
 })
 </script>
 

@@ -54,7 +54,7 @@ export class UserService {
       skip: (page - 1) * pageSize,
       take: pageSize,
       // 密码不返回给前端
-      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'isShishi', 'isYanfa', 'status', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'scaleMode', 'isShishi', 'isYanfa', 'status', 'createTime', 'updateTime'],
     });
     
     return { list, total };
@@ -64,7 +64,7 @@ export class UserService {
   async findById(id: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'isShishi', 'isYanfa', 'status', 'sessionId', 'createTime', 'updateTime'],
+      select: ['id', 'username', 'realName', 'gender', 'birthDate', 'email', 'phone', 'role', 'userType', 'hospital', 'follower', 'themeMode', 'fontSize', 'scaleMode', 'isShishi', 'isYanfa', 'status', 'sessionId', 'createTime', 'updateTime'],
     });
     
     if (!user) {

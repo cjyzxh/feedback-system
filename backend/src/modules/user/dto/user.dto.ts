@@ -56,6 +56,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   fontSize?: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
+  scaleMode?: string; // 个人缩放模式偏好：空=跟随系统，auto=等比缩放，none=原始缩放
 
   @IsOptional()
   @IsNumber()
@@ -132,6 +133,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   fontSize?: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
+  scaleMode?: string; // 个人缩放模式偏好：空=跟随系统，auto=等比缩放，none=原始缩放
 
   @IsOptional()
   @IsNumber()

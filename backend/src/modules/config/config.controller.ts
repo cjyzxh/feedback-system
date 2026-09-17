@@ -219,4 +219,21 @@ setTimeout(() => {
     const success = this.configService.saveFontSize(fontSize);
     return { success, message: success ? '系统字体字号保存成功' : '保存失败' };
   }
+
+  // 获取系统默认缩放模式（auto=等比缩放 / none=原始缩放）
+  @Get('scale-mode')
+  getScaleMode() {
+    this.logger.log('获取系统缩放模式');
+    const scaleMode = this.configService.getScaleMode();
+    return { scaleMode };
+  }
+
+  // 保存系统默认缩放模式
+  @Post('scale-mode')
+  saveScaleMode(@Body() body: any) {
+    const scaleMode = body.scaleMode || 'auto';
+    this.logger.log('保存系统缩放模式:', scaleMode);
+    const success = this.configService.saveScaleMode(scaleMode);
+    return { success, message: success ? '系统缩放模式保存成功' : '保存失败' };
+  }
 }

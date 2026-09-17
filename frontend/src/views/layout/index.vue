@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="scale-wrap" ref="wrapRef">
+  <div class="scale-wrap" :class="{ 'scale-wrap-raw': effectiveScaleMode === 'none', 'scale-mode-raw': effectiveScaleMode === 'none' }" ref="wrapRef">
   <div class="layout-container" :style="containerScaleStyle">
     <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo">
@@ -159,6 +159,13 @@
             <el-radio v-for="(label, key) in FONT_SIZE_LABELS" :key="key" :value="key">{{ label }}</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="缩放模式">
+          <el-radio-group v-model="profileForm.scaleMode" @change="handleProfileScaleChange">
+            <el-radio value="">跟随系统</el-radio>
+            <el-radio value="auto">等比缩放</el-radio>
+            <el-radio value="none">原始缩放</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="修改密码">
           <el-checkbox v-model="profileForm.changePassword">修改密码</el-checkbox>
         </el-form-item>
@@ -219,6 +226,16 @@ let scaleRetry = 0 // 子页面懒加载未完成时的重测计数
 const applyPageScale = () => {
   const wrap = wrapRef.value
   if (!wrap) return
+  // 原始缩放模式：不做任何测量/缩放，按原始尺寸显示（查询行仍由各页面 CSS 保持不换行）
+  if (effectiveScaleMode.value === 'none') {
+    if (scaleRatio.value !== 1) {
+      scaleRatio.value = 1
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('page-scale-applied'))
+      })
+    }
+    return
+  }
   // 测量前把缩放容器临时恢复原始大小（transform=none、width=100%），
   // 避免量到的是被缩放后的状态；transform 不影响 scrollWidth，此重置为保险起见
   const layoutEl = wrap.querySelector<HTMLElement>('.layout-container') as HTMLElement | null
@@ -362,6 +379,59 @@ const handleProfileFontChange = async (val: string) => {
   ElMessage.success(`已切换为${label}（保存后生效）`)
 }
 // ========== 字体大小切换结束 ==========
+
+// ========== 缩放模式切换（个人信息弹窗中使用，逻辑与界面风格一致）==========
+// 个人偏好：空=跟随系统；auto=等比缩放（现有逻辑）；none=原始缩放（不缩放、查询行保持不换行）
+const scaleMode = ref(localStorage.getItem('userScaleMode') || '')
+const systemScaleMode = ref('auto')  // 系统默认缩放模式（其它设置里配置）
+const effectiveScaleMode = computed(() => scaleMode.value || systemScaleMode.value || 'auto')
+
+// 加载系统默认缩放模式（个人未设置时兜底）
+const loadSystemScaleMode = async () => {
+  try {
+    const res = await fetch('/api/config/scale-mode')
+    if (res.ok) {
+      const data = await res.json()
+      systemScaleMode.value = data.scaleMode || 'auto'
+      applyPageScale()
+    }
+  } catch (e) {
+    console.warn('获取系统缩放模式失败:', e)
+  }
+}
+
+// 系统默认缩放模式被其它设置页修改时同步更新
+const handleSystemScaleModeChanged = ((e: CustomEvent) => {
+  systemScaleMode.value = (e.detail && e.detail.scaleMode) || 'auto'
+  applyPageScale()
+}) as EventListener
+
+const handleProfileScaleChange = async (val: string) => {
+  let modeToApply = val
+  let label = ''
+  if (!val) {
+    // 跟随系统：读取系统默认缩放模式并预览
+    label = '跟随系统'
+    try {
+      const res = await fetch('/api/config/scale-mode')
+      if (res.ok) {
+        const data = await res.json()
+        modeToApply = data.scaleMode || 'auto'
+      }
+    } catch (e) {
+      console.warn('获取系统缩放模式失败:', e)
+      modeToApply = 'auto'
+    }
+  } else {
+    label = val === 'auto' ? '等比缩放' : '原始缩放'
+  }
+  // 预览：保存到 localStorage 并立即应用（保存时才写入用户表）
+  localStorage.setItem('userScaleMode', val)
+  scaleMode.value = val
+  applyPageScale()
+  ElMessage.success(`已切换为${label}（保存后生效）`)
+}
+// ========== 缩放模式切换结束 ==========
 
 const username = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.realName || u.username || localStorage.getItem('username') || '' })
 const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.roleName || u.role || localStorage.getItem('roleName') || '用户' })
@@ -680,7 +750,8 @@ const profileForm = reactive({
   changePassword: false,
   newPassword: '',
   confirmPassword: '',
-  fontSize: ''
+  fontSize: '',
+  scaleMode: ''
 })
 
 const validatePassword = (rule: any, value: string, callback: any) => {
@@ -738,6 +809,7 @@ const openProfileDialog = () => {
   profileForm.email = u.email || ''
   profileForm.themeMode = u.themeMode || ''  // 空=跟随系统，有值=个人样式
   profileForm.fontSize = u.fontSize || ''    // 空=跟随系统，有值=个人字号
+  profileForm.scaleMode = u.scaleMode || ''  // 空=跟随系统，有值=个人缩放模式
   profileForm.changePassword = false
   profileForm.newPassword = ''
   profileForm.confirmPassword = ''
@@ -765,7 +837,8 @@ const saveProfile = async () => {
       phone: profileForm.phone,
       email: profileForm.email,
       themeMode: profileForm.themeMode || '',  // 空=跟随系统，有值=个人样式
-      fontSize: profileForm.fontSize || ''     // 空=跟随系统，有值=个人字号
+      fontSize: profileForm.fontSize || '',    // 空=跟随系统，有值=个人字号
+      scaleMode: profileForm.scaleMode || ''   // 空=跟随系统，有值=个人缩放模式
     }
     
     // 如果勾选了修改密码，添加新密码
@@ -784,8 +857,13 @@ const saveProfile = async () => {
     u.email = profileForm.email
     u.themeMode = profileForm.themeMode || ''  // 同步个人样式偏好
     u.fontSize = profileForm.fontSize || ''    // 同步个人字号偏好
+    u.scaleMode = profileForm.scaleMode || ''  // 同步个人缩放模式偏好
     localStorage.setItem('user', JSON.stringify(u))
     localStorage.setItem('userThemeMode', profileForm.themeMode || '')  // 更新个人样式标记：空=跟随系统，有值=个人设置
+    localStorage.setItem('userScaleMode', profileForm.scaleMode || '')  // 更新个人缩放模式标记：空=跟随系统，有值=个人设置
+    // 保存后立即应用生效（缩放模式可能已变化）
+    scaleMode.value = profileForm.scaleMode || ''
+    applyPageScale()
     
     profileDialogVisible.value = false
   } catch (err) {
@@ -832,6 +910,10 @@ onMounted(() => {
   startReminder()
   // 应用系统全局字体字号（其它设置里配置）
   applySystemFontSize()
+  // 加载系统默认缩放模式并应用（个人未设置时兜底）
+  loadSystemScaleMode()
+  // 其它设置页修改系统默认缩放模式后同步更新
+  window.addEventListener('system-scale-mode-changed', handleSystemScaleModeChanged)
   // 分辨率适配：子页面懒加载完成后才能测到查询行，延迟重测确保准确
   applyPageScale()
   setTimeout(() => applyPageScale(), 300)
@@ -844,6 +926,8 @@ watch(() => route.path, () => {
 })
 
 onUnmounted(() => {
+  // 移除系统缩放模式变更监听
+  window.removeEventListener('system-scale-mode-changed', handleSystemScaleModeChanged)
   // 移除页面焦点事件监听
   window.removeEventListener('focus', handlePageFocus)
   window.removeEventListener('focus', checkSession)
@@ -861,6 +945,14 @@ onUnmounted(() => {
 <style scoped>
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
 .scale-wrap { width: 100%; height: 100vh; overflow: hidden; }
+/* 原始缩放模式：不做等比缩小，按原始尺寸流式排布（查询行自动换行，不出现横向滚动条） */
+.scale-wrap-raw { overflow-x: hidden; overflow-y: hidden; }
+.scale-mode-raw :deep(.el-form--inline),
+.scale-mode-raw :deep(.header-filters),
+.scale-mode-raw :deep(.card-header) {
+  white-space: normal !important;
+  flex-wrap: wrap !important;
+}
 .layout-container { display: flex; background: #f5f7fa; }
 .sidebar { width: 158px; --el-menu-collapse-width: 48px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
 .sidebar .el-menu { flex: 1; }

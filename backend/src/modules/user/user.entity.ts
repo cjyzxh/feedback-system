@@ -44,6 +44,9 @@ export class User {
   @Column({ length: 20, default: '' })
   fontSize: string; // 个人字体大小偏好：空=跟随系统，small/standard/large/xlarge
 
+  @Column({ length: 20, default: '' })
+  scaleMode: string; // 个人缩放模式偏好：空=跟随系统，auto=等比缩放，none=原始缩放
+
   @Column({ type: 'int', default: 0 })
   isShishi: number; // 是否实施人员：1=是，0=否（内部员工勾选）
 

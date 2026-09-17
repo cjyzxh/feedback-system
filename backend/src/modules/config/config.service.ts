@@ -349,4 +349,29 @@ export class DatabaseConfigService {
       return false;
     }
   }
+
+  // 获取系统默认缩放模式（auto=等比缩放 / none=原始缩放，默认 auto）
+  getScaleMode(): string {
+    try {
+      const configs = this.getAllConfigs();
+      return configs.scaleMode || 'auto';
+    } catch (error) {
+      this.logger.error('获取系统缩放模式失败:', error);
+      return 'auto';
+    }
+  }
+
+  // 保存系统默认缩放模式
+  saveScaleMode(mode: string): boolean {
+    try {
+      const configs = this.getAllConfigs();
+      configs.scaleMode = mode || 'auto';
+      this.saveAllConfigs(configs);
+      this.logger.log('系统缩放模式已保存:', mode);
+      return true;
+    } catch (error) {
+      this.logger.error('保存系统缩放模式失败:', error);
+      return false;
+    }
+  }
 }

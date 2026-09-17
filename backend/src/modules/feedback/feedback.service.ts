@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Subject } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
 import * as fs from 'fs';
@@ -24,10 +25,25 @@ export class FeedbackService {
     private configService: DatabaseConfigService,  // 读上传目录配置等
   ) {}
 
+  // 主业务表（yw_wentilb）变更广播：增删改后推送信号，前端收到后刷新"我的处理状态"
+  // 无变化时前端零轮询（SSE 事件驱动，类比 VB6 的 RaiseEvent）
+  public statusSubject = new Subject<{ type: string; data: { time: number } }>();
+  notifyStatusChanged(): void {
+    // NestJS @Sse 会把 {type, data} 序列化为标准 SSE：event: changed + data: {...}
+    // 必须带 data 字段，否则部分浏览器（Chrome）收不到该自定义事件
+    this.statusSubject.next({ type: 'changed', data: { time: Date.now() } });
+  }
+
   // 写入一条通知：接收人 = 本人时不写；空编码不写
+  // 防重：同一问题 + 同一类型 + 同一接收人且未读（ydsj 为空）已存在时不再重复写，
+  // 避免"确认处理/返回"等动作被重复提交（如双击/重复请求）时给用户弹两条一样的内容
   private async addTzxx(wentiid: number, lx: string, jsrbm: string, nr: string, excludeBm?: string) {
     try {
       if (!jsrbm || (excludeBm && jsrbm === excludeBm)) return;
+      const exists = await this.tzxxRepository.findOne({
+        where: { wentiid, lx, jsrbm, ydsj: null }
+      });
+      if (exists) return;
       await this.tzxxRepository.save(this.tzxxRepository.create({
         wentiid, lx, jsrbm, nr, lrsj: new Date(),
       }));
@@ -78,6 +94,7 @@ export class FeedbackService {
       if (saved.xggcsBM) await this.addTzxx(saved.id, '新增', saved.xggcsBM, tzTitle, saved.szcsgcsBM);
       if (saved.shishiryBM) await this.addTzxx(saved.id, '新增', saved.shishiryBM, tzTitle, saved.szcsgcsBM);
 
+      this.notifyStatusChanged();
       return saved;
     } catch (error) {
       console.error('创建失败:', error);
@@ -88,7 +105,7 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, relatedBM, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, relatedBM, hasReturn, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
       
       const where: any = {};
       
@@ -193,6 +210,12 @@ export class FeedbackService {
           { relatedBM }
         );
       }
+      // 测试返回时间过滤：hasReturn='1' 只查有测试返回时间（测试返回状态）；'0' 查无返回时间（新增未处理）
+      if (hasReturn === '1') {
+        qb.andWhere('feedback.fanhuisj IS NOT NULL');
+      } else if (hasReturn === '0') {
+        qb.andWhere('feedback.fanhuisj IS NULL');
+      }
       qb.addOrderBy("CASE WHEN feedback.jingjicd = '紧急' THEN 0 WHEN feedback.jingjicd = '急' THEN 1 ELSE 2 END", 'ASC');
       qb.addOrderBy('feedback.lvrusj', 'DESC');
       qb.addOrderBy('feedback.id', 'DESC');
@@ -203,6 +226,36 @@ export class FeedbackService {
     } catch (error) {
       console.error('查询列表失败:', error);
       return { list: [], total: 0 };
+    }
+  }
+
+  // 当前操作员"我的处理状态"四类计数：待处理/待测试/测试返回/已完成（均排除待讨论）
+  // 与我有关：当前用户编码 = 跟进/工程师/反馈人/测试人 任一
+  async getStatusCount(currentUser: string): Promise<{ daichuli: number; daiceshi: number; ceshifanhui: number; yiwancheng: number }> {
+    const zero = { daichuli: 0, daiceshi: 0, ceshifanhui: 0, yiwancheng: 0 };
+    if (!currentUser) return zero;
+    try {
+      // 单条 SQL 一次统计四类（避免每次轮询 4 次 COUNT 查询）
+      const sql = `
+        SELECT
+          SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NULL) THEN 1 ELSE 0 END) AS daichuli,
+          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N') THEN 1 ELSE 0 END) AS daiceshi,
+          SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NOT NULL) THEN 1 ELSE 0 END) AS ceshifanhui,
+          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'Y') THEN 1 ELSE 0 END) AS yiwancheng
+        FROM yw_wentilb
+        WHERE (taolunbz IS NULL OR taolunbz = 'N')
+          AND (shishiryBM = @0 OR xggcsBM = @0 OR szcsgcsBM = @0 OR shcsgcsBM = @0)`;
+      const rows = await this.feedbackRepository.query(sql, [currentUser]);
+      const r = rows && rows[0] ? rows[0] : zero;
+      return {
+        daichuli: Number(r.daichuli) || 0,
+        daiceshi: Number(r.daiceshi) || 0,
+        ceshifanhui: Number(r.ceshifanhui) || 0,
+        yiwancheng: Number(r.yiwancheng) || 0
+      };
+    } catch (error) {
+      console.error('统计处理状态失败:', error);
+      return zero;
     }
   }
 
@@ -308,6 +361,7 @@ export class FeedbackService {
         console.error('写通知失败:', error);
       }
 
+      this.notifyStatusChanged();
       return saved;
     } catch (error) {
       console.error('更新失败:', error);
@@ -322,6 +376,7 @@ export class FeedbackService {
       // 删除对应的图片
       await this.deleteImagesById(id);
       await this.feedbackRepository.delete(id);
+      this.notifyStatusChanged();
     }
   }
 

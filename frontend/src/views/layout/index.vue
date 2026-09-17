@@ -103,6 +103,12 @@
           <span class="title" :style="{ left: titleOffset }">{{ route.meta?.title || '' }}</span>
         </div>
         <div class="user-info">
+          <div class="my-status-bar" v-if="!isCustomerUser">
+            <span class="st-item st-dai" title="待处理：新增未处理" @click="goStatus('daichuli')">待处理 <b>{{ statusCount.daichuli }}</b></span>
+            <span class="st-item st-ce" title="待测试：已处理未测试" @click="goStatus('daiceshi')">待测试 <b>{{ statusCount.daiceshi }}</b></span>
+            <span class="st-item st-fan" title="测试返回：需重新处理" @click="goStatus('ceshifanhui')">测试返回 <b>{{ statusCount.ceshifanhui }}</b></span>
+            <span class="st-item st-wan" title="已完成：测试通过" @click="goStatus('yiwancheng')">已完成 <b>{{ statusCount.yiwancheng }}</b></span>
+          </div>
           <span class="username-link" @click="openProfileDialog">
             <template v-if="isCustomerUser">{{ userHospital }}（{{ username }}）</template>
             <template v-else>{{ username }} ({{ roleName }})</template>
@@ -474,6 +480,43 @@ const playNotificationSound = () => {
 // ========== 浏览器原生通知（操作系统级别，浏览器最小化也能看到） ==========
 const notificationPermission = ref<string>('default')
 
+// ===== 右上角"我的处理状态"四分类 =====
+const statusCount = ref({ daichuli: 0, daiceshi: 0, ceshifanhui: 0, yiwancheng: 0 })
+const loadStatusCount = async () => {
+  try {
+    let u = localStorage.getItem('userCode') || ''
+    if (!u) { const us = JSON.parse(localStorage.getItem('user') || '{}'); u = us.username || '' }
+    if (!u) return
+    const res = await axios.get(`/api/feedback/status-count?currentUser=${encodeURIComponent(u)}`)
+    statusCount.value = res.data?.data || statusCount.value
+  } catch (e) { console.error('加载处理状态统计失败:', e) }
+}
+const goStatus = (key: string) => {
+  router.push({ path: '/feedback', query: { st: key } })
+}
+
+// ===== 主业务表变更驱动刷新（SSE）：增删改时后端推送，收到即刷新统计；无变化时零轮询 =====
+let statusStream: EventSource | null = null
+let statusFallbackTimer: ReturnType<typeof setInterval> | null = null
+const startStatusStream = () => {
+  try {
+    if (statusStream) return
+    statusStream = new EventSource('/api/feedback/status-stream')
+    // 后端把 {type:'changed'} 映射为 SSE 自定义事件 changed，需用 addEventListener 接收
+    statusStream.addEventListener('changed', () => { loadStatusCount() })
+    statusStream.onmessage = () => { loadStatusCount() }  // 兼容默认 message 事件
+    statusStream.onerror = () => { /* EventSource 自动重连，无需处理 */ }
+    // 兜底：仅当 SSE 异常断连且重连失败时，30 分钟拉一次（正常情况零查询）
+    if (!statusFallbackTimer) {
+      statusFallbackTimer = setInterval(() => loadStatusCount(), 30 * 60 * 1000)
+    }
+  } catch (e) { console.error('状态变更流连接失败:', e) }
+}
+const stopStatusStream = () => {
+  if (statusStream) { statusStream.close(); statusStream = null }
+  if (statusFallbackTimer) { clearInterval(statusFallbackTimer); statusFallbackTimer = null }
+}
+
 // 请求浏览器通知权限（浏览器最小化时也能看到系统通知）
 const requestNotificationPermission = async () => {
   if (!('Notification' in window)) {
@@ -508,6 +551,7 @@ const enableSystemNotice = () => {
     return
   }
   requestNotificationPermission()
+  loadStatusCount()
 }
 
 // 发送操作系统原生通知（浏览器最小化时也能在右下角看到）
@@ -900,6 +944,12 @@ const startSessionPolling = () => {
 onMounted(() => {
   // 请求浏览器通知权限（用于操作系统级通知，浏览器最小化也能看到）
   requestNotificationPermission()
+  // 加载右上角"我的处理状态"四分类统计
+  loadStatusCount()
+  // 订阅主业务表变更流：增删改时自动刷新统计（无变化零轮询）
+  startStatusStream()
+  // 本地保险：本机写操作成功后立即刷新统计（与 SSE 双通道）
+  window.addEventListener('feedback-data-changed', loadStatusCount)
   // 页面获得焦点时停止标题闪烁
   window.addEventListener('focus', handlePageFocus)
   // 页面切回前台时立即校验会话（被顶下线马上登出）
@@ -923,6 +973,8 @@ onMounted(() => {
 // 路由切换后子页面懒加载渲染完成，重新计算缩放
 watch(() => route.path, () => {
   nextTick(() => setTimeout(() => applyPageScale(), 300))
+  // 切页时顺带刷新右上角处理状态统计（操作完成后常会跳转/切页）
+  loadStatusCount()
 })
 
 onUnmounted(() => {
@@ -939,11 +991,23 @@ onUnmounted(() => {
   stopReminder()
   // 移除分辨率监听
   window.removeEventListener('resize', applyPageScale)
+  // 关闭状态变更流
+  stopStatusStream()
+  // 移除写操作刷新监听
+  window.removeEventListener('feedback-data-changed', loadStatusCount)
 })
 </script>
 
 <style scoped>
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
+.my-status-bar { display: flex; align-items: center; gap: 4px; margin-right: 12px; }
+.my-status-bar .st-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 8px; border-radius: 10px; font-size: 12px; color: var(--el-text-color-regular); background: var(--el-fill-color-light); cursor: pointer; user-select: none; white-space: nowrap; }
+.my-status-bar .st-item:hover { opacity: 0.8; }
+.my-status-bar .st-item b { font-size: 13px; }
+.my-status-bar .st-dai b { color: #e6a23c; }
+.my-status-bar .st-ce b { color: #409eff; }
+.my-status-bar .st-fan b { color: #f56c6c; }
+.my-status-bar .st-wan b { color: #67c23a; }
 .scale-wrap { width: 100%; height: 100vh; overflow: hidden; }
 /* 原始缩放模式：不做等比缩小，按原始尺寸流式排布（查询行自动换行，不出现横向滚动条） */
 .scale-wrap-raw { overflow-x: hidden; overflow-y: hidden; }

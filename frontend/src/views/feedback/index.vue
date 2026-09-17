@@ -22,7 +22,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleSearch" style="width:130px">
+          <el-select v-model="searchForm.zhuangtai" placeholder="全部状态" clearable @change="handleZhuangtaiChange" style="width:130px">
             <el-option label="未完成" value="weiwan" />
             <el-option label="已完成" value="yiwan" />
             <el-option label="待讨论" value="daitaolun" />
@@ -381,6 +381,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick, watch , onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -568,11 +569,15 @@ const getDefaultDateRange = () => {
 const defaultRange = getDefaultDateRange()
 // 列表页的查询条件（对应页面上方的搜索栏）
 // reactive = 响应式对象：改了它，页面上绑定的输入框/下拉自动跟着变（类比 VB6 文本框的 Change 联动）
+const route = useRoute()
 const searchForm = reactive({ 
   yiyuanmc: '',      // 医院名称
   mokuai: '',        // 模块
   id: '',            // 问题ID
   zhuangtai: 'weiwan',  // 问题状态（未完成/已完成/待讨论），默认未完成
+  gongchengsbz: undefined,  // 工程师标志（状态跳转用：'Y'/'N'）
+  shouhoubz: undefined,     // 测试标志（状态跳转用：'Y'/'N'）
+  hasReturn: undefined,     // 测试返回时间过滤（状态跳转用：'1'=有返回/'0'=无）
   wentism: '',       // 问题说明（模糊检索关键词）
   startDate: defaultRange.startDate,  // 录入日期起
   endDate: defaultRange.endDate       // 录入日期止
@@ -831,6 +836,9 @@ const loadData = async () => {
     startDate: searchForm.startDate || undefined,   // 录入日期起
     endDate: searchForm.endDate || undefined,       // 录入日期止
     zhuangtai: searchForm.zhuangtai || undefined,   // 问题状态
+    gongchengsbz: searchForm.gongchengsbz || undefined,  // 工程师标志
+    shouhoubz: searchForm.shouhoubz || undefined,       // 测试标志
+    hasReturn: searchForm.hasReturn || undefined,       // 测试返回时间过滤
     keyword: searchForm.wentism || undefined        // 问题说明模糊检索（后端按 wentism LIKE）
   }
   
@@ -869,6 +877,14 @@ const loadData = async () => {
   finally { loading.value = false }
 }
 
+// 状态下拉手动选择：清掉状态跳转带来的单字段条件（两套筛选互斥），再查询
+const handleZhuangtaiChange = () => {
+  searchForm.gongchengsbz = undefined
+  searchForm.shouhoubz = undefined
+  searchForm.hasReturn = undefined
+  handleSearch()
+}
+
 // 点"查询"：回到第一页再加载
 const handleSearch = () => { pagination.page = 1; loadData() }
 // 点"重置条件"：把搜索栏清回默认（日期=最近一年，状态=未完成，其余为空）
@@ -878,6 +894,9 @@ const handleResetSearch = () => {
   searchForm.mokuai = ''
   searchForm.id = ''
   searchForm.zhuangtai = 'weiwan'
+  searchForm.gongchengsbz = undefined
+  searchForm.shouhoubz = undefined
+  searchForm.hasReturn = undefined
   searchForm.wentism = ''
   searchForm.startDate = defaultRange.startDate
   searchForm.endDate = defaultRange.endDate
@@ -1313,7 +1332,17 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => { initCurrentUser(); loadDicts(); loadData() })
+onMounted(() => {
+  initCurrentUser()
+  // 右上角"我的处理状态"跳转：按 st 参数设置精确筛选（与我有关保持勾选）
+  const st = route.query.st as string | undefined
+  if (st === 'daichuli') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'N'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = '0'; myRelated.value = true }
+  else if (st === 'daiceshi') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'Y'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = undefined; myRelated.value = true }
+  else if (st === 'ceshifanhui') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'N'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = '1'; myRelated.value = true }
+  else if (st === 'yiwancheng') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'Y'; searchForm.shouhoubz = 'Y'; searchForm.hasReturn = undefined; myRelated.value = true }
+  loadDicts()
+  loadData()
+})
 
 // ========== 表格固定列重排（缩放应用后由 layout 通知 doLayout） ==========
 const tableRef = ref<any>()

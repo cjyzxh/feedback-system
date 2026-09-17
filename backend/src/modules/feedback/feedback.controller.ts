@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseInterceptors, UploadedFile, Res, Sse } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -290,6 +290,17 @@ export class FeedbackController {
 
   // 查询单个问题反馈详情
   // GET /api/feedback/:id
+  @Get('status-count')
+  async getStatusCount(@Query('currentUser') currentUser: string) {
+    return { data: await this.feedbackService.getStatusCount(currentUser) };
+  }
+
+  // SSE 推送：主业务表增删改时，前端 EventSource 收到变更信号即刷新处理状态统计
+  @Sse('status-stream')
+  streamStatus() {
+    return this.feedbackService.statusSubject.asObservable();
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const data = await this.feedbackService.findById(id);

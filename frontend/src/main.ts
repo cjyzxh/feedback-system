@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import axios from 'axios'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './styles/theme.css'        // 基础样式 + 莫兰迪主题（默认，body 无 class）
@@ -17,6 +18,18 @@ if (savedTheme === 'light') {
   document.body.classList.add('theme-dark')
 }
 // morandi 为默认主题，不加 class
+
+// 全局 axios：业务页面（feedback/test/testcheck 等）多用全局 axios 而非 @/api 实例，
+// 写操作（增删改）成功时广播事件，layout 收到后刷新右上角"我的处理状态"统计
+// （SSE 之外的本地保险，确保操作后立即刷新）
+axios.interceptors.response.use((response) => {
+  const m = (response.config.method || '').toUpperCase()
+  const u = response.config.url || ''
+  if ((m === 'POST' || m === 'PUT' || m === 'DELETE') && u.includes('/feedback')) {
+    window.dispatchEvent(new CustomEvent('feedback-data-changed'))
+  }
+  return response
+})
 
 // 创建 Vue 应用实例
 // 类似于 VB6 中启动应用程序

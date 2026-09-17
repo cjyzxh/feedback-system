@@ -22,7 +22,16 @@ instance.interceptors.request.use((config) => {
 
 // ========== 响应拦截器 ==========
 // 统一处理响应错误
-instance.interceptors.response.use((response) => response, (error) => {
+instance.interceptors.response.use((response) => {
+  // 写操作（增删改）成功且属于业务主表 → 通知 layout 刷新右上角处理状态统计
+  // （SSE 之外的本机保险：操作成功后立即刷新，不依赖推送连接）
+  const m = (response.config.method || '').toUpperCase()
+  const u = response.config.url || ''
+  if ((m === 'POST' || m === 'PUT' || m === 'DELETE') && u.startsWith('/feedback')) {
+    window.dispatchEvent(new CustomEvent('feedback-data-changed'))
+  }
+  return response
+}, (error) => {
   // 如果是 401 未授权（Token过期/无效/被顶下线），并且当前不在登录页
   if (error.response?.status === 401 && router.currentRoute.value.path !== '/login') {
     // 区分"被顶下线"和"登录过期"

@@ -273,4 +273,7 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   relatedBM?: string;  // 相关人编码：跟进/工程师/反馈人/测试人任一编码匹配即命中
+
+  @IsOptional()
+  hasReturn?: string;  // 测试返回时间过滤：'1'=有测试返回时间（测试返回状态），'0'=无（新增未处理）
 }

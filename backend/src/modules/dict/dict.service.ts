@@ -178,8 +178,9 @@ export class DictService {
       const sqlParams: any[] = [];
       if (keyword) {
         // 远程搜索：按医院名称或拼音码模糊查询（参数化，防 SQL 注入）
-        sql += " AND (YHMC LIKE '%' + ? + '%' OR PYM LIKE '%' + ? + '%')";
-        sqlParams.push(keyword, keyword.toUpperCase());
+        // 注意：TypeORM 对 SQL Server 的 query() 只支持数字位置参数 @0/@1（? 和 :name 都会语法报错）
+        sql += " AND (YHMC LIKE @0 OR PYM LIKE @1)";
+        sqlParams.push('%' + keyword + '%', '%' + keyword.toUpperCase() + '%');
       }
       sql += " ORDER BY YHMC";
       

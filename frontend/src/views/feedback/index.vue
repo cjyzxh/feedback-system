@@ -119,14 +119,16 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="45" align="center" fixed="right">
+        <el-table-column label="附件" width="90" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
+            <el-icon v-if="(row.imageCount || 0) > 0" class="attach-icon" title="查看图片" @click.stop="viewImages(row)"><Picture /></el-icon>
+            <el-icon v-if="(row.fileCount || 0) > 0" class="attach-icon" title="查看附件" @click.stop="viewFiles(row)"><Paperclip /></el-icon>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">查看</el-button>
+            <el-button v-if="canUploadAttach(row)" type="primary" link @click.stop="viewFiles(row)">补传附件</el-button>
             <el-button v-if="canEdit(row)" type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="canDelete(row)" type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
@@ -287,7 +289,7 @@
         
         <el-form-item label="问题附件">
           <div @paste.capture.stop="handlePaste" class="upload-area">
-            <el-upload v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" :limit="5" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
+            <el-upload v-model:file-list="uploadFileList" action="/api/feedback/upload" list-type="picture-card" :auto-upload="false" :on-change="handleFileChange" :on-remove="handleRemove" accept="image/*,video/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx,.zip" drag multiple>
               <el-icon class="upload-icon"><Plus /></el-icon>
               <div class="upload-text">支持拖拽、点击、Ctrl+V 三种上传方式，单个附件不超过 50MB</div>
               <template #file="{ file }">
@@ -297,7 +299,7 @@
                     <el-icon><Document /></el-icon>
                     <span class="file-name">{{ file.name }}</span>
                   </div>
-                  <div class="file-card-del" @click.stop="handleRemove(file)">
+                  <div class="file-card-del" v-if="canRemoveFile(file)" @click.stop="handleRemove(file)">
                     <el-icon><Close /></el-icon>
                   </div>
                 </div>
@@ -319,6 +321,32 @@
     
     <!-- 查看问题（三页统一窗体） -->
     <ViewProblemDialog v-model="viewDialogVisible" :problem="viewProblem" />
+
+    <!-- 附件管理弹窗（与问题处理/测试页一致：文件附件列表，可查看/下载/删除，仅上传者本人可删） -->
+    <el-dialog v-model="attachDialog.visible" width="720px" top="8vh" :show-close="false">
+      <template #header>
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
+          <span>{{ '附件管理（问题ID: ' + (currentAttachId || '-') + '）' }}</span>
+          <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
+        </div>
+      </template>
+      <div class="attach-tip">已上传文件（视频/文档，单个≤50MB；图片请用"图片"按钮查看）：</div>
+      <div class="attach-list">
+        <div v-for="f in attachFiles" :key="f.filename" class="attach-item">
+          <el-icon><Document /></el-icon>
+          <span class="attach-name" :title="f.name">{{ f.name }}</span>
+          <span v-if="f.uploadName" class="attach-uploader" :title="'上传者：' + f.uploadName">上传者：{{ f.uploadName }}</span>
+          <el-button link type="primary" @click="previewAttach(f)">查看</el-button>
+          <el-button link type="success" @click="downloadAttach(f)">下载</el-button>
+          <el-button v-if="f.uploadUser && f.uploadUser === currentUserCode" link type="danger" @click="removeAttach(f)">删除</el-button>
+        </div>
+        <el-empty v-if="attachFiles.length === 0" description="暂无文件" :image-size="60" />
+      </div>
+      <el-upload drag multiple :auto-upload="false" :show-file-list="false" :on-change="onAttachChange">
+        <el-icon class="upload-icon" style="font-size:32px; color:#909399;"><Plus /></el-icon>
+        <div style="color:#909399; font-size:13px;">支持拖拽、点击、Ctrl+V 三种上传方式，单个附件不超过 50MB</div>
+      </el-upload>
+    </el-dialog>
 
     
     <!-- 附件预览弹窗 -->
@@ -354,7 +382,7 @@
           <a v-else :href="currentItem.url" target="_blank">
             <el-button type="primary"><el-icon><Download /></el-icon> 下载文件</el-button>
           </a>
-          <el-button type="danger" @click="deleteCurrentImage">
+          <el-button v-if="currentItem.uploadUser && currentItem.uploadUser === currentUserCode" type="danger" @click="deleteCurrentImage">
             <el-icon><Delete /></el-icon> 删除当前附件
           </el-button>
           <el-button type="info" plain @click="previewVisible = false">
@@ -383,7 +411,7 @@
 import { ref, reactive, onMounted, computed, nextTick, watch , onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
+import { Search, RefreshLeft, Plus, Tickets, Delete, Check, ArrowLeft, ArrowRight, ZoomIn, Picture, Paperclip, Close, Calendar, Back, Document, Download } from '@element-plus/icons-vue'
 import axios from 'axios'
 import TemplatePicker from '@/components/TemplatePicker.vue'
 import ViewProblemDialog from '@/components/ViewProblemDialog.vue'
@@ -409,9 +437,14 @@ const getAttachType = (name: string) => {
   return 'other'
 }
 // 把文件名转成附件项 {url, type, name}
-const toAttachItem = (name: string) => {
+const toAttachItem = (it: any) => {
+  const name = typeof it === 'string' ? it : (it.filename || it.name)
   const url = `/api/feedback/uploads/${name}`
-  return { url, type: getAttachType(name), name }
+  return {
+    url, type: getAttachType(name), name,
+    uploadUser: typeof it === 'string' ? '' : (it.uploadUser || ''),
+    uploadName: typeof it === 'string' ? '' : (it.uploadName || ''),
+  }
 }
 // 自动分类：图片/视频走图片渠道，其余文档走附件渠道
 const isMediaFile = (f: any) => {
@@ -479,7 +512,11 @@ const deleteCurrentImage = async () => {
     await ElMessageBox.confirm(`确定要删除第 ${currentIndex.value + 1} 个附件吗？`, '提示', { type: 'warning' })
     const filename = previewItems.value[currentIndex.value].url.split('/').pop()
     if (filename) {
-      await axios.delete(`/api/feedback/image/${filename}`)
+      const res = await axios.delete(`/api/feedback/image/${filename}`, { data: { currentUser: currentUserCode.value } })
+      if (res.data && res.data.success === false) {
+        ElMessage.error(res.data.error || '删除失败（仅上传者本人可删）')
+        return
+      }
     }
     previewItems.value.splice(currentIndex.value, 1)
     if (currentIndex.value >= previewItems.value.length && currentIndex.value > 0) {
@@ -535,6 +572,11 @@ const initCurrentUser = () => {
 // 权限判断（类比 VB6 里按钮 .Enabled = False 的控制）
 // 可以编辑的条件：问题还在"待修改"状态（三个处理标志都还没被置 Y）
 // gongchengsbz=工程师处理标志，shouhoubz=售后/测试完成标志，taolunbz=待讨论标志
+// 是否可补传附件：已完成（处理完成且测试完成）或待测试（工程师已改未测试）
+const canUploadAttach = (row: any) => {
+  return (row.gongchengsbz === 'Y' && row.shouhoubz === 'Y') || (row.gongchengsbz === 'Y' && row.shouhoubz === 'N')
+}
+
 const canEdit = (row: any) => {
   return row.gongchengsbz !== 'Y' && row.shouhoubz !== 'Y' && row.taolunbz !== 'Y'
 }
@@ -1044,7 +1086,11 @@ const handleEdit = async (row: any) => {
       // 兼容两种格式：字符串数组 ['11-1.png'] 或对象数组 [{filename: '11-1.png', url: '...'}]
       uploadFileList.value = imgs.map((img: any) => {
         const name = typeof img === 'string' ? img : (img.filename || img.name)
-        return { name, url: `/api/feedback/uploads/${name}`, status: 'success', channel: 'image' }
+        return {
+          name, url: `/api/feedback/uploads/${name}`, status: 'success', channel: 'image',
+          uploadUser: typeof img === 'string' ? '' : (img.uploadUser || ''),
+          uploadName: typeof img === 'string' ? '' : (img.uploadName || ''),
+        }
       })
     }
   } catch (err) { console.error('加载图片失败:', err) }
@@ -1059,7 +1105,9 @@ const handleEdit = async (row: any) => {
         url: `/api/feedback/file-uploads/${encodeURIComponent(f.filename || f.name)}`,
         status: 'success',
         channel: 'file',
-        seq: f.seq || 0
+        seq: f.seq || 0,
+        uploadUser: f.uploadUser || '',
+        uploadName: f.uploadName || ''
       }))
       uploadFileList.value = [...uploadFileList.value, ...attachItems]
     }
@@ -1120,6 +1168,12 @@ const handlePreview = (file: any) => {
   currentIndex.value = idx > -1 ? idx : 0
   previewVisible.value = true
 }
+// 附件是否可删：新添加的（本地文件）可删；已上传的仅上传者本人可删
+const canRemoveFile = (f: any) => {
+  if (f.raw || f.rawFile || (f instanceof File)) return true
+  return !!(f.uploadUser && f.uploadUser === currentUserCode.value)
+}
+
 // 编辑对话框中删除单个附件 - 带确认提示（先删后端文件，再删本地列表项）
 const handleRemove = async (file: any) => {
   try {
@@ -1131,7 +1185,11 @@ const handleRemove = async (file: any) => {
           // 附件渠道：走附件删除接口，仅上传者本人可删
           await axios.delete(`/api/feedback/file/${encodeURIComponent(filename)}`, { data: { currentUser: currentUserCode.value } })
         } else {
-          await axios.delete(`/api/feedback/image/${filename}`)
+          const res = await axios.delete(`/api/feedback/image/${filename}`, { data: { currentUser: currentUserCode.value } })
+          if (res.data && res.data.success === false) {
+            ElMessage.error(res.data.error || '删除失败（仅上传者本人可删）')
+            return
+          }
         }
       }
     }
@@ -1184,13 +1242,13 @@ const handlePaste = (event: ClipboardEvent) => {
   }
 }
 
-// 列表里点"查看附件"图标：加载该问题的所有附件并打开轮播
+// 列表里点"图片"图标：加载该问题的图片并打开预览
 const viewImages = async (row: any) => {
   try {
     const res = await axios.get(`/api/feedback/images/${row.id}`)
     const imgs = res.data
     if (imgs && imgs.length > 0) {
-      previewItems.value = imgs.map((name: any) => toAttachItem(typeof name === 'string' ? name : (name.filename || name.name)))
+      previewItems.value = imgs.map((it: any) => toAttachItem(it))
     } else {
       previewItems.value = []
     }
@@ -1198,7 +1256,97 @@ const viewImages = async (row: any) => {
     console.error('加载附件失败:', err)
     previewItems.value = []
   }
+  currentIndex.value = 0
   previewVisible.value = true
+}
+
+// 列表里点"附件"按钮：打开附件管理弹窗并加载该问题文件附件（与问题处理/测试页一致）
+const attachDialog = reactive({ visible: false })
+const attachFiles = ref<any[]>([])
+const currentAttachId = ref<number | null>(null)
+
+const viewFiles = async (row: any) => {
+  currentAttachId.value = row.id
+  attachDialog.visible = true
+  await loadAttachFiles()
+}
+
+// 加载附件列表：附件渠道(zd_fjxx)全部文件 + 图片渠道(uploads)中的非图片文件（视频/文档）
+const loadAttachFiles = async () => {
+  if (!currentAttachId.value) { attachFiles.value = []; return }
+  try {
+    const [fRes, iRes] = await Promise.all([
+      axios.get(`/api/feedback/files/${currentAttachId.value}`),
+      axios.get(`/api/feedback/images/${currentAttachId.value}`)
+    ])
+    const fileList = (fRes.data || []).map((f: any) => ({ ...f, source: 'file' }))
+    const imgList = (iRes.data || []).map((n: any) => {
+      const name = typeof n === 'string' ? n : (n.filename || n.name)
+      if (getAttachType(name) === 'image') return null  // 图片走"图片"按钮查看，不在此列
+      return { filename: name, name, seq: 0, uploadUser: '', uploadName: '', source: 'image', url: `/api/feedback/uploads/${name}` }
+    }).filter(Boolean)
+    attachFiles.value = [...fileList, ...imgList]
+  } catch (e) {
+    console.error('加载文件附件失败:', e)
+    attachFiles.value = []
+  }
+}
+
+// 选择文件后立即上传（自动续接序号，记录上传者）
+const onAttachChange = async (file: any) => {
+  if (!currentAttachId.value) { ElMessage.warning('请先选择问题'); return }
+  const fileObj = file.raw || file.rawFile
+  if (!fileObj) return
+  if (fileObj.size > 50 * 1024 * 1024) {
+    ElMessage.warning(`文件「${fileObj.name}」超过 50MB，已跳过上传`)
+    return
+  }
+  const maxSeq = attachFiles.value.reduce((m, f) => Math.max(m, f.seq || 0), 0)
+  const fd = new FormData()
+  fd.append('file', fileObj)
+  fd.append('id', String(currentAttachId.value))
+  fd.append('tpnum', String(maxSeq + 1))
+  fd.append('uploadUser', currentUserCode.value)
+  fd.append('uploadName', currentUserName.value)
+  try {
+    await axios.post('/api/feedback/upload-file', fd)
+    ElMessage.success(`「${fileObj.name}」上传成功`)
+    loadAttachFiles()
+  } catch (e) {
+    console.error('文件上传失败:', e)
+    ElMessage.error(`「${fileObj.name}」上传失败: ${(e as any)?.message || ''}`)
+  }
+}
+
+// 新窗口预览/打开
+const previewAttach = (f: any) => {
+  const base = f.source === 'image' ? '/api/feedback/uploads/' : '/api/feedback/file-uploads/'
+  window.open(base + encodeURIComponent(f.filename), '_blank')
+}
+
+// 下载文件（新窗口打开，浏览器可另存）
+const downloadAttach = (f: any) => {
+  const base = f.source === 'image' ? '/api/feedback/uploads/' : '/api/feedback/file-uploads/'
+  window.open(base + encodeURIComponent(f.filename), '_blank')
+}
+
+// 删除文件附件（仅上传者本人，后端二次校验）
+const removeAttach = async (f: any) => {
+  try {
+    await ElMessageBox.confirm(`确定删除文件「${f.name}」？`, '删除确认', { type: 'warning' })
+  } catch { return }
+  try {
+    const res = await axios.delete(`/api/feedback/file/${encodeURIComponent(f.filename)}`, { data: { currentUser: currentUserCode.value } })
+    if (res.data && res.data.success === false) {
+      ElMessage.error(res.data.error || '删除失败')
+      return
+    }
+    ElMessage.success('已删除')
+    loadAttachFiles()
+  } catch (e) {
+    console.error('删除文件失败:', e)
+    ElMessage.error('删除失败')
+  }
 }
 
 // ============ 核心：保存（新增或更新） ============
@@ -1292,6 +1440,8 @@ const handleSubmit = async () => {
       formData.append('id', String(idToUse))
       formData.append('yiyuanmc', form.yiyuanmc || '')
       formData.append('tpnum', String(maxTpnum + i + 1))
+      formData.append('uploadUser', currentUserCode.value)
+      formData.append('uploadName', currentUserName.value)
       try {
         console.log('上传图片/视频:', i + 1, '/', mediaFiles.length, '文件名:', fileObj.name)
         await axios.post('/api/feedback/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -1524,4 +1674,18 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .carousel-file { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .carousel-file-icon { font-size: 64px; color: var(--el-color-primary); }
 .carousel-file-name { font-size: 15px; font-weight: 600; color: #303133; word-break: break-all; text-align: center; max-width: 600px; }
+
+/* 附件列图标：纯图标点击，无按钮 hover 背景避免闪烁 */
+.attach-icon { font-size: 16px; cursor: pointer; margin: 0 5px; color: #409EFF; vertical-align: middle; line-height: 1; }
+.attach-icon:hover { color: #1E5DA2; }
+
+/* 附件管理弹窗 */
+.attach-tip { color: #606266; font-size: 13px; margin-bottom: 8px; }
+.attach-list { max-height: 260px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 6px; padding: 8px; margin-bottom: 12px; }
+.attach-item { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px dashed #ebeef5; }
+.attach-item:last-child { border-bottom: none; }
+.attach-item .el-icon { color: #1E5DA2; flex-shrink: 0; }
+.attach-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #303133; font-size: 13px; }
+.attach-uploader { flex-shrink: 0; color: #909399; font-size: 12px; white-space: nowrap; }
+.attach-item .el-button { margin-left: 0; }
 </style>

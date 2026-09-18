@@ -201,9 +201,10 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="55" align="center" fixed="right">
+        <el-table-column label="附件" width="90" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
+            <el-icon v-if="(row.imageCount || 0) > 0" class="attach-icon" title="查看图片" @click.stop="viewImages(row)"><Picture /></el-icon>
+            <el-icon v-if="(row.fileCount || 0) > 0" class="attach-icon" title="查看附件" @click.stop="openAttachDialog(row)"><Paperclip /></el-icon>
           </template>
         </el-table-column>
       </el-table>
@@ -281,7 +282,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, List, Refresh, Picture, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back, Document, FolderOpened, Upload } from '@element-plus/icons-vue'
+import { Check, List, Refresh, Picture, Paperclip, ArrowLeft, ArrowRight, RefreshLeft, ZoomIn, Back, Document, FolderOpened, Upload } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { downloadWithSaveDialog } from '@/utils/saveFile'
 import TemplatePicker from '@/components/TemplatePicker.vue'
@@ -422,7 +423,8 @@ const currentUserName = loginUser.realName || loginUser.username || localStorage
 // 附件管理弹窗（上传/删除，与问题处理页一致）
 const attachDialog = reactive({ visible: false })
 
-const openAttachDialog = () => {
+const openAttachDialog = (row?: any) => {
+  if (row && row.id) form.id = row.id  // 从列表行内直接打开：同步当前问题ID
   if (!form.id) { ElMessage.warning('请先选择问题'); return }
   attachDialog.visible = true
   loadAttachFiles()
@@ -773,4 +775,8 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .view-images { display: flex; flex-wrap: wrap; gap: 12px; }
 .view-image { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #dcdfe6; transition: all 0.3s; }
 .view-image:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+/* 附件列图标：纯图标点击，无按钮 hover 背景避免闪烁 */
+.attach-icon { font-size: 16px; cursor: pointer; margin: 0 5px; color: #409EFF; vertical-align: middle; line-height: 1; }
+.attach-icon:hover { color: #1E5DA2; }
 </style>

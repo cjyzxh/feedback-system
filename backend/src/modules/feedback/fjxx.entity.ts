@@ -32,4 +32,7 @@ export class Fjxx {
 
   @Column({ name: 'lrsj', type: 'datetime', default: () => 'GETDATE()' })  // 上传时间
   lrsj: Date;
+
+  @Column({ name: 'lx', length: 10, nullable: true })  // 附件类型：image=图片 / file=文件附件（老数据NULL视为file）
+  lx: string;
 }

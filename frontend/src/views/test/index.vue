@@ -237,9 +237,10 @@
             <span v-else style="color: #c0c4cc">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="图片" width="55" align="center" fixed="right">
+        <el-table-column label="附件" width="90" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link  @click.stop="viewImages(row)"><el-icon><Picture /></el-icon></el-button>
+            <el-icon v-if="(row.imageCount || 0) > 0" class="attach-icon" title="查看图片" @click.stop="viewImages(row)"><Picture /></el-icon>
+            <el-icon v-if="(row.fileCount || 0) > 0" class="attach-icon" title="查看附件" @click.stop="openAttachDialog(row)"><Paperclip /></el-icon>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="140" align="center" fixed="right" v-if="viewTaolun">
@@ -317,7 +318,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, List, Refresh, Picture, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back, Document, Upload, FolderOpened } from '@element-plus/icons-vue'
+import { Check, List, Refresh, Picture, Paperclip, ArrowLeft, ArrowRight, User, ChatDotRound, ZoomIn, Back, Document, Upload, FolderOpened } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { downloadWithSaveDialog } from '@/utils/saveFile'
 import TemplatePicker from '@/components/TemplatePicker.vue'
@@ -425,7 +426,8 @@ const loginUser = (() => { try { return JSON.parse(localStorage.getItem('user') 
 const currentUserCode = localStorage.getItem('userCode') || ''
 const currentUserName = loginUser.realName || loginUser.username || localStorage.getItem('username') || ''
 
-const openAttachDialog = () => {
+const openAttachDialog = (row?: any) => {
+  if (row && row.id) form.id = row.id  // 从列表行内直接打开：同步当前问题ID
   if (!form.id) { ElMessage.warning('请先选择问题'); return }
   attachDialog.visible = true
   loadAttachFiles()
@@ -870,6 +872,11 @@ onUnmounted(() => window.removeEventListener('page-scale-applied', relayoutTable
 .opinion-btn-col :deep(.tp-btn-wrap) { display: block; width: 100%; }
 .opinion-btn-col :deep(.el-button) { width: 100%; margin-left: 0 !important; }
 .zoomable { cursor: zoom-in; }
+
+/* 附件列图标：纯图标点击，无按钮 hover 背景避免闪烁 */
+.attach-icon { font-size: 16px; cursor: pointer; margin: 0 5px; color: #409EFF; vertical-align: middle; line-height: 1; }
+.attach-icon:hover { color: #1E5DA2; }
+
 /* 附件管理弹窗 */
 .attach-tip { color: #606266; font-size: 13px; margin-bottom: 8px; }
 .attach-list { max-height: 260px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 6px; padding: 8px; margin-bottom: 12px; }

@@ -108,6 +108,13 @@ export class FeedbackController {
       }
     }
     
+    // 写入附件信息表（图片也统一入库，lx='image'；查询/删除走数据库，增删改同步）
+    if (id > 0) {
+      const uploadUser = body?.uploadUser || '';
+      const uploadName = body?.uploadName || '';
+      await this.feedbackService.saveFileRecord(id, finalName, file.originalname, tpnum, uploadUser, uploadName, 'image');
+    }
+
     return { url: `/feedback/uploads/${finalName}`, filename: finalName };
   }
 
@@ -230,13 +237,30 @@ export class FeedbackController {
 
   // 删除单张图片
   // DELETE /api/feedback/image/:filename
+  // 权限：仅上传者本人可删（与文件附件一致）；老数据无上传者 → 拒绝删除
   @Delete('image/:filename')
-  async deleteImage(@Param('filename') filename: string) {
+  async deleteImage(@Param('filename') filename: string, @Body() body: any) {
     try {
+      // 权限校验：查 zd_fjxx 记录，比对当前用户编码
+      const currentUser = body?.currentUser || '';
+      const record = await this.feedbackService.findFileRecord(filename);
+      if (record) {
+        if (!record.uploadUser) {
+          return { success: false, error: '该图片无上传者信息，不允许删除' };
+        }
+        if (record.uploadUser !== currentUser) {
+          return { success: false, error: '仅上传者本人可删除该图片' };
+        }
+      } else {
+        // 表里没有记录 → 视为老图片，无上传者信息，不允许删除
+        return { success: false, error: '该图片无上传者信息，不允许删除' };
+      }
+
       const uploadPath = this.configService.getUploadPath();
       const filePath = join(uploadPath, filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        await this.feedbackService.deleteFileRecord(filename);  // 同步删除 zd_fjxx 记录
         return { success: true };
       }
       return { success: false, error: 'file not found' };

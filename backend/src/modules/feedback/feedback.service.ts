@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { Subject } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, Between } from 'typeorm';
+import { Repository, Like, Between, In } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
@@ -222,10 +222,41 @@ export class FeedbackService {
       qb.skip((page - 1) * pageSize).take(pageSize);
       const [list, total] = await qb.getManyAndCount();
       
-      return { list, total };
+      const listWithCounts = await this.decorateAttachmentCounts(list);
+      return { list: listWithCounts, total };
     } catch (error) {
       console.error('查询列表失败:', error);
       return { list: [], total: 0 };
+    }
+  }
+
+  // 批量给列表行补充附件计数 imageCount/fileCount：只查 zd_fjxx 表（按 wentiId/lx 分组），不再扫描目录
+  private async decorateAttachmentCounts(list: Feedback[]): Promise<Feedback[]> {
+    try {
+      if (!list || list.length === 0) return list;
+      const ids = list.map(f => f.id);
+      const imgByWt = new Map<number, number>();
+      const fileByWt = new Map<number, number>();
+      const records = await this.fjxxRepository.find({
+        where: { wentiId: In(ids) },
+        select: ['wentiId', 'lx'],
+      });
+      for (const r of records) {
+        if (r.lx === 'image') {
+          imgByWt.set(r.wentiId, (imgByWt.get(r.wentiId) || 0) + 1);
+        } else {
+          fileByWt.set(r.wentiId, (fileByWt.get(r.wentiId) || 0) + 1);
+        }
+      }
+      return list.map((f) => {
+        const obj = f as any;
+        obj.imageCount = imgByWt.get(f.id) || 0;
+        obj.fileCount = fileByWt.get(f.id) || 0;
+        return obj;
+      });
+    } catch (err) {
+      console.error('统计附件数失败:', err);
+      return list;
     }
   }
 
@@ -388,16 +419,29 @@ export class FeedbackService {
   }
 
   // 获取问题附件列表（图片/视频/文档等：按 {id}-{序号}.{扩展名} 命名，在 uploads 目录下直接查找）
-  async getImagesById(id: number): Promise<string[]> {
-    const uploadPath = this.configService.getUploadPath();
-    const uploadDir = path.isAbsolute(uploadPath) ? uploadPath : path.join(process.cwd(), uploadPath);
-    if (!fs.existsSync(uploadDir)) {
+    // 获取问题附件列表（图片/视频/文档等）——只查 zd_fjxx（lx='image'），不再扫描目录
+  async getImagesById(id: number): Promise<{ filename: string; name: string; seq: number; uploadUser: string; uploadName: string; lrsj: Date }[]> {
+    try {
+      const records = await this.fjxxRepository.find({
+        where: { wentiId: id, lx: 'image' },
+        order: { seq: 'ASC' },
+      });
+      return records.map(r => ({
+        filename: r.filename,
+        name: r.baseName || r.filename,
+        seq: r.seq || 0,
+        uploadUser: r.uploadUser || '',
+        uploadName: r.uploadName || '',
+        lrsj: r.lrsj,
+      }));
+    } catch (err) {
+      console.error('查询图片表失败:', err);
       return [];
     }
-    return fs.readdirSync(uploadDir).filter(f => f.startsWith(`${id}-`));
   }
 
   // 删除问题图片目录
+    // 删除问题图片目录 + zd_fjxx 图片记录（增删改同步表）
   async deleteImagesById(id: number): Promise<void> {
     const uploadPath = this.configService.getUploadPath();
     const uploadDir = path.isAbsolute(uploadPath) ? uploadPath : path.join(process.cwd(), uploadPath);
@@ -407,10 +451,17 @@ export class FeedbackService {
         fs.unlinkSync(path.join(uploadDir, file));
       }
     }
+    try {
+      await this.fjxxRepository.delete({ wentiId: id, lx: 'image' });
+    } catch (err) {
+      console.error('删除图片记录失败:', err);
+    }
   }
 
   // 获取问题文件附件列表（问题处理页上传：{id}-{序号}#{原文件名}）
   // 优先查 zd_fjxx 表（含上传者信息）；表里没有该问题时回退扫描目录（兼容未初始化场景）
+  // 返回 [{ filename, name, seq, uploadUser, uploadName, lrsj }]
+    // 获取问题文件附件列表（问题处理页上传）——只查 zd_fjxx（lx!=='image'），不再扫描目录
   // 返回 [{ filename, name, seq, uploadUser, uploadName, lrsj }]
   async getFilesById(id: number): Promise<{ filename: string; name: string; seq: number; uploadUser: string; uploadName: string; lrsj: Date }[]> {
     try {
@@ -418,8 +469,9 @@ export class FeedbackService {
         where: { wentiId: id },
         order: { seq: 'ASC' },
       });
-      if (records.length > 0) {
-        return records.map(r => ({
+      return records
+        .filter(r => r.lx !== 'image')  // 文件附件：lx='file' 或老数据 NULL
+        .map(r => ({
           filename: r.filename,
           name: r.baseName || r.filename,
           seq: r.seq || 0,
@@ -427,37 +479,21 @@ export class FeedbackService {
           uploadName: r.uploadName || '',
           lrsj: r.lrsj,
         }));
-      }
     } catch (err) {
-      console.error('查询附件表失败，回退目录扫描:', err);
-    }
-
-    // 回退：扫描目录（老数据未初始化时）
-    const fileUploadPath = this.configService.getFileUploadPath();
-    const fileDir = path.isAbsolute(fileUploadPath) ? fileUploadPath : path.join(process.cwd(), fileUploadPath);
-    if (!fs.existsSync(fileDir)) {
+      console.error('查询附件表失败:', err);
       return [];
     }
-    const result: { filename: string; name: string; seq: number; uploadUser: string; uploadName: string; lrsj: Date }[] = [];
-    for (const f of fs.readdirSync(fileDir).filter(f => f.startsWith(`${id}-`))) {
-      const hashIdx = f.indexOf('#');
-      const logical = hashIdx > -1 ? f.substring(0, hashIdx) : f;
-      const origin = hashIdx > -1 ? f.substring(hashIdx + 1) : f;
-      const seqMatch = logical.match(/^\d+-(\d+)$/);
-      result.push({ filename: f, name: origin, seq: seqMatch ? parseInt(seqMatch[1]) : 0, uploadUser: '', uploadName: '', lrsj: null });
-    }
-    result.sort((a, b) => a.seq - b.seq);
-    return result;
   }
 
   // 上传附件成功后写入 zd_fjxx 记录（含上传者编码/姓名）
-  async saveFileRecord(wentiId: number, filename: string, baseName: string, seq: number, uploadUser: string, uploadName: string): Promise<void> {
+  async saveFileRecord(wentiId: number, filename: string, baseName: string, seq: number, uploadUser: string, uploadName: string, lx: string = 'file'): Promise<void> {
     try {
       await this.fjxxRepository.save(this.fjxxRepository.create({
         wentiId, filename, baseName, seq,
         uploadUser: uploadUser || null,
         uploadName: uploadName || null,
         lrsj: new Date(),
+        lx: lx || 'file',
       }));
     } catch (err) {
       console.error('写入附件记录失败:', err);

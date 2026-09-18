@@ -44,7 +44,7 @@ export class DictService {
 
   async createModule(moduleData: { banben: string; mokuaimc: string }) {
     const maxIdResult = await this.moduleRepository.query(
-      'SELECT ISNULL(MAX(ID), 0) + 1 as nextId FROM zd_mokuai'
+      'SELECT COALESCE(MAX(ID), 0) + 1 as nextId FROM zd_mokuai'
     );
     const nextId = maxIdResult[0]?.nextId || 1;
     
@@ -173,26 +173,32 @@ export class DictService {
 
   async getHospitals(keyword?: string) {
     try {
-      // 直接查数据库的 PYM 拼音码字段，导入时已生成
-      let sql = "SELECT DISTINCT YHMC as name, SYQ as syq, PYM as pinyin FROM xt_ConfigServer WHERE ZuoFeiBZ = '否' AND QY <> '内部'";
-      const sqlParams: any[] = [];
+      // 用 QueryBuilder（TypeORM 跨库抽象层）：mssql 下自动生成 @X 参数，MySQL 下生成 ?
+      // 不手写裸 SQL，避免各数据库驱动占位符不兼容；命名参数同样防 SQL 注入
+      const qb = this.configRepository.manager.createQueryBuilder()
+        .from('xt_ConfigServer', 'c')
+        .select('DISTINCT c.YHMC', 'name')
+        .addSelect('c.SYQ', 'syq')
+        .addSelect('c.PYM', 'pinyin')
+        .where("c.ZuoFeiBZ = '否'")
+        .andWhere("c.QY <> '内部'")
+        .orderBy('c.YHMC', 'ASC');
       if (keyword) {
-        // 远程搜索：按医院名称或拼音码模糊查询（参数化，防 SQL 注入）
-        // 注意：TypeORM 对 SQL Server 的 query() 只支持数字位置参数 @0/@1（? 和 :name 都会语法报错）
-        sql += " AND (YHMC LIKE @0 OR PYM LIKE @1)";
-        sqlParams.push('%' + keyword + '%', '%' + keyword.toUpperCase() + '%');
+        // 命名参数由 TypeORM 按数据库方言自动转换（SQL Server→@kw1，MySQL→?）
+        qb.andWhere('(c.YHMC LIKE :kw1 OR c.PYM LIKE :kw2)', {
+          kw1: `%${keyword}%`,
+          kw2: `%${keyword.toUpperCase()}%`
+        });
       }
-      sql += " ORDER BY YHMC";
-      
-      const results = await this.configRepository.query(sql, sqlParams);
-      
+      const results = await qb.getRawMany();
+
       const hospitals = results.map((r) => ({
         label: r.name,
         value: r.name,
         syq: r.syq,
         pinyin: r.pinyin || this.generatePinyin(r.name)
       }));
-      
+
       // 远程搜索时限制20条，无关键词时返回全部（供前端本地过滤）
       return keyword ? hospitals.slice(0, 20) : hospitals;
     } catch (e) {
@@ -221,19 +227,16 @@ export class DictService {
   }
 
   async createForm(formData: { banben: string; mokuai: string; chuangtimc: string }) {
-    // 参数化插入（tedious 驱动字符串参数默认 nvarchar，中文无需 N 前缀，且防 SQL 注入）
-    const banben = formData.banben || '';
-    const mokuai = formData.mokuai;
-    const chuangtimc = formData.chuangtimc;
-    
-    const sql = `INSERT INTO zd_chuangti (banbenh, mokuai, chuangtidm, chuangtimc) 
-                 VALUES (?, ?, 0, ?);
-                 SELECT SCOPE_IDENTITY() as id;`;
-    
-    const result = await this.formRepository.query(sql, [banben, mokuai, chuangtimc]);
-    const newId = result[0]?.id || result[0]?.[0]?.id || 0;
-    
-    return { success: true, id: newId };
+    // 纯 ORM（实体 create/save）：TypeORM 自动适配各数据库，不再手写裸 SQL（避免占位符兼容问题）
+    const saved = await this.formRepository.save(
+      this.formRepository.create({
+        banbenh: formData.banben || '',
+        mokuai: formData.mokuai,
+        chuangtidm: 0,
+        chuangtimc: formData.chuangtimc,
+      })
+    );
+    return { success: true, id: saved.id };
   }
 
   async updateForm(id: number, formData: { banben?: string; mokuai: string; chuangtimc: string }) {

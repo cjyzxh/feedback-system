@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="scale-wrap" :class="{ 'scale-wrap-raw': effectiveScaleMode === 'none', 'scale-mode-raw': effectiveScaleMode === 'none' }" ref="wrapRef">
   <div class="layout-container" :style="containerScaleStyle">
     <div class="sidebar" :class="{ collapsed: isCollapse }">
@@ -91,6 +91,13 @@
           </el-button>
         </template>
       </div>
+      <!-- 我的处理状态四分类（侧边栏底部，系统提醒下方） -->
+      <div class="my-status-bar" v-if="!isCustomerUser && !isCollapse">
+        <span class="st-item st-dai" title="待处理：新增未处理" @click="goStatus('daichuli')">待处理 <b>{{ statusCount.daichuli }}</b></span>
+        <span class="st-item st-ce" title="待测试：已处理未测试" @click="goStatus('daiceshi')">待测试 <b>{{ statusCount.daiceshi }}</b></span>
+        <span class="st-item st-fan" title="已返回：需重新处理" @click="goStatus('ceshifanhui')">已返回 <b>{{ statusCount.ceshifanhui }}</b></span>
+        <span class="st-item st-wan" title="已完成：测试通过" @click="goStatus('yiwancheng')">已完成 <b>{{ statusCount.yiwancheng }}</b></span>
+      </div>
     </div>
     <div class="main-content">
       <div class="header">
@@ -103,12 +110,6 @@
           <span class="title" :style="{ left: titleOffset }">{{ route.meta?.title || '' }}</span>
         </div>
         <div class="user-info">
-          <div class="my-status-bar" v-if="!isCustomerUser">
-            <span class="st-item st-dai" title="待处理：新增未处理" @click="goStatus('daichuli')">待处理 <b>{{ statusCount.daichuli }}</b></span>
-            <span class="st-item st-ce" title="待测试：已处理未测试" @click="goStatus('daiceshi')">待测试 <b>{{ statusCount.daiceshi }}</b></span>
-            <span class="st-item st-fan" title="测试返回：需重新处理" @click="goStatus('ceshifanhui')">测试返回 <b>{{ statusCount.ceshifanhui }}</b></span>
-            <span class="st-item st-wan" title="已完成：测试通过" @click="goStatus('yiwancheng')">已完成 <b>{{ statusCount.yiwancheng }}</b></span>
-          </div>
           <span class="username-link" @click="openProfileDialog">
             <template v-if="isCustomerUser">{{ userHospital }}（{{ username }}）</template>
             <template v-else>{{ username }} ({{ roleName }})</template>
@@ -1000,8 +1001,8 @@ onUnmounted(() => {
 
 <style scoped>
 /* 清新简约风格配色 - 青绿色/薄荷绿主色调 */
-.my-status-bar { display: flex; align-items: center; gap: 4px; margin-right: 12px; }
-.my-status-bar .st-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 8px; border-radius: 10px; font-size: 12px; color: var(--el-text-color-regular); background: var(--el-fill-color-light); cursor: pointer; user-select: none; white-space: nowrap; }
+.my-status-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; padding: 8px 12px 12px; border-top: 1px solid #f0f2f5; }
+.my-status-bar .st-item { display: flex; align-items: center; justify-content: center; gap: 2px; padding: 2px 4px; border-radius: 10px; font-size: 12px; color: var(--el-text-color-regular); background: var(--el-fill-color-light); cursor: pointer; user-select: none; white-space: nowrap; width: 100%; box-sizing: border-box; }
 .my-status-bar .st-item:hover { opacity: 0.8; }
 .my-status-bar .st-item b { font-size: 13px; }
 .my-status-bar .st-dai b { color: #e6a23c; }
@@ -1049,7 +1050,6 @@ onUnmounted(() => {
 }
 /* 侧边栏底部：系统消息提醒权限开关 */
 .sidebar-notice {
-  margin-top: auto;
   padding: 12px;
   border-top: 1px solid #f0f2f5;
   display: flex;

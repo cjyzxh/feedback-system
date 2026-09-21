@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="modify-report-container">
     <el-card>
       <template #header>
@@ -279,6 +279,7 @@ const loadData = async () => {
     }
     
     let list: any[] = []
+    let toTestList: any[] = []
     
     if (viewAll.value) {
       // 勾选"查询所有人员"时，先找出研发人员（isYanfa=1），再按编码循环查询
@@ -289,71 +290,91 @@ const loadData = async () => {
       const engineerList = staffList.filter((s: any) => s.username)  // 有编码才算有效人员
       const engineerCodes = [...new Set(engineerList.map((s: any) => s.username))]
       
-      // 2. 按人编码循环查询问题，合并结果
+      // 2. 按人编码循环查询：他处理的(xggcsBM) + 他要测的(shcsgcsBM)
+      const handledMerged: any[] = []
       const allResults = await Promise.all(
-        engineerCodes.map((code: string) => 
-          axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: code } })
-        )
+        engineerCodes.map(async (code: string) => {
+          const [hRes, tRes] = await Promise.all([
+            axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: code } }),
+            axios.get('/api/feedback', { params: { ...baseParams, shcsgcsBM: code } })
+          ])
+          return { hRes, tRes }
+        })
       )
-      
-      // 3. 合并所有结果并去重
-      const merged: any[] = []
-      allResults.forEach((res: any) => {
-        const data = res.data?.data || res.data || res
-        const itemList = data?.list || []
-        merged.push(...itemList)
+      allResults.forEach(({ hRes, tRes }) => {
+        const hData = hRes.data?.data || hRes.data || hRes
+        handledMerged.push(...(hData?.list || []))
+        const tData = tRes.data?.data || tRes.data || tRes
+        toTestList.push(...(tData?.list || []))
       })
-      
-      // 按id去重
+
+      // 按id去重（处理侧）
       const uniqueMap: Record<string, any> = {}
-      merged.forEach((item: any) => {
+      handledMerged.forEach((item: any) => {
         if (!uniqueMap[item.id]) {
           uniqueMap[item.id] = item
         }
       })
       list = Object.values(uniqueMap)
     } else {
-      // 不勾选时，只查询当前用户作为工程师的问题（不管是否有查看非本人数据权限）
-      const res = await axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: currentUserCode } })
-      const data = res.data?.data || res.data || res
-      list = data?.list || []
+      // 不勾选时：当前用户处理的(xggcsBM) + 当前用户要测的(shcsgcsBM)
+      const [hRes, tRes] = await Promise.all([
+        axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: currentUserCode } }),
+        axios.get('/api/feedback', { params: { ...baseParams, shcsgcsBM: currentUserCode } })
+      ])
+      const hData = hRes.data?.data || hRes.data || hRes
+      list = hData?.list || []
+      const tData = tRes.data?.data || tRes.data || tRes
+      toTestList.push(...(tData?.list || []))
     }
     
     allProblems.value = list
     
-    // 按工程师分组统计
+    // 按工程师分组统计（处理侧：他处理的问题 → 已修改/待修改/待讨论）
     const engineerMap: Record<string, any> = {}
     list.forEach(item => {
       const name = item.xggcs || '未分配'
       if (!engineerMap[name]) {
         engineerMap[name] = {
           name,
-          modified: 0,  // 已修改：gongchengsbz='Y' 且 shouhoubz='Y'
-          pending: 0,   // 待修改：gongchengsbz='N' 且 taolunbz='N'
-          testing: 0,   // 待测试：gongchengsbz='Y' 且 shouhoubz='N'
-          discuss: 0,   // 待讨论：taolunbz='Y'
+          modified: 0,
+          pending: 0,
+          testing: 0,
+          discuss: 0,
           total: 0,
           rate: 0
         }
       }
-      
+
       const stat = engineerMap[name]
-      stat.total++
-      
+
       if (item.taolunbz === 'Y') {
         stat.discuss++
       } else if (item.gongchengsbz === 'Y' && item.shouhoubz === 'Y') {
         stat.modified++
-      } else if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') {
-        stat.testing++
       } else {
         stat.pending++
       }
     })
-    
-    // 计算修改率并转换为数组
+
+    // 测试侧：他作为测试人(shcsgcs)、等着他测的 → 累加到对应行的 testing
+    toTestList.forEach(item => {
+      if (item.taolunbz === 'Y') return
+      if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') {
+        const name = item.shcsgcs || '未分配'
+        if (!engineerMap[name]) {
+          engineerMap[name] = { name, modified: 0, pending: 0, testing: 0, discuss: 0, total: 0, rate: 0 }
+        }
+        engineerMap[name].testing++
+      }
+    })
+
+    // 总数=已修改+待修改+待讨论（待测试单独展示，不计入总数）
+    // 修改率=已修改/(已修改+待修改)
     engineerStats.value = Object.values(engineerMap).map((stat: any) => {
-      stat.rate = stat.total > 0 ? Math.round((stat.modified / stat.total) * 100) : 0
+      stat.total = stat.modified + stat.pending + stat.discuss
+      const denom = stat.modified + stat.pending
+      stat.rate = denom > 0 ? Math.round((stat.modified / denom) * 100) : 0
       return stat
     }).sort((a: any, b: any) => b.total - a.total)
     

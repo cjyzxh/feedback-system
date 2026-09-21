@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Subject } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between, In } from 'typeorm';
@@ -270,7 +270,7 @@ export class FeedbackService {
       const sql = `
         SELECT
           SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NULL) THEN 1 ELSE 0 END) AS daichuli,
-          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N') THEN 1 ELSE 0 END) AS daiceshi,
+          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N' AND shcsgcsBM = @0) THEN 1 ELSE 0 END) AS daiceshi,
           SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NOT NULL) THEN 1 ELSE 0 END) AS ceshifanhui,
           SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'Y') THEN 1 ELSE 0 END) AS yiwancheng
         FROM yw_wentilb

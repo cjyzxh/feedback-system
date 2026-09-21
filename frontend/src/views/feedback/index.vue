@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="feedback-container">
     <el-card class="main-card" shadow="hover">
       <template #header>
@@ -1488,6 +1488,7 @@ onMounted(() => {
   const st = route.query.st as string | undefined
   if (st === 'daichuli') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'N'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = '0'; myRelated.value = true }
   else if (st === 'daiceshi') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'Y'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = undefined; myRelated.value = true }
+  else if (st === 'daiqueren') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'Y'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = undefined; myRelated.value = true }
   else if (st === 'ceshifanhui') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'N'; searchForm.shouhoubz = 'N'; searchForm.hasReturn = '1'; myRelated.value = true }
   else if (st === 'yiwancheng') { searchForm.zhuangtai = ''; searchForm.gongchengsbz = 'Y'; searchForm.shouhoubz = 'Y'; searchForm.hasReturn = undefined; myRelated.value = true }
   loadDicts()

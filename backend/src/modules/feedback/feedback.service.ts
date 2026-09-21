@@ -262,15 +262,16 @@ export class FeedbackService {
 
   // 当前操作员"我的处理状态"四类计数：待处理/待测试/测试返回/已完成（均排除待讨论）
   // 与我有关：当前用户编码 = 跟进/工程师/反馈人/测试人 任一
-  async getStatusCount(currentUser: string): Promise<{ daichuli: number; daiceshi: number; ceshifanhui: number; yiwancheng: number }> {
-    const zero = { daichuli: 0, daiceshi: 0, ceshifanhui: 0, yiwancheng: 0 };
+  async getStatusCount(currentUser: string): Promise<{ daichuli: number; daiceshi: number; daiqueren: number; ceshifanhui: number; yiwancheng: number }> {
+    const zero = { daichuli: 0, daiceshi: 0, daiqueren: 0, ceshifanhui: 0, yiwancheng: 0 };
     if (!currentUser) return zero;
     try {
       // 单条 SQL 一次统计四类（避免每次轮询 4 次 COUNT 查询）
       const sql = `
         SELECT
           SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NULL) THEN 1 ELSE 0 END) AS daichuli,
-          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N' AND shcsgcsBM = @0) THEN 1 ELSE 0 END) AS daiceshi,
+          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N' AND shishiryBM = @0) THEN 1 ELSE 0 END) AS daiceshi,
+          SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'N' AND xggcsBM = @0) THEN 1 ELSE 0 END) AS daiqueren,
           SUM(CASE WHEN (gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NOT NULL) THEN 1 ELSE 0 END) AS ceshifanhui,
           SUM(CASE WHEN (gongchengsbz = 'Y' AND shouhoubz = 'Y') THEN 1 ELSE 0 END) AS yiwancheng
         FROM yw_wentilb
@@ -281,6 +282,7 @@ export class FeedbackService {
       return {
         daichuli: Number(r.daichuli) || 0,
         daiceshi: Number(r.daiceshi) || 0,
+        daiqueren: Number(r.daiqueren) || 0,
         ceshifanhui: Number(r.ceshifanhui) || 0,
         yiwancheng: Number(r.yiwancheng) || 0
       };

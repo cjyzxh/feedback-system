@@ -95,6 +95,7 @@
       <div class="my-status-bar" v-if="!isCustomerUser && !isCollapse">
         <span class="st-item st-dai" title="待处理：新增未处理" @click="goStatus('daichuli')">待处理 <b>{{ statusCount.daichuli }}</b></span>
         <span class="st-item st-ce" title="待测试：已处理未测试" @click="goStatus('daiceshi')">待测试 <b>{{ statusCount.daiceshi }}</b></span>
+        <span class="st-item st-queren" title="待确认：你处理完、等测试确认" @click="goStatus('daiqueren')">待确认 <b>{{ statusCount.daiqueren }}</b></span>
         <span class="st-item st-fan" title="已返回：需重新处理" @click="goStatus('ceshifanhui')">已返回 <b>{{ statusCount.ceshifanhui }}</b></span>
         <span class="st-item st-wan" title="已完成：测试通过" @click="goStatus('yiwancheng')">已完成 <b>{{ statusCount.yiwancheng }}</b></span>
       </div>
@@ -482,7 +483,7 @@ const playNotificationSound = () => {
 const notificationPermission = ref<string>('default')
 
 // ===== 右上角"我的处理状态"四分类 =====
-const statusCount = ref({ daichuli: 0, daiceshi: 0, ceshifanhui: 0, yiwancheng: 0 })
+const statusCount = ref({ daichuli: 0, daiceshi: 0, daiqueren: 0, ceshifanhui: 0, yiwancheng: 0 })
 const loadStatusCount = async () => {
   try {
     let u = localStorage.getItem('userCode') || ''
@@ -1009,6 +1010,7 @@ onUnmounted(() => {
 .my-status-bar .st-ce b { color: #409eff; }
 .my-status-bar .st-fan b { color: #f56c6c; }
 .my-status-bar .st-wan b { color: #67c23a; }
+.my-status-bar .st-queren b { color: #9c27b0; }
 .scale-wrap { width: 100%; height: 100vh; overflow: hidden; }
 /* 原始缩放模式：不做等比缩小，按原始尺寸流式排布（查询行自动换行，不出现横向滚动条） */
 .scale-wrap-raw { overflow-x: hidden; overflow-y: hidden; }

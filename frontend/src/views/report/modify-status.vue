@@ -35,14 +35,24 @@
         :row-class-name="tableRowClassName"
       >
         <el-table-column prop="name" label="工程师" width="120" />
-        <el-table-column prop="modified" label="已修改" width="100" align="center">
+        <el-table-column prop="modified" label="已完成" width="100" align="center">
           <template #default="{ row }">
             <span style="color: #67c23a; font-weight: bold;">{{ row.modified }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="pending" label="待修改" width="100" align="center">
+        <el-table-column prop="pending" label="待处理" width="100" align="center">
           <template #default="{ row }">
             <span style="color: #e6a23c; font-weight: bold;">{{ row.pending }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="yifanhui" label="已返回" width="100" align="center">
+          <template #default="{ row }">
+            <span style="color: #909399; font-weight: bold;">{{ row.yifanhui }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="queeren" label="待确认" width="100" align="center">
+          <template #default="{ row }">
+            <span style="color: #9c27b0; font-weight: bold;">{{ row.queeren }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="testing" label="待测试" width="100" align="center">
@@ -245,8 +255,8 @@ function getRateColor(rate: number) {
 // 获取状态标签类型
 function getStatusTagType(status: string) {
   switch (status) {
-    case '已修改': return 'success'
-    case '待修改': return 'warning'
+    case '已完成': return 'success'
+    case '待处理': return 'warning'
     case '待测试': return 'primary'
     case '待讨论': return 'danger'
     default: return 'info'
@@ -256,9 +266,9 @@ function getStatusTagType(status: string) {
 // 获取问题状态文本
 function getStatusText(item: any) {
   if (item.taolunbz === 'Y') return '待讨论'
-  if (item.gongchengsbz === 'Y' && item.shouhoubz === 'Y') return '已修改'
+  if (item.gongchengsbz === 'Y' && item.shouhoubz === 'Y') return '已完成'
   if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') return '待测试'
-  return '待修改'
+  return '待处理'
 }
 
 // 表格行样式（高亮选中的工程师）
@@ -296,7 +306,7 @@ const loadData = async () => {
         engineerCodes.map(async (code: string) => {
           const [hRes, tRes] = await Promise.all([
             axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: code } }),
-            axios.get('/api/feedback', { params: { ...baseParams, shcsgcsBM: code } })
+            axios.get('/api/feedback', { params: { ...baseParams, shishiryBM: code } })
           ])
           return { hRes, tRes }
         })
@@ -320,7 +330,7 @@ const loadData = async () => {
       // 不勾选时：当前用户处理的(xggcsBM) + 当前用户要测的(shcsgcsBM)
       const [hRes, tRes] = await Promise.all([
         axios.get('/api/feedback', { params: { ...baseParams, xggcsBM: currentUserCode } }),
-        axios.get('/api/feedback', { params: { ...baseParams, shcsgcsBM: currentUserCode } })
+        axios.get('/api/feedback', { params: { ...baseParams, shishiryBM: currentUserCode } })
       ])
       const hData = hRes.data?.data || hRes.data || hRes
       list = hData?.list || []
@@ -330,7 +340,7 @@ const loadData = async () => {
     
     allProblems.value = list
     
-    // 按工程师分组统计（处理侧：他处理的问题 → 已修改/待修改/待讨论）
+    // 按工程师分组统计（处理侧：他处理的问题 → 已完成/待处理/已返回/待确认/待讨论）
     const engineerMap: Record<string, any> = {}
     list.forEach(item => {
       const name = item.xggcs || '未分配'
@@ -339,44 +349,51 @@ const loadData = async () => {
           name,
           modified: 0,
           pending: 0,
+          yifanhui: 0,
+          queeren: 0,
           testing: 0,
           discuss: 0,
           total: 0,
           rate: 0
         }
       }
-
       const stat = engineerMap[name]
-
       if (item.taolunbz === 'Y') {
         stat.discuss++
       } else if (item.gongchengsbz === 'Y' && item.shouhoubz === 'Y') {
         stat.modified++
+      } else if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') {
+        stat.queeren++
+      } else if (item.gongchengsbz === 'N' && item.fanhuisj != null) {
+        stat.yifanhui++
       } else {
         stat.pending++
       }
     })
 
-    // 测试侧：他作为测试人(shcsgcs)、等着他测的 → 累加到对应行的 testing
+    // 测试侧：他作为跟进人(shishiry)、等着测试的 → 累加到对应行的 testing
     toTestList.forEach(item => {
       if (item.taolunbz === 'Y') return
       if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') {
-        const name = item.shcsgcs || '未分配'
+        const name = item.shishiry || '未分配'
         if (!engineerMap[name]) {
-          engineerMap[name] = { name, modified: 0, pending: 0, testing: 0, discuss: 0, total: 0, rate: 0 }
+          engineerMap[name] = { name, modified: 0, pending: 0, yifanhui: 0, queeren: 0, testing: 0, discuss: 0, total: 0, rate: 0 }
         }
         engineerMap[name].testing++
       }
     })
 
-    // 总数=已修改+待修改+待讨论（待测试单独展示，不计入总数）
-    // 修改率=已修改/(已修改+待修改)
-    engineerStats.value = Object.values(engineerMap).map((stat: any) => {
-      stat.total = stat.modified + stat.pending + stat.discuss
-      const denom = stat.modified + stat.pending
-      stat.rate = denom > 0 ? Math.round((stat.modified / denom) * 100) : 0
-      return stat
-    }).sort((a: any, b: any) => b.total - a.total)
+    // 总数=已完成+待处理+已返回+待确认+待讨论（待测试单列，不计入）
+    // 修改率=(已完成+待确认)/(已完成+待处理+已返回+待确认)
+    engineerStats.value = Object.values(engineerMap)
+      .filter((stat: any) => stat.name && stat.name !== '未分配')
+      .map((stat: any) => {
+        stat.total = stat.modified + stat.pending + stat.yifanhui + stat.queeren + stat.discuss
+        const denom = stat.modified + stat.pending + stat.yifanhui + stat.queeren
+        stat.rate = denom > 0 ? Math.round(((stat.modified + stat.queeren) / denom) * 100) : 0
+        return stat
+      })
+      .sort((a: any, b: any) => b.total - a.total)
     
     // 渲染图表
     await nextTick()
@@ -399,16 +416,18 @@ const renderChart = () => {
   const names = engineerStats.value.map(item => item.name)
   const modifiedData = engineerStats.value.map(item => item.modified)
   const pendingData = engineerStats.value.map(item => item.pending)
+  const yifanhuiData = engineerStats.value.map(item => item.yifanhui)
+  const queerenData = engineerStats.value.map(item => item.queeren)
   const testingData = engineerStats.value.map(item => item.testing)
   const discussData = engineerStats.value.map(item => item.discuss)
-  
+
   const option = {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' }
     },
     legend: {
-      data: ['已修改', '待修改', '待测试', '待讨论'],
+      data: ['已完成', '待处理', '已返回', '待确认', '待测试', '待讨论'],
       top: 0
     },
     grid: {
@@ -428,19 +447,35 @@ const renderChart = () => {
     },
     series: [
       {
-        name: '已修改',
+        name: '已完成',
         type: 'bar',
         data: modifiedData,
         itemStyle: { color: '#67c23a', borderRadius: [4, 4, 0, 0] },
-        barWidth: '15%',
+        barWidth: '12%',
         label: { show: true, position: 'top', fontSize: 11 }
       },
       {
-        name: '待修改',
+        name: '待处理',
         type: 'bar',
         data: pendingData,
         itemStyle: { color: '#e6a23c', borderRadius: [4, 4, 0, 0] },
-        barWidth: '15%',
+        barWidth: '12%',
+        label: { show: true, position: 'top', fontSize: 11 }
+      },
+      {
+        name: '已返回',
+        type: 'bar',
+        data: yifanhuiData,
+        itemStyle: { color: '#909399', borderRadius: [4, 4, 0, 0] },
+        barWidth: '12%',
+        label: { show: true, position: 'top', fontSize: 11 }
+      },
+      {
+        name: '待确认',
+        type: 'bar',
+        data: queerenData,
+        itemStyle: { color: '#9c27b0', borderRadius: [4, 4, 0, 0] },
+        barWidth: '12%',
         label: { show: true, position: 'top', fontSize: 11 }
       },
       {
@@ -448,7 +483,7 @@ const renderChart = () => {
         type: 'bar',
         data: testingData,
         itemStyle: { color: '#409eff', borderRadius: [4, 4, 0, 0] },
-        barWidth: '15%',
+        barWidth: '12%',
         label: { show: true, position: 'top', fontSize: 11 }
       },
       {
@@ -456,12 +491,12 @@ const renderChart = () => {
         type: 'bar',
         data: discussData,
         itemStyle: { color: '#f56c6c', borderRadius: [4, 4, 0, 0] },
-        barWidth: '15%',
+        barWidth: '12%',
         label: { show: true, position: 'top', fontSize: 11 }
       }
     ]
   }
-  
+
   barChart.setOption(option)
   
   // 点击图表柱子，显示对应工程师的问题

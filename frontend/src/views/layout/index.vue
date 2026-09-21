@@ -494,7 +494,10 @@ const loadStatusCount = async () => {
   } catch (e) { console.error('加载处理状态统计失败:', e) }
 }
 const goStatus = (key: string) => {
-  router.push({ path: '/feedback', query: { st: key } })
+  let path = '/feedback'
+  if (key === 'daichuli' || key === 'ceshifanhui') path = '/test'
+  else if (key === 'daiceshi') path = '/testcheck'
+  router.push({ path, query: { st: key } })
 }
 
 // ===== 主业务表变更驱动刷新（SSE）：增删改时后端推送，收到即刷新统计；无变化时零轮询 =====

@@ -642,7 +642,10 @@ const saveRemindedTzxxIds = (ids: number[]) => {
 // 后端按用户编码写入 xt_tzxx 通知表：新增→工程师+跟进人；处理→跟进人+反馈人；测试→反馈人+工程师+跟进人；返回→工程师+反馈人
 // 接收人=操作人本人时不写通知；前端每10秒拉一次"我的未读通知"，点击后标记已读并跳转
 let isFirstPoll = true
+let isChecking = false
 const checkNewProblems = async () => {
+  if (isChecking) return
+  isChecking = true
   try {
     let currentUser = localStorage.getItem('userCode') || ''
     if (!currentUser) {
@@ -679,12 +682,12 @@ const checkNewProblems = async () => {
 
     for (const [lx, items] of groups) {
       // 登录后首次轮询：测试完成类不弹窗，直接记入已提醒（行725统一记id），之后新到的才弹
-      if (isFirstPoll && lx === '测试') return
+      if (isFirstPoll && lx === '测试') continue
       const cfg = tzConfig[lx] || { page: '/feedback', type: 'info' }
       const ids = items.map((t: any) => t.id)
-      const onClick = () => {
+      const onClick = async () => {
         // 点击弹窗：该类别全部标记已读并跳转对应页面
-        ids.forEach((id: number) => axios.post('/api/feedback/reminder/read', { id }).catch(() => {}))
+        try { await Promise.all(ids.map((id: number) => axios.post('/api/feedback/reminder/read', { id }))) } catch (e) { console.error('标记通知已读失败', e, ids) }
         router.push(cfg.page)
         stopTitleBlink()
       }
@@ -730,6 +733,8 @@ const checkNewProblems = async () => {
     isFirstPoll = false
   } catch (error) {
     console.error('检查新问题失败:', error)
+  } finally {
+    isChecking = false
   }
 }
 

@@ -508,13 +508,10 @@ const startStatusStream = () => {
     if (statusStream) return
     statusStream = new EventSource('/api/feedback/status-stream')
     // 后端把 {type:'changed'} 映射为 SSE 自定义事件 changed，需用 addEventListener 接收
-    statusStream.addEventListener('changed', () => { loadStatusCount() })
-    statusStream.onmessage = () => { loadStatusCount() }  // 兼容默认 message 事件
+    statusStream.addEventListener('changed', () => { loadStatusCount(); checkNewProblems() })
+    statusStream.onmessage = () => { loadStatusCount(); checkNewProblems() }  // 兼容默认 message 事件
     statusStream.onerror = () => { /* EventSource 自动重连，无需处理 */ }
-    // 兜底：仅当 SSE 异常断连且重连失败时，30 分钟拉一次（正常情况零查询）
-    if (!statusFallbackTimer) {
-      statusFallbackTimer = setInterval(() => loadStatusCount(), 30 * 60 * 1000)
-    }
+    // SSE 断连由 EventSource 自动重连，不再轮询
   } catch (e) { console.error('状态变更流连接失败:', e) }
 }
 const stopStatusStream = () => {
@@ -625,17 +622,20 @@ const handlePageFocus = () => {
 }
 // ========== 浏览器原生通知和标题闪烁结束 ==========
 
-// 已提醒过的通知ID（localStorage 记录，避免每10秒重复弹同一个通知）
-const getRemindedTzxxIds = (): number[] => {
+// 已提醒过的通知（localStorage 记录 id->上次弹的时间戳）
+// 逻辑：5分钟内弹过的不再弹；超过5分钟仍未读的再弹一次
+const REMIND_AGAIN_MS = 5 * 60 * 1000
+const getRemindedMap = (): Record<number, number> => {
   try {
-    return JSON.parse(localStorage.getItem('remindedTzxxIds') || '[]')
-  } catch (e) {
-    return []
-  }
+    const raw = localStorage.getItem('remindedTzxxIds')
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) { const m: any = {}; parsed.forEach(id => m[id] = Date.now()); return m }
+    return parsed
+  } catch (e) { return {} }
 }
-
-const saveRemindedTzxxIds = (ids: number[]) => {
-  localStorage.setItem('remindedTzxxIds', JSON.stringify(ids))
+const saveRemindedMap = (m: Record<number, number>) => {
+  localStorage.setItem('remindedTzxxIds', JSON.stringify(m))
 }
 
 // ===== 事件通知轮询 =====
@@ -658,9 +658,14 @@ const checkNewProblems = async () => {
     const data = res.data?.data
     if (!data || !data.list || data.list.length === 0) return
 
-    // 只提醒还没提醒过的通知（未读通知刷新后会再次提醒，已读后不再出现）
-    const remindedIds = getRemindedTzxxIds()
-    const newList = data.list.filter((t: any) => !remindedIds.includes(t.id))
+    // 过滤：5分钟内弹过的不弹；超过5分钟仍未读的再弹一次
+    const remindedMap = getRemindedMap()
+    const now = Date.now()
+    const newList = data.list.filter((t: any) => {
+      const last = remindedMap[t.id]
+      if (last && (now - last) < REMIND_AGAIN_MS) return false
+      return true
+    })
     if (newList.length === 0) return
 
     // 通知类型 → 跳转页面 + 弹窗颜色
@@ -694,32 +699,31 @@ const checkNewProblems = async () => {
       const showItems = items.slice(0, MAX_SHOW)
       const moreCount = items.length - showItems.length
 
-      if (document.hidden) {
-        // 浏览器最小化/切走：系统通知每类别一条，正文汇总
-        const body = showItems.map((t: any) => t.nr).join('\n') + (moreCount > 0 ? `\n…等${items.length}条` : '')
-        sendSystemNotification(`【${lx}提醒】(${items.length}条)`, body, onClick)
-        startTitleBlink('有新消息')
-      } else {
-        // 页面内通知：VNode 渲染列表，容器限高滚动，避免弹窗无限高
-        const lines = showItems.map((t: any) =>
-          h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, t.nr || '')
-        )
-        if (moreCount > 0) {
-          lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${items.length}条，点击查看全部`))
+      // 统一弹页面内右下角通知（不依赖系统通知权限，最小化也能看到）
+      const lines = showItems.map((t: any) =>
+        h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, t.nr || '')
+      )
+      if (moreCount > 0) {
+        lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${items.length}条，点击查看全部`))
+      }
+      const messageVNode = h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, lines)
+      const notification = ElNotification({
+        title: `【${lx}提醒】(${items.length}条)`,
+        message: messageVNode,
+        type: cfg.type,
+        duration: 15000,
+        position: 'bottom-right',
+        icon: Bell,
+        onClick: () => {
+          notification.close()
+          onClick()
         }
-        const messageVNode = h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, lines)
-        const notification = ElNotification({
-          title: `【${lx}提醒】(${items.length}条)`,
-          message: messageVNode,
-          type: cfg.type,
-          duration: 15000,
-          position: 'bottom-right',
-          icon: Bell,
-          onClick: () => {
-            notification.close()
-            onClick()
-          }
-        })
+      })
+      // 浏览器最小化时额外弹系统通知（作为补充，被屏蔽也不影响页面内弹窗）
+      if (document.hidden) {
+        const body = showItems.map((t: any) => t.nr).join('\n') + (moreCount > 0 ? `\n…等${items.length}条` : '')
+        try { sendSystemNotification(`【${lx}提醒】(${items.length}条)`, body, onClick) } catch(e) {}
+        startTitleBlink('有新消息')
       }
       await new Promise(r => setTimeout(r, 200))
     }
@@ -727,9 +731,10 @@ const checkNewProblems = async () => {
     // 声音提醒
     playNotificationSound()
 
-    // 记录已提醒的通知ID，防止重复弹
-    const newIds = newList.map((t: any) => t.id)
-    saveRemindedTzxxIds([...new Set([...remindedIds, ...newIds])])
+    // 记录本次弹过的通知时间戳（5分钟内不重弹）
+    const newMap = { ...remindedMap }
+    newList.forEach((t: any) => { newMap[t.id] = Date.now() })
+    saveRemindedMap(newMap)
     isFirstPoll = false
   } catch (error) {
     console.error('检查新问题失败:', error)
@@ -740,12 +745,8 @@ const checkNewProblems = async () => {
 
 // 启动消息提醒
 const startReminder = () => {
-  // 立即检查一次
+  // 立即检查一次（登录时弹当前未读），之后靠 SSE 推送实时提醒，不再轮询
   checkNewProblems()
-  // 每10秒检查一次新问题
-  reminderTimer.value = setInterval(() => {
-    checkNewProblems()
-  }, CHECK_INTERVAL)
 }
 
 // 停止消息提醒

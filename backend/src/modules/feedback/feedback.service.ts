@@ -532,7 +532,18 @@ export class FeedbackService {
         order: { lrsj: 'DESC' },
         take: 50
       });
-      return { list, count: list.length };
+      // 过滤新增/返回类：对应问题已被工程师处理(gongchengsbz='Y')的，自动失效不再提醒
+      let filtered = list;
+      try {
+        const wids = list.map(t => t.wentiid).filter(Boolean);
+        if (wids.length > 0) {
+          const pros = await this.feedbackRepository.findByIds(wids);
+          const m = new Map<number, string>();
+          pros.forEach((p: any) => m.set(p.id, p.gongchengsbz));
+          filtered = list.filter(t => !((t.lx === '新增' || t.lx === '返回') && m.get(t.wentiid) === 'Y'));
+        }
+      } catch (e) { console.error('过滤已处理新增通知失败:', e); }
+      return { list: filtered, count: filtered.length };
     } catch (error) {
       console.error('获取提醒失败:', error);
       return { list: [], count: 0 };

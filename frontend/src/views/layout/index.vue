@@ -641,6 +641,7 @@ const saveRemindedTzxxIds = (ids: number[]) => {
 // ===== 事件通知轮询 =====
 // 后端按用户编码写入 xt_tzxx 通知表：新增→工程师+跟进人；处理→跟进人+反馈人；测试→反馈人+工程师+跟进人；返回→工程师+反馈人
 // 接收人=操作人本人时不写通知；前端每10秒拉一次"我的未读通知"，点击后标记已读并跳转
+let isFirstPoll = true
 const checkNewProblems = async () => {
   try {
     let currentUser = localStorage.getItem('userCode') || ''
@@ -676,7 +677,9 @@ const checkNewProblems = async () => {
     })
     const MAX_SHOW = 6  // 弹窗内最多显示条数，超出提示"等N条"
 
-    groups.forEach((items, lx) => {
+    for (const [lx, items] of groups) {
+      // 登录后首次轮询：测试完成类不弹窗，直接记入已提醒（行725统一记id），之后新到的才弹
+      if (isFirstPoll && lx === '测试') return
       const cfg = tzConfig[lx] || { page: '/feedback', type: 'info' }
       const ids = items.map((t: any) => t.id)
       const onClick = () => {
@@ -715,7 +718,8 @@ const checkNewProblems = async () => {
           }
         })
       }
-    })
+      await new Promise(r => setTimeout(r, 200))
+    }
 
     // 声音提醒
     playNotificationSound()
@@ -723,6 +727,7 @@ const checkNewProblems = async () => {
     // 记录已提醒的通知ID，防止重复弹
     const newIds = newList.map((t: any) => t.id)
     saveRemindedTzxxIds([...new Set([...remindedIds, ...newIds])])
+    isFirstPoll = false
   } catch (error) {
     console.error('检查新问题失败:', error)
   }

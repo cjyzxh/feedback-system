@@ -538,9 +538,14 @@ export class FeedbackService {
         const wids = list.map(t => t.wentiid).filter(Boolean);
         if (wids.length > 0) {
           const pros = await this.feedbackRepository.findByIds(wids);
-          const m = new Map<number, string>();
-          pros.forEach((p: any) => m.set(p.id, p.gongchengsbz));
-          filtered = list.filter(t => !((t.lx === '新增' || t.lx === '返回') && m.get(t.wentiid) === 'Y'));
+          const m = new Map<number, any>();
+          pros.forEach((p: any) => m.set(p.id, { gongchengsbz: p.gongchengsbz, shouhoubz: p.shouhoubz }));
+          filtered = list.filter(t => {
+            const info = m.get(t.wentiid);
+            if ((t.lx === '新增' || t.lx === '返回') && info?.gongchengsbz === 'Y') return false;
+            if (t.lx === '处理' && info?.shouhoubz === 'Y') return false;
+            return true;
+          });
         }
       } catch (e) { console.error('过滤已处理新增通知失败:', e); }
       return { list: filtered, count: filtered.length };

@@ -1050,6 +1050,10 @@ const handleAdd = async () => {
   form.fanhuisj = null
   uploadFileList.value = []
   forms.value = []
+  // 清空医院下拉缓存：之前用拼音码搜索过的话，hospitals 只剩命中子集，
+  // 下次打开窗体必须恢复全量，否则上一个拼音码条件还在起作用
+  hospitals.value = []
+  loadHospitals()
   dialogVisible.value = true  // 弹出新增对话框
   
   // 加载默认版本对应的模块
@@ -1139,6 +1143,9 @@ const handleEdit = async (row: any) => {
   } else {
     shouhouDaoqiRi.value = ''
   }
+  // 编辑打开时同样恢复医院下拉全量（避免上次拼音码搜索的子集残留）
+  hospitals.value = []
+  loadHospitals()
   dialogVisible.value = true
 }
 
@@ -1381,6 +1388,8 @@ const handleSubmit = async () => {
     let savedFeedback = null
     
     if (isEdit.value) {
+      // 编辑保存时补传操作人编码（czrbm）：后端"修改跟进人/工程师"的 SSE 提醒要排除操作人本人
+      data.czrbm = localStorage.getItem('userCode') || ''
       await axios.put(`/api/feedback/${form.id}`, data)
       savedFeedback = { id: form.id }
     } else {

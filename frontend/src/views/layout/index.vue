@@ -457,8 +457,13 @@ const userHospital = computed(() => {
 })
 
 // ========== 消息提醒功能 ==========
-const reminderTimer = ref<any>(null)
-const CHECK_INTERVAL = 10 * 1000       // 每10秒检查一次新问题
+// 提醒策略（全部按用户编码 userCode 匹配，与姓名无关）：
+//   1. 登录时：调 /api/feedback/reminder/login 弹四类存量（待处理/已返回/待测试/待讨论），弹一次即止
+//   2. 待机时：SSE 广播 remind 事件弹"当前这一条"；未点击则每 5 分钟重弹一次，直到点击或问题状态变化
+//   3. 浏览器最小化/无焦点：系统通知 + 页面内弹窗同时弹
+const REMIND_AGAIN_MS = 5 * 60 * 1000   // 待机提醒：弹过之后 5 分钟未点击则重弹
+const ACTIVE_KEY = 'activeReminders'    // 活跃提醒表：key = 问题ID-类别，value = 最后弹的时间戳
+const remindResendTimer = ref<any>(null) // 每 60 秒扫描一次活跃表，超 5 分钟未弹的重新弹
 
 // 播放提示音
 const playNotificationSound = () => {
@@ -507,9 +512,14 @@ const startStatusStream = () => {
   try {
     if (statusStream) return
     statusStream = new EventSource('/api/feedback/status-stream')
-    // 后端把 {type:'changed'} 映射为 SSE 自定义事件 changed，需用 addEventListener 接收
-    statusStream.addEventListener('changed', () => { loadStatusCount(); checkNewProblems() })
-    statusStream.onmessage = () => { loadStatusCount(); checkNewProblems() }  // 兼容默认 message 事件
+    // 后端把 {type:'changed'|'remind'} 映射为 SSE 自定义事件，用 addEventListener 接收
+    // changed：主表数据变化 → 刷新右上角统计
+    statusStream.addEventListener('changed', () => { loadStatusCount() })
+    // remind：状态变化 → 弹实时提醒（只弹当前这一条；jsrbm 匹配我的编码才弹）
+    statusStream.addEventListener('remind', (e: MessageEvent) => {
+      try { handleRemindEvent(JSON.parse(e.data)) } catch (err) { console.error('解析提醒事件失败:', err, e.data) }
+    })
+    statusStream.onmessage = () => { loadStatusCount() }  // 兼容默认 message 事件
     statusStream.onerror = () => { /* EventSource 自动重连，无需处理 */ }
     // SSE 断连由 EventSource 自动重连，不再轮询
   } catch (e) { console.error('状态变更流连接失败:', e) }
@@ -622,138 +632,167 @@ const handlePageFocus = () => {
 }
 // ========== 浏览器原生通知和标题闪烁结束 ==========
 
-// 已提醒过的通知（localStorage 记录 id->上次弹的时间戳）
-// 逻辑：5分钟内弹过的不再弹；超过5分钟仍未读的再弹一次
-const REMIND_AGAIN_MS = 5 * 60 * 1000
-const getRemindedMap = (): Record<number, number> => {
+// ===== 活跃提醒表（localStorage） =====
+// key = `${wentiid}-${lx}`：同一问题同一类别只保留一条；问题状态变化时旧 key 会被清除
+const getActiveReminders = (): Record<string, number> => {
   try {
-    const raw = localStorage.getItem('remindedTzxxIds')
+    const raw = localStorage.getItem(ACTIVE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) { const m: any = {}; parsed.forEach(id => m[id] = Date.now()); return m }
-    return parsed
+    return (parsed && typeof parsed === 'object') ? parsed : {}
   } catch (e) { return {} }
 }
-const saveRemindedMap = (m: Record<number, number>) => {
-  localStorage.setItem('remindedTzxxIds', JSON.stringify(m))
+const saveActiveReminders = (m: Record<string, number>) => {
+  localStorage.setItem(ACTIVE_KEY, JSON.stringify(m))
+}
+const clearActiveReminders = () => {
+  localStorage.removeItem(ACTIVE_KEY)
 }
 
-// ===== 事件通知轮询 =====
-// 后端按用户编码写入 xt_tzxx 通知表：新增→工程师+跟进人；处理→跟进人+反馈人；测试→反馈人+工程师+跟进人；返回→工程师+反馈人
-// 接收人=操作人本人时不写通知；前端每10秒拉一次"我的未读通知"，点击后标记已读并跳转
-let isFirstPoll = true
-let isChecking = false
-const checkNewProblems = async () => {
-  if (isChecking) return
-  isChecking = true
+// 类别 → 跳转页面
+const getRemindPage = (lx: string): string => {
+  if (lx === '待测试') return '/testcheck'
+  if (lx === '待处理' || lx === '已返回') return '/test'
+  return '/feedback'   // 已完成 / 待讨论 / 跟进
+}
+
+// 弹一条提醒（页面内弹窗；最小化/无焦点时同时发系统通知 + 标题闪烁）
+// key 用于活跃表记录；点击后从活跃表移除（不再重弹）
+const popRemindNotification = (lx: string, wentiid: number, title: string, key: string) => {
+  const cfg: Record<string, any> = { '待处理': 'warning', '待测试': 'success', '已返回': 'error', '已完成': 'success', '待讨论': 'warning', '跟进': 'info' }
+  // 弹提示时同时播放提示音（待机实时提醒 / 5分钟重弹共用此函数）
+  playNotificationSound()
+  const onClick = () => {
+    const m = getActiveReminders()
+    delete m[key]
+    saveActiveReminders(m)
+    stopTitleBlink()
+    router.push(getRemindPage(lx))
+  }
+  const notification = ElNotification({
+    title: `【${lx}提醒】#${wentiid}`,
+    message: h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, title),
+    type: cfg[lx] || 'info',
+    duration: 15000,
+    position: 'bottom-right',
+    icon: Bell,
+    onClick: () => { notification.close(); onClick() }
+  })
+  // 浏览器最小化/无焦点：系统通知 + 标题闪烁（页面内弹窗已同时弹出）
+  if (document.hidden) {
+    try { sendSystemNotification(`【${lx}提醒】#${wentiid}`, title, onClick) } catch (e) { /* 系统通知被屏蔽不影响页面内弹窗 */ }
+    startTitleBlink('有新消息')
+  }
+}
+
+// 待机：SSE 收到 remind 事件 → 只弹当前这一条
+// 去重：后端已按"排除操作人本人 + Set 去重"广播 jsrbm 编码列表，这里只判断"我的编码在列表里"
+const handleRemindEvent = (data: any) => {
   try {
-    let currentUser = localStorage.getItem('userCode') || ''
-    if (!currentUser) {
-      const u = JSON.parse(localStorage.getItem('user') || '{}')
-      currentUser = u.username || ''
+    const lx = data?.lx, wentiid = data?.wentiid, title = data?.title, jsrbm = data?.jsrbm || []
+    if (!lx || !wentiid) return
+    let myCode = localStorage.getItem('userCode') || ''
+    if (!myCode) { const u = JSON.parse(localStorage.getItem('user') || '{}'); myCode = u.username || '' }
+    if (!myCode || !jsrbm.includes(myCode)) return   // 不是给我的 → 不弹
+
+    // 问题状态已变化：清掉该问题的所有旧提醒（只保留当前状态这条）
+    const m = getActiveReminders()
+    for (const k of Object.keys(m)) {
+      if (k.startsWith(`${wentiid}-`)) delete m[k]
     }
-    if (!currentUser) return
+    const key = `${wentiid}-${lx}`
+    m[key] = Date.now()
+    saveActiveReminders(m)
+    popRemindNotification(lx, wentiid, title, key)
+  } catch (e) { console.error('处理实时提醒失败:', e) }
+}
 
-    const res = await axios.get(`/api/feedback/reminder/count?currentUser=${encodeURIComponent(currentUser)}`)
-    const data = res.data?.data
-    if (!data || !data.list || data.list.length === 0) return
-
-    // 过滤：5分钟内弹过的不弹；超过5分钟仍未读的再弹一次
-    const remindedMap = getRemindedMap()
-    const now = Date.now()
-    const newList = data.list.filter((t: any) => {
-      const last = remindedMap[t.id]
-      if (last && (now - last) < REMIND_AGAIN_MS) return false
-      return true
-    })
-    if (newList.length === 0) return
-
-    // 通知类型 → 跳转页面 + 弹窗颜色
-    const tzConfig: Record<string, any> = {
-      '新增': { page: '/feedback', type: 'warning' },   // 新增问题：去问题列表看新问题
-      '处理': { page: '/testcheck', type: 'success' },  // 工程师处理完：去测试页
-      '测试': { page: '/feedback', type: 'success' },   // 测试通过：回列表看结果
-      '返回': { page: '/test', type: 'error' }          // 测试返回：去处理页重新处理
-    }
-
-    // 按类别分组：一个类别弹一个通知，内容列表限制高度滚动显示
-    const groups = new Map<string, any[]>()
-    newList.forEach((t: any) => {
-      const key = t.lx || '消息'
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(t)
-    })
-    const MAX_SHOW = 6  // 弹窗内最多显示条数，超出提示"等N条"
-
-    for (const [lx, items] of groups) {
-      // 登录后首次轮询：测试完成类不弹窗，直接记入已提醒（行725统一记id），之后新到的才弹
-      if (isFirstPoll && lx === '测试') continue
-      const cfg = tzConfig[lx] || { page: '/feedback', type: 'info' }
-      const ids = items.map((t: any) => t.id)
-      const onClick = async () => {
-        // 点击弹窗：该类别全部标记已读并跳转对应页面
-        try { await Promise.all(ids.map((id: number) => axios.post('/api/feedback/reminder/read', { id }))) } catch (e) { console.error('标记通知已读失败', e, ids) }
-        router.push(cfg.page)
-        stopTitleBlink()
+// 待机：每 60 秒扫描活跃表，超 5 分钟未点击的提醒重新弹一次（重要的事盯到处理为止）
+const startRemindResend = () => {
+  if (remindResendTimer.value) return
+  remindResendTimer.value = setInterval(() => {
+    try {
+      const m = getActiveReminders()
+      const now = Date.now()
+      for (const [key, last] of Object.entries(m)) {
+        if (now - last >= REMIND_AGAIN_MS) {
+          const idx = key.lastIndexOf('-')
+          const nid = parseInt(key.substring(0, idx))
+          const lx = key.substring(idx + 1)
+          if (!nid || !lx) continue
+          m[key] = now   // 先更新时间戳，防止同一扫描周期内重复弹
+          popRemindNotification(lx, nid, `（重要提醒）问题 #${nid} 仍待您处理，请及时查看`, key)
+        }
       }
-      const showItems = items.slice(0, MAX_SHOW)
-      const moreCount = items.length - showItems.length
+      saveActiveReminders(m)
+    } catch (e) { console.error('重弹提醒扫描失败:', e) }
+  }, 60 * 1000)
+}
 
-      // 统一弹页面内右下角通知（不依赖系统通知权限，最小化也能看到）
+// 登录：弹四类存量（一次性，不进活跃表、不论点不点本次登录不再弹）
+const loadLoginReminders = async () => {
+  try {
+    let myCode = localStorage.getItem('userCode') || ''
+    if (!myCode) { const u = JSON.parse(localStorage.getItem('user') || '{}'); myCode = u.username || '' }
+    if (!myCode) return
+    // 登录时清空上次的活跃提醒表（历史存量一律不重弹）
+    clearActiveReminders()
+    const res = await axios.get(`/api/feedback/reminder/login?userCode=${encodeURIComponent(myCode)}`)
+    const d = res.data?.data
+    if (!d) return
+    const catConfig: Record<string, { label: string; page: string; items: any[] }> = {
+      daichuli: { label: '待处理', page: '/test', items: d.daichuli || [] },
+      ceshifanhui: { label: '已返回', page: '/test', items: d.ceshifanhui || [] },
+      daiceshi: { label: '待测试', page: '/testcheck', items: d.daiceshi || [] },
+      daitaolun: { label: '待讨论', page: '/feedback', items: d.daitaolun || [] },
+    }
+    const MAX_SHOW = 6  // 弹窗内最多显示条数，超出提示"等N条"
+    let hasAny = false
+    for (const key of Object.keys(catConfig)) {
+      const cfg = catConfig[key]
+      if (!cfg.items || cfg.items.length === 0) continue
+      hasAny = true
+      const showItems = cfg.items.slice(0, MAX_SHOW)
+      const moreCount = cfg.items.length - showItems.length
       const lines = showItems.map((t: any) =>
-        h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, t.nr || '')
+        h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, `#${t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}：${(t.wentism || '').slice(0, 40)}`)
       )
       if (moreCount > 0) {
-        lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${items.length}条，点击查看全部`))
+        lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${cfg.items.length}条，点击查看全部`))
       }
       const messageVNode = h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, lines)
       const notification = ElNotification({
-        title: `【${lx}提醒】(${items.length}条)`,
+        title: `【${cfg.label}提醒】(${cfg.items.length}条)`,
         message: messageVNode,
-        type: cfg.type,
+        type: cfg.label === '已返回' ? 'error' : cfg.label === '待测试' ? 'success' : 'warning',
         duration: 15000,
         position: 'bottom-right',
         icon: Bell,
-        onClick: () => {
-          notification.close()
-          onClick()
-        }
+        onClick: () => { notification.close(); router.push(cfg.page); stopTitleBlink() }
       })
-      // 浏览器最小化时额外弹系统通知（作为补充，被屏蔽也不影响页面内弹窗）
+      // 浏览器最小化/无焦点时同时弹系统通知
       if (document.hidden) {
-        const body = showItems.map((t: any) => t.nr).join('\n') + (moreCount > 0 ? `\n…等${items.length}条` : '')
-        try { sendSystemNotification(`【${lx}提醒】(${items.length}条)`, body, onClick) } catch(e) {}
+        const body = showItems.map((t: any) => `#${t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}`).join('\n') + (moreCount > 0 ? `\n…等${cfg.items.length}条` : '')
+        try { sendSystemNotification(`【${cfg.label}提醒】(${cfg.items.length}条)`, body, () => router.push(cfg.page)) } catch (e) {}
         startTitleBlink('有新消息')
       }
       await new Promise(r => setTimeout(r, 200))
     }
-
-    // 声音提醒
-    playNotificationSound()
-
-    // 记录本次弹过的通知时间戳（5分钟内不重弹）
-    const newMap = { ...remindedMap }
-    newList.forEach((t: any) => { newMap[t.id] = Date.now() })
-    saveRemindedMap(newMap)
-    isFirstPoll = false
-  } catch (error) {
-    console.error('检查新问题失败:', error)
-  } finally {
-    isChecking = false
-  }
+    if (hasAny) playNotificationSound()
+  } catch (e) { console.error('加载登录提醒失败:', e) }
 }
 
-// 启动消息提醒
+// 启动消息提醒：登录存量弹一次 + 启动待机 5 分钟重弹扫描
 const startReminder = () => {
-  // 立即检查一次（登录时弹当前未读），之后靠 SSE 推送实时提醒，不再轮询
-  checkNewProblems()
+  loadLoginReminders()
+  startRemindResend()
 }
 
 // 停止消息提醒
 const stopReminder = () => {
-  if (reminderTimer.value) {
-    clearInterval(reminderTimer.value)
-    reminderTimer.value = null
+  if (remindResendTimer.value) {
+    clearInterval(remindResendTimer.value)
+    remindResendTimer.value = null
   }
 }
 // ========== 消息提醒功能结束 ==========

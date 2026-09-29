@@ -5,7 +5,6 @@ import { Repository, Like, Between, In } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
-import { Tzxx } from './tzxx.entity';
 import { Fjxx } from './fjxx.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
@@ -18,8 +17,6 @@ export class FeedbackService {
     // Repository = TypeORM 的数据访问层，类比 VB6 里封装好的 ADODB.Recordset 操作类
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
-    @InjectRepository(Tzxx)
-    private tzxxRepository: Repository<Tzxx>,
     @InjectRepository(Fjxx)
     private fjxxRepository: Repository<Fjxx>,
     private configService: DatabaseConfigService,  // 读上传目录配置等
@@ -27,28 +24,23 @@ export class FeedbackService {
 
   // 主业务表（yw_wentilb）变更广播：增删改后推送信号，前端收到后刷新"我的处理状态"
   // 无变化时前端零轮询（SSE 事件驱动，类比 VB6 的 RaiseEvent）
-  public statusSubject = new Subject<{ type: string; data: { time: number } }>();
+  // 事件类型：changed=刷新统计；remind=弹提醒（带接收人编码，前端按 jsrbm 是否含自己决定弹窗）
+  public statusSubject = new Subject<{ type: string; data: any }>();
   notifyStatusChanged(): void {
     // NestJS @Sse 会把 {type, data} 序列化为标准 SSE：event: changed + data: {...}
     // 必须带 data 字段，否则部分浏览器（Chrome）收不到该自定义事件
     this.statusSubject.next({ type: 'changed', data: { time: Date.now() } });
   }
 
-  // 写入一条通知：接收人 = 本人时不写；空编码不写
-  // 防重：同一问题 + 同一类型 + 同一接收人且未读（ydsj 为空）已存在时不再重复写，
-  // 避免"确认处理/返回"等动作被重复提交（如双击/重复请求）时给用户弹两条一样的内容
-  private async addTzxx(wentiid: number, lx: string, jsrbm: string, nr: string, excludeBm?: string) {
+  // SSE 提醒广播：状态变化时把"该提醒谁"推给所有前端，前端按 jsrbm 是否含自己决定弹窗
+  // 去重：同一接收人只保留一个编码（多角色同人只弹一次）；排除操作人本人（自己不提醒自己）
+  notifyRemind(lx: string, wentiid: number, title: string, jsrbmList: (string | null | undefined)[], excludeBm?: string | null): void {
     try {
-      if (!jsrbm || (excludeBm && jsrbm === excludeBm)) return;
-      const exists = await this.tzxxRepository.findOne({
-        where: { wentiid, lx, jsrbm, ydsj: null }
-      });
-      if (exists) return;
-      await this.tzxxRepository.save(this.tzxxRepository.create({
-        wentiid, lx, jsrbm, nr, lrsj: new Date(),
-      }));
+      const jsrbm = [...new Set(jsrbmList.filter((b): b is string => !!b && b !== excludeBm))];
+      if (jsrbm.length === 0) return;
+      this.statusSubject.next({ type: 'remind', data: { lx, wentiid, title, jsrbm, time: Date.now() } });
     } catch (error) {
-      console.error('写入通知失败:', error);
+      console.error('SSE 提醒广播失败:', error);
     }
   }
 
@@ -89,10 +81,9 @@ export class FeedbackService {
       const saved = await this.feedbackRepository.save(feedback);
       console.log('创建成功 ID:', saved.id);
 
-      // ===== 事件通知：新增问题 → 提醒工程师 + 跟进人（录入人本人不提示） =====
+      // ===== SSE 提醒：新增问题 → 广播"待处理"给工程师（录入人本人不提示） =====
       const tzTitle = `【新问题#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}${saved.chuangtimc ? '-' + saved.chuangtimc : ''}：${(saved.wentism || '').slice(0, 50)}`;
-      if (saved.xggcsBM) await this.addTzxx(saved.id, '新增', saved.xggcsBM, tzTitle, saved.szcsgcsBM);
-      if (saved.shishiryBM) await this.addTzxx(saved.id, '新增', saved.shishiryBM, tzTitle, saved.szcsgcsBM);
+      this.notifyRemind('待处理', saved.id, tzTitle, [saved.xggcsBM], saved.szcsgcsBM);
 
       this.notifyStatusChanged();
       return saved;
@@ -331,6 +322,9 @@ export class FeedbackService {
       const oldGongchengsbz = feedback.gongchengsbz;
       const oldShouhoubz = feedback.shouhoubz;
       const oldTaolunbz = feedback.taolunbz;
+      // 人员旧值：编辑页修改跟进人/工程师时，判断"人员是否真的变更"再广播（避免每次保存都提醒）
+      const oldShishiryBM = feedback.shishiryBM;
+      const oldXggcsBM = feedback.xggcsBM;
       
       // 直接合并字段并保存（dto 里传了哪个字段就改哪个，没传的不动）
       // 这样处理页只传 {gongchengsbz:'Y'} 就能只改状态位，不影响其它字段
@@ -369,29 +363,41 @@ export class FeedbackService {
       const saved = await this.feedbackRepository.save(feedback);
       console.log('更新成功 ID:', saved.id);
 
-      // ===== 事件通知：根据状态变化判断"发生了什么"，通知对应的人（接收人是操作人本人不提示） =====
+      // ===== SSE 提醒：根据状态变化广播"该提醒谁"（接收人是操作人本人不提示；多角色同一人自动去重） =====
       try {
-        // 场景1：处理确认（工程师处理完成 gongchengsbz: N -> Y）→ 通知跟进人 + 反馈人
+        // 场景1：处理确认（工程师处理完成 gongchengsbz: N -> Y）→ 广播"待测试"给实施/测试人
         if (dto.gongchengsbz === 'Y' && oldGongchengsbz === 'N') {
           const nr = `【已处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.gongcscs || saved.wentism || '').slice(0, 50)}`;
-          if (saved.shishiryBM) await this.addTzxx(saved.id, '处理', saved.shishiryBM, nr, saved.xggcsBM);
-          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '处理', saved.szcsgcsBM, nr, saved.xggcsBM);
+          this.notifyRemind('待测试', saved.id, nr, [saved.shishiryBM], saved.xggcsBM);
         }
-        // 场景2：测试确认（测试通过 shouhoubz: -> Y）→ 通知反馈人 + 工程师 + 跟进人
+        // 场景2：测试确认（测试通过 shouhoubz: -> Y）→ 广播"已完成"给反馈人 + 工程师 + 实施员
         else if (dto.shouhoubz === 'Y' && oldShouhoubz !== 'Y') {
           const nr = `【测试通过#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
-          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '测试', saved.szcsgcsBM, nr, saved.shcsgcsBM);
-          if (saved.xggcsBM) await this.addTzxx(saved.id, '测试', saved.xggcsBM, nr, saved.shcsgcsBM);
-          if (saved.shishiryBM) await this.addTzxx(saved.id, '测试', saved.shishiryBM, nr, saved.shcsgcsBM);
+          this.notifyRemind('已完成', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], saved.shcsgcsBM);
         }
-        // 场景3：返回测试（测试不过退回工程师 gongchengsbz: Y -> N）→ 通知工程师 + 反馈人
+        // 场景3：返回测试（测试不过退回工程师 gongchengsbz: Y -> N）→ 广播"已返回"给工程师 + 反馈人
         else if (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y') {
           const nr = `【测试返回#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
-          if (saved.xggcsBM) await this.addTzxx(saved.id, '返回', saved.xggcsBM, nr, saved.shcsgcsBM);
-          if (saved.szcsgcsBM) await this.addTzxx(saved.id, '返回', saved.szcsgcsBM, nr, saved.shcsgcsBM);
+          this.notifyRemind('已返回', saved.id, nr, [saved.xggcsBM, saved.szcsgcsBM], saved.shcsgcsBM);
+        }
+        // 场景4：标记待讨论（taolunbz: N -> Y）→ 广播"待讨论"给反馈人 + 工程师 + 实施员（操作人本人不提示）
+        else if (dto.taolunbz === 'Y' && oldTaolunbz !== 'Y') {
+          const nr = `【待讨论#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.wentism || '').slice(0, 50)}`;
+          this.notifyRemind('待讨论', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], dto.czrbm);
+        }
+        // 场景5：编辑页修改跟进人（shishiryBM 变更）→ 广播给新跟进人（操作人本人不提示）
+        // 只有人员真的变化才提醒，避免编辑其它字段保存时误打扰
+        if (dto.shishiryBM !== undefined && dto.shishiryBM !== oldShishiryBM && saved.shishiryBM) {
+          const nr = `【分配跟进#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配跟进该问题，请及时关注`;
+          this.notifyRemind('跟进', saved.id, nr, [saved.shishiryBM], dto.czrbm);
+        }
+        // 场景6：编辑页修改工程师（xggcsBM 变更）→ 广播给新工程师（操作人本人不提示）
+        if (dto.xggcsBM !== undefined && dto.xggcsBM !== oldXggcsBM && saved.xggcsBM) {
+          const nr = `【分配处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配处理该问题，请及时处理`;
+          this.notifyRemind('待处理', saved.id, nr, [saved.xggcsBM], dto.czrbm);
         }
       } catch (error) {
-        console.error('写通知失败:', error);
+        console.error('SSE 提醒广播失败:', error);
       }
 
       this.notifyStatusChanged();
@@ -521,52 +527,44 @@ export class FeedbackService {
     }
   }
 
-  // ===== 事件通知查询 =====
-  // 前端每10秒轮询"我的未读通知"：新增/处理/测试/返回 四类事件写入 xt_tzxx，接收人=本人且未读的返回
-  // 注意：全部按用户编码（jsrbm）过滤，与姓名无关
-  async getReminderCount(currentUser: string): Promise<{ list: Tzxx[]; count: number }> {
+  // ===== 登录提醒 =====
+  // 登录时查主表当前状态，返回"与我有关"的四类存量（弹一次即止，不重复提醒）：
+  //   待处理  = 工程师是我 且 未处理、未返回
+  //   已返回  = 工程师是我 且 被测试打回（有返回时间）
+  //   待测试  = 实施/测试人是我 且 已处理待测试
+  //   待讨论  = taolunbz='Y' 且 与我有关（四编码任一=我）
+  // 全部按用户编码过滤（与姓名无关）；每类最多 20 条；排序与列表一致（紧急优先 + 录入时间倒序）
+  async getLoginReminders(userCode: string): Promise<{
+    daichuli: any[]; daiceshi: any[]; ceshifanhui: any[]; daitaolun: any[];
+  }> {
+    const empty = { daichuli: [], daiceshi: [], ceshifanhui: [], daitaolun: [] };
+    if (!userCode) return empty;
     try {
-      if (!currentUser) return { list: [], count: 0 };
-      const list = await this.tzxxRepository.find({
-        where: { jsrbm: currentUser, ydsj: null },
-        order: { lrsj: 'DESC' },
-        take: 50
-      });
-      // 过滤新增/返回类：对应问题已被工程师处理(gongchengsbz='Y')的，自动失效不再提醒
-      let filtered = list;
-      try {
-        const wids = list.map(t => t.wentiid).filter(Boolean);
-        if (wids.length > 0) {
-          const pros = await this.feedbackRepository.findByIds(wids);
-          const m = new Map<number, any>();
-          pros.forEach((p: any) => m.set(p.id, { gongchengsbz: p.gongchengsbz, shouhoubz: p.shouhoubz }));
-          filtered = list.filter(t => {
-            const info = m.get(t.wentiid);
-            if ((t.lx === '新增' || t.lx === '返回') && info?.gongchengsbz === 'Y') return false;
-            if (t.lx === '处理' && info?.shouhoubz === 'Y') return false;
-            return true;
-          });
-        }
-      } catch (e) { console.error('过滤已处理新增通知失败:', e); }
-      return { list: filtered, count: filtered.length };
+      const baseSelect = 'id, yiyuanmc, mokuai, chuangtimc, wentism, wentilx, jingjicd, lvrusj, gongchengsbz, shouhoubz, taolunbz, fanhuisj, xggcsBM, shishiryBM, szcsgcsBM, shcsgcsBM';
+      const order = "ORDER BY CASE jingjicd WHEN '紧急' THEN 0 WHEN '急' THEN 1 ELSE 2 END, lvrusj DESC";
+      const run = async (whereSql: string) => {
+        const rows = await this.feedbackRepository.query(
+          `SELECT TOP 20 ${baseSelect} FROM yw_wentilb WHERE ${whereSql} ${order}`,
+          [userCode]
+        );
+        return rows || [];
+      };
+      const daichuli = await run(
+        "(taolunbz IS NULL OR taolunbz = 'N') AND gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NULL AND xggcsBM = @0"
+      );
+      const ceshifanhui = await run(
+        "(taolunbz IS NULL OR taolunbz = 'N') AND gongchengsbz = 'N' AND shouhoubz = 'N' AND fanhuisj IS NOT NULL AND xggcsBM = @0"
+      );
+      const daiceshi = await run(
+        "(taolunbz IS NULL OR taolunbz = 'N') AND gongchengsbz = 'Y' AND shouhoubz = 'N' AND shishiryBM = @0"
+      );
+      const daitaolun = await run(
+        "taolunbz = 'Y' AND (xggcsBM = @0 OR shishiryBM = @0 OR szcsgcsBM = @0 OR shcsgcsBM = @0)"
+      );
+      return { daichuli, daiceshi, ceshifanhui, daitaolun };
     } catch (error) {
-      console.error('获取提醒失败:', error);
-      return { list: [], count: 0 };
+      console.error('获取登录提醒失败:', error);
+      return empty;
     }
-  }
-
-  // 标记单条通知已读
-  async markTzxxRead(id: number): Promise<void> {
-    const t = await this.tzxxRepository.findOne({ where: { id } });
-    if (t) {
-      t.ydsj = new Date();
-      await this.tzxxRepository.save(t);
-    }
-  }
-
-  // 标记当前用户全部通知已读
-  async markAllRead(currentUser: string): Promise<void> {
-    if (!currentUser) return;
-    await this.tzxxRepository.update({ jsrbm: currentUser, ydsj: null }, { ydsj: new Date() });
   }
 }

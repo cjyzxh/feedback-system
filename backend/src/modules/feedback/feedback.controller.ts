@@ -355,27 +355,11 @@ export class FeedbackController {
     return { code: 200, message: '删除成功', data: null };
   }
 
-  // 获取我的未读通知（用于右下角消息提醒，按用户编码过滤）
-  // GET /api/feedback/reminder/count?currentUser=用户编码
-  @Get('reminder/count')
-  async getReminderCount(@Query('currentUser') currentUser: string) {
-    const data = await this.feedbackService.getReminderCount(currentUser);
+  // 登录提醒：返回与本人有关的四类存量（待处理/已返回/待测试/待讨论），弹一次即止
+  // GET /api/feedback/reminder/login?userCode=用户编码
+  @Get('reminder/login')
+  async getLoginReminders(@Query('userCode') userCode: string) {
+    const data = await this.feedbackService.getLoginReminders(userCode);
     return { code: 200, message: '查询成功', data };
-  }
-
-  // 标记单条通知已读
-  // POST /api/feedback/reminder/read  body: { id: 通知ID }
-  @Post('reminder/read')
-  async markRead(@Body() body: { id: number }) {
-    await this.feedbackService.markTzxxRead(body.id);
-    return { code: 200, message: '已读', data: null };
-  }
-
-  // 标记当前用户全部通知已读
-  // POST /api/feedback/reminder/read-all  body: { currentUser: 用户编码 }
-  @Post('reminder/read-all')
-  async markAllRead(@Body() body: { currentUser: string }) {
-    await this.feedbackService.markAllRead(body.currentUser);
-    return { code: 200, message: '已全部读', data: null };
   }
 }

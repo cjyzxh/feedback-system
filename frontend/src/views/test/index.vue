@@ -746,7 +746,8 @@ const handleDiscuss = () => {
     type: 'warning'
   }).then(async () => {
     try {
-      await axios.put('/api/feedback/' + selected.value.id, { taolunbz: 'Y' })
+      // 带上当前操作人编码：待讨论提醒广播时排除"操作人本人不提示自己"
+      await axios.put('/api/feedback/' + selected.value.id, { taolunbz: 'Y', czrbm: currentUserCode || undefined })
       ElMessage.success('已放入待讨论')
       loadList()
     } catch (err) {

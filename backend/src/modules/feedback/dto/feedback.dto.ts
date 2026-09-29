@@ -200,6 +200,9 @@ export class UpdateFeedbackDto {
 
   @IsOptional()
   LSH?: string;
+
+  @IsOptional()
+  czrbm?: string;  // 当前操作人编码（待讨论等场景用于排除"操作人本人不提醒自己"）
 }
 
 // 查询列表时的查询参数（GET /api/feedback?xxx=...）

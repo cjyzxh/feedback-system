@@ -415,7 +415,7 @@ const handleLogin = async () => {
         localStorage.removeItem('confirmedTestIds')
         localStorage.removeItem('confirmedReturnedIds')
         localStorage.removeItem('lastRemindTimes')
-        localStorage.removeItem('remindedTzxxIds')
+        localStorage.removeItem('activeReminders')
         
         ElMessage.success('超级管理员登录成功（仅可使用系统设置）')
         router.push('/settings')  // 直接跳转到系统设置页面
@@ -499,7 +499,7 @@ const handleLogin = async () => {
         localStorage.removeItem('confirmedTestIds')
         localStorage.removeItem('confirmedReturnedIds')
         localStorage.removeItem('lastRemindTimes')
-        localStorage.removeItem('remindedTzxxIds')
+        localStorage.removeItem('activeReminders')
         ElMessage.success('登录成功')
         router.push('/')
       } else {

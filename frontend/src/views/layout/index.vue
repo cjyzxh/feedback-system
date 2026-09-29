@@ -285,7 +285,7 @@ const applyPageScale = () => {
   globalMaxW = Math.max(globalMaxW, maxW)
   // 决定缩放：间距保持全局默认(--qgap 6px)，放不下时整体等比缩放
   const sidebarEl = wrap.querySelector<HTMLElement>('.sidebar')
-  const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 158 // 侧边栏宽（展开158px/收缩48px）
+  const sidebarW = sidebarEl ? sidebarEl.offsetWidth : 158 // 侧边栏宽（展开158px/收缩64px）
   const vw = document.documentElement.clientWidth
   const contentW = vw - sidebarW // 内容区可用宽
   let s = 1
@@ -312,8 +312,8 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
   localStorage.setItem('sidebarCollapsed', isCollapse.value ? '1' : '0')
 }
-// 标题居中偏移：随侧边栏宽度变化（展开158px/收缩48px）
-const titleOffset = computed(() => (isCollapse.value ? '-24px' : '-79px'))
+// 标题居中偏移：随侧边栏宽度变化（展开158px/收缩64px）
+const titleOffset = computed(() => (isCollapse.value ? '-32px' : '-79px'))
 // ========== 侧边栏收缩结束 ==========
 
 // ========== 界面风格切换（个人信息弹窗中使用）==========
@@ -1074,10 +1074,10 @@ onUnmounted(() => {
   flex-wrap: wrap !important;
 }
 .layout-container { display: flex; background: #f5f7fa; }
-.sidebar { width: 158px; --el-menu-collapse-width: 48px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
+.sidebar { width: 158px; --el-menu-collapse-width: 64px; background: #ffffff; color: #303133; border-right: 1px solid #e4e7ed; box-shadow: 2px 0 8px rgba(0,0,0,0.04); transition: width 0.3s ease; flex-shrink: 0; display: flex; flex-direction: column; }
 .sidebar .el-menu { flex: 1; }
-.sidebar.collapsed { width: 48px; }
-.sidebar.collapsed .logo { padding: 10px 8px; gap: 0; }
+.sidebar.collapsed { width: 64px; }
+.sidebar.collapsed .logo { padding: 10px 12px; gap: 0; }
 .sidebar.collapsed .logo span { display: none; }
 .logo { 
   padding: 10px 12px; 

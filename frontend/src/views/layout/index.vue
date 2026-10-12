@@ -33,11 +33,11 @@
             </template>
             <el-menu-item index="/report" v-if="hasMenuPermission('/report')">
               <el-icon><DataAnalysis /></el-icon style="font-size:14px">
-              <template #title>通用统计</template>
+              <template #title>问题状态</template>
             </el-menu-item>
             <el-menu-item index="/report/modify-status" v-if="hasMenuPermission('/report/modify-status')">
               <el-icon><TrendCharts /></el-icon style="font-size:14px">
-              <template #title>修改状态统计</template>
+              <template #title>问题分析</template>
             </el-menu-item>
           </el-sub-menu>
         </template>

@@ -50,7 +50,7 @@
 
           <!-- 列表 -->
           <el-table v-loading="loading" :data="list" style="width: 100%" max-height="520">
-            <el-table-column prop="moBanNR" label="模板内容" min-width="220" show-overflow-tooltip />
+            <el-table-column prop="moBanNR" label="模板内容" min-width="220" />
             <el-table-column prop="moBanFW" label="范围" width="70" />
             <el-table-column prop="createUserName" label="创建人" width="110">
               <template #default="scope">

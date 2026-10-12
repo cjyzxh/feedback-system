@@ -42,10 +42,10 @@ const routes: RouteRecordRaw[] = [
       { path: '/test', name: 'TestHandle', component: TestHandle, meta: { title: '问题处理', permission: 'test' } },
       // 问题测试
       { path: '/testcheck', name: 'TestCheck', component: TestCheck, meta: { title: '问题测试', permission: 'testcheck' } },
-      // 数据统计
-      { path: '/report', name: 'Report', component: Report, meta: { title: '数据统计', permission: 'test' } },
-      // 修改状态统计（数据统计的子菜单）
-      { path: '/report/modify-status', name: 'ModifyStatusReport', component: ModifyStatusReport, meta: { title: '修改状态统计', permission: 'test' } },
+      // 问题状态
+      { path: '/report', name: 'Report', component: Report, meta: { title: '问题状态', permission: 'test' } },
+      // 问题分析（数据统计的子菜单）
+      { path: '/report/modify-status', name: 'ModifyStatusReport', component: ModifyStatusReport, meta: { title: '问题分析', permission: 'test' } },
       
       // 系统设置（人员维护等）
       {

@@ -117,8 +117,8 @@ const menuTree = [
     id: '/report',
     label: '数据统计',
     children: [
-      { id: '/report', label: '通用统计' },
-      { id: '/report/modify-status', label: '修改状态统计' }
+      { id: '/report', label: '问题状态' },
+      { id: '/report/modify-status', label: '问题分析' }
     ]
   },
   {

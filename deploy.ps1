@@ -34,12 +34,43 @@ function Send-File([string]$local, [string]$remote, [int]$tries = 3) {
     throw "上传失败: $local"
 }
 
-# ---------- 第 0 步：SSH 测试 ----------
+# ---------- 第 0 步：清 DNS 缓存 + 域名解析检查 ----------
+# 花生壳是动态域名（zicp.fun），IP 随时可能变化：严禁把 host 改成 IP 直连（改 IP 下次部署必失效）。
+# "Could not resolve hostname" 多数是 DNS 缓存过期（flushdns 即可解决），少数是花生壳客户端掉线/映射失效
+# （需人工检查花生壳客户端，不能靠换 IP 绕过）。
+Write-Host "==> 清 DNS 缓存 ..." -ForegroundColor Cyan
+ipconfig /flushdns | Out-Null
+
+Write-Host "==> 检查域名 $sshHost 是否可解析 ..." -ForegroundColor Cyan
+$dnsOk = $false
+try {
+    $ips = @(Resolve-DnsName -Name $sshHost -Type A -ErrorAction Stop | Where-Object { $_.IPAddress })
+    if ($ips.Count -gt 0) { $dnsOk = $true; Write-Host "    解析成功: $($ips[0].IPAddress)" -ForegroundColor Green }
+} catch { }
+if (-not $dnsOk) {
+    # Resolve-DnsName 与 ssh 共用系统解析器；失败时再用 nslookup 复核，防止单路径误判
+    $nsOut = (nslookup $sshHost 2>&1 | Out-String)
+    if ($nsOut -match 'Address:\s*(\d{1,3}(?:\.\d{1,3}){3})') {
+        $dnsOk = $true
+        Write-Host "    解析成功: $($matches[1])" -ForegroundColor Green
+    }
+}
+if (-not $dnsOk) {
+    Write-Host "ERROR: 域名 $sshHost 无法解析（Could not resolve hostname）" -ForegroundColor Red
+    Write-Host "  可能原因与处理：" -ForegroundColor Yellow
+    Write-Host "    1. DNS 缓存过期（已 flushdns，一般已解决）" -ForegroundColor Yellow
+    Write-Host "    2. 花生壳客户端未在线 / 域名映射失效 —— 请检查花生壳客户端与映射后重试" -ForegroundColor Yellow
+    Write-Host "    3. 网络/DNS 服务器异常 —— 稍后重试" -ForegroundColor Yellow
+    Write-Host "  注意：不要将 host 改成 IP 直连，花生壳是动态 IP，改 IP 下次部署必失效。" -ForegroundColor Yellow
+    exit 1
+}
+
+# ---------- 第 1 步：SSH 测试 ----------
 Write-Host "==> 测试 SSH 连接 $sshUser@$sshHost`:$sshPort ..." -ForegroundColor Cyan
 Invoke-Ssh 'echo SSH_OK'
 Write-Host "    SSH 连接正常。" -ForegroundColor Green
 
-# ---------- 第 1 步：编译 ----------
+# ---------- 第 2 步：编译 ----------
 if ($cfg.build.frontend -eq $true) {
     Write-Host "==> 编译前端 ..." -ForegroundColor Cyan
     Push-Location (Join-Path $Root 'frontend')
@@ -55,7 +86,7 @@ if ($cfg.build.backend -eq $true) {
     Pop-Location
 }
 
-# ---------- 第 2 步：打包 ----------
+# ---------- 第 3 步：打包 ----------
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $tmp = Join-Path $env:TEMP "wtfk-deploy-$stamp"
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
@@ -73,7 +104,7 @@ if (-not (Test-Path $beDist)) { throw '后端 dist 不存在' }
 Compress-Archive -Path (Join-Path $feDist '*') -DestinationPath $feZip -Force
 Compress-Archive -Path (Join-Path $beDist '*') -DestinationPath $beZip -Force
 
-# ---------- 第 3 步：本地生成远程部署脚本（避免命令行引号转义） ----------
+# ---------- 第 4 步：本地生成远程部署脚本（避免命令行引号转义） ----------
 $batContent = @"
 @echo off
 set TMP=C:\wtfk-deploy
@@ -96,7 +127,7 @@ echo DEPLOY_DONE
 "@
 [System.IO.File]::WriteAllText($bat, $batContent, [System.Text.Encoding]::ASCII)
 
-# ---------- 第 4 步：上传 ----------
+# ---------- 第 5 步：上传 ----------
 Write-Host "==> 上传到服务器 ..." -ForegroundColor Cyan
 Invoke-Ssh "if not exist $remoteTmp mkdir $remoteTmp"
 Send-File $feZip "$remoteTmp\wtfk-frontend.zip"
@@ -112,7 +143,7 @@ if ($ffHasFfmpeg -match 'YES') {
 }
 Send-File $ffmpegSetup "$remoteTmp\deploy-ffmpeg-setup.ps1"
 
-# ---------- 第 5 步：远程执行部署 ----------
+# ---------- 第 6 步：远程执行部署 ----------
 # 先配置 ffmpeg/.env/nginx（保证后端启动时已带 ffmpeg 配置），再执行 dist 覆盖
 Write-Host "==> 远程配置 ffmpeg 与 nginx ..." -ForegroundColor Cyan
 $setupOut = Invoke-Ssh "powershell -NoProfile -ExecutionPolicy Bypass -File $remoteTmp\deploy-ffmpeg-setup.ps1"
@@ -121,7 +152,7 @@ Write-Host "==> 远程部署中 ..." -ForegroundColor Cyan
 $out = Invoke-Ssh "$remoteTmp\deploy.bat"
 $out | ForEach-Object { Write-Host $_ }
 
-# ---------- 第 6 步：验证 ----------
+# ---------- 第 7 步：验证 ----------
 Write-Host "==> 验证服务状态 ..." -ForegroundColor Cyan
 $state = Invoke-Ssh 'sc query WtfkBackend | findstr STATE & sc query Nginx | findstr STATE'
 $state | ForEach-Object { Write-Host $_ }

@@ -76,9 +76,15 @@ async function loadList() {
   }
 }
 
+function formatNow() {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 function handleSelect(row: any) {
   if (row?.moBanNR) {
-    emit('select', row.moBanNR + '--' + loginName)
+    emit('select', `${row.moBanNR}--${loginName}(${formatNow()})`)
     dialogVisible.value = false
     ElMessage.success('已插入到文本框')
   }

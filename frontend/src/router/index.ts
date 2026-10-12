@@ -43,7 +43,7 @@ const routes: RouteRecordRaw[] = [
       // 问题测试
       { path: '/testcheck', name: 'TestCheck', component: TestCheck, meta: { title: '问题测试', permission: 'testcheck' } },
       // 问题状态
-      { path: '/report', name: 'Report', component: Report, meta: { title: '问题状态', permission: 'test' } },
+      { path: '/report', name: 'Report', component: Report, meta: { title: '处理状态', permission: 'test' } },
       // 问题分析（数据统计的子菜单）
       { path: '/report/modify-status', name: 'ModifyStatusReport', component: ModifyStatusReport, meta: { title: '问题分析', permission: 'test' } },
       

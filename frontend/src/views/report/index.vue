@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span><el-icon><DataAnalysis /></el-icon> 问题状态</span>
+          <span><el-icon><DataAnalysis /></el-icon> 处理状态</span>
           <el-button size="large" class="morandi-btn morandi-blue" @click="loadData"><el-icon><Refresh /></el-icon> 刷新</el-button>
         </div>
       </template>
@@ -145,7 +145,7 @@ const renderPies = () => {
       legend: { bottom: 0, itemWidth: 14, itemHeight: 10 },
       series: [
         {
-          name: '问题状态',
+          name: '处理状态',
           type: 'pie',
           radius: ['40%', '68%'],
           center: ['50%', '45%'],

@@ -193,7 +193,7 @@ const categories = [
   { value: 'gengjin', label: '跟进人', codeField: 'shishiryBM', nameField: 'shishiry', rateLabel: '处理率', avgLabel: '平均处理时长' },
   { value: 'chuli',   label: '处理人', codeField: 'xggcsBM',   nameField: 'xggcs',   rateLabel: '修改率', avgLabel: '平均修改时长' },
   { value: 'ceshi',   label: '测试人', codeField: 'szcsgcsBM', nameField: 'szcsgcs', rateLabel: '测试率', avgLabel: '平均测试时长' },
-  { value: 'fanhui',  label: '返回人', codeField: 'shcsgcsBM', nameField: 'shcsgcs', rateLabel: '返回率', avgLabel: '平均返回时长', filter: (i: any) => i.fanhuisj != null && i.shouhoubz === 'N' }
+  { value: 'fanhui',  label: '返回人', codeField: 'shcsgcsBM', nameField: 'shcsgcs', rateLabel: '返回率', avgLabel: '平均返回时长', filter: (i: any) => i.fanhuisj != null }
 ]
 
 const category = ref('chuli')
@@ -300,6 +300,8 @@ function calcHours(cfg: any, item: any): number | null {
 // 判断状态所属列：处理人视角 gongchengsbz=Y&shouhoubz=N 为"待确认"，其余视角为"待测试"
 function getStateKey(cfg: any, item: any): string {
   if (item.taolunbz === 'Y') return 'discuss'
+  // 返回人视角：只要有返回时间就算"已返回"（不管后续是否已处理完成）
+  if (cfg.value === 'fanhui' && item.fanhuisj != null) return 'yifanhui'
   if (item.gongchengsbz === 'Y' && item.shouhoubz === 'Y') return 'modified'
   if (item.gongchengsbz === 'Y' && item.shouhoubz === 'N') return cfg.value === 'chuli' ? 'queeren' : 'testing'
   if (item.gongchengsbz === 'N' && item.fanhuisj != null) return 'yifanhui'

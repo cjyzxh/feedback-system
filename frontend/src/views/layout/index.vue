@@ -519,6 +519,20 @@ const startStatusStream = () => {
     statusStream.addEventListener('remind', (e: MessageEvent) => {
       try { handleRemindEvent(JSON.parse(e.data)) } catch (err) { console.error('解析提醒事件失败:', err, e.data) }
     })
+    // remind-clear：删除问题 → 清掉 localStorage 活跃表中该问题的所有提醒（防止已删问题还一直重弹）
+    statusStream.addEventListener('remind-clear', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data)
+        const wentiid = data?.wentiid
+        if (!wentiid) return
+        const m = getActiveReminders()
+        let changed = false
+        for (const k of Object.keys(m)) {
+          if (k.startsWith(`${wentiid}-`)) { delete m[k]; changed = true }
+        }
+        if (changed) saveActiveReminders(m)
+      } catch (err) { console.error('解析提醒清除事件失败:', err, e.data) }
+    })
     statusStream.onmessage = () => { loadStatusCount() }  // 兼容默认 message 事件
     statusStream.onerror = () => { /* EventSource 自动重连，无需处理 */ }
     // SSE 断连由 EventSource 自动重连，不再轮询

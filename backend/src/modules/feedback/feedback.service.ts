@@ -44,6 +44,15 @@ export class FeedbackService {
     }
   }
 
+  // SSE 提醒清除广播：删除问题时通知前端清掉该问题的活跃提醒（防"问题已删还一直重弹"）
+  notifyRemindClear(wentiid: number): void {
+    try {
+      this.statusSubject.next({ type: 'remind-clear', data: { wentiid, time: Date.now() } });
+    } catch (error) {
+      console.error('SSE 提醒清除广播失败:', error);
+    }
+  }
+
   // 创建问题反馈（POST /api/feedback）
   // create() = 在内存里组装一条新记录，save() = 真正写库
   // 注意：lvrusj（录入时间）在这里统一用 new Date() 后端生成，不让前端传
@@ -365,6 +374,19 @@ export class FeedbackService {
 
       // ===== SSE 提醒：根据状态变化广播"该提醒谁"（接收人是操作人本人不提示；多角色同一人自动去重） =====
       try {
+        // 状态/分配变化（处理确认、测试通过、返回测试、待讨论、改跟进人、改工程师）→ 先广播"清除提醒"：
+        // 旧的提醒（如"待处理"）作废，前端清掉 localStorage 中该问题的旧 key；再按场景广播新提醒（插新）
+        // 防止"接收人为空 → 不广播新提醒 → 旧提醒残留一直重弹"
+        const hasRemindChange =
+          (dto.gongchengsbz === 'Y' && oldGongchengsbz === 'N') ||   // 处理确认
+          (dto.shouhoubz === 'Y' && oldShouhoubz !== 'Y') ||         // 测试通过
+          (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y') ||   // 返回测试
+          (dto.taolunbz === 'Y' && oldTaolunbz !== 'Y') ||           // 待讨论
+          (dto.shishiryBM !== undefined && dto.shishiryBM !== oldShishiryBM && saved.shishiryBM) ||  // 改跟进人
+          (dto.xggcsBM !== undefined && dto.xggcsBM !== oldXggcsBM && saved.xggcsBM);               // 改工程师
+        if (hasRemindChange) {
+          this.notifyRemindClear(saved.id);
+        }
         // 场景1：处理确认（工程师处理完成 gongchengsbz: N -> Y）→ 广播"待测试"给实施/测试人
         if (dto.gongchengsbz === 'Y' && oldGongchengsbz === 'N') {
           const nr = `【已处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.gongcscs || saved.wentism || '').slice(0, 50)}`;
@@ -416,6 +438,8 @@ export class FeedbackService {
       await this.deleteImagesById(id);
       await this.feedbackRepository.delete(id);
       this.notifyStatusChanged();
+      // 删除后广播"清除提醒"：前端清掉 localStorage 活跃表中该问题的 key（防止已删问题还一直重弹）
+      this.notifyRemindClear(id);
     }
   }
 

@@ -112,7 +112,12 @@ export class FeedbackController {
     if (id > 0) {
       const uploadUser = body?.uploadUser || '';
       const uploadName = body?.uploadName || '';
-      await this.feedbackService.saveFileRecord(id, finalName, file.originalname, tpnum, uploadUser, uploadName, 'image');
+      try {
+        await this.feedbackService.saveFileRecord(id, finalName, file.originalname, tpnum, uploadUser, uploadName, 'image');
+      } catch (err) {
+        // 图片已落盘，写库失败仅记录日志（不破坏图片上传返回契约）
+        console.error('写入图片附件记录失败:', err);
+      }
     }
 
     return { url: `/feedback/uploads/${finalName}`, filename: finalName };
@@ -163,7 +168,12 @@ export class FeedbackController {
     // 写入附件信息表（记录上传者编码/姓名，前端从登录态带过来）
     const uploadUser = body?.uploadUser || '';
     const uploadName = body?.uploadName || '';
-    await this.feedbackService.saveFileRecord(id, filename, baseName, tpnum, uploadUser, uploadName);
+    try {
+      await this.feedbackService.saveFileRecord(id, filename, baseName, tpnum, uploadUser, uploadName);
+    } catch (err) {
+      console.error('写入附件记录失败:', err);
+      return { success: false, error: '附件信息写入失败，请重试' };
+    }
 
     return { success: true, url: `/feedback/file-uploads/${encodeURIComponent(filename)}`, filename, name: baseName };
   }

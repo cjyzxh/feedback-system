@@ -528,7 +528,9 @@ export class FeedbackService {
         lx: lx || 'file',
       }));
     } catch (err) {
+      // 写库失败必须上抛，由调用方决定返回失败（不能"提示成功但列表没有"）
       console.error('写入附件记录失败:', err);
+      throw err;
     }
   }
 

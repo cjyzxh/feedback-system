@@ -100,7 +100,7 @@
                 />
                 <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
                   <TemplatePicker class="tp-btn-wrap" :lx="'测试结果'" @select="appendShouhoucs" />
-                  <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
+                  <el-button class="morandi-btn" :class="form.id && attachFiles.length > 0 ? 'morandi-yellow' : 'morandi-muted'" size="large" @click="openAttachDialog" :disabled="!form.id">
                     <el-icon><FolderOpened /></el-icon> 附件管理
                   </el-button>
                   <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
@@ -468,7 +468,11 @@ const onAttachChange = async (file: any) => {
   fd.append('id', String(form.id))
   fd.append('tpnum', String(maxSeq + 1))
   try {
-    await axios.post('/api/feedback/upload-file', fd)
+    const res = await axios.post('/api/feedback/upload-file', fd)
+    if (res.data && res.data.success === false) {
+      ElMessage.error(`「${fileObj.name}」上传失败: ${res.data.error || '未知错误'}`)
+      return
+    }
     ElMessage.success(`「${fileObj.name}」上传成功`)
     loadAttachFiles()
   } catch (e) {

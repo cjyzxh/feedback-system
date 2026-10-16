@@ -104,7 +104,7 @@
                 <el-input class="opinion-input" v-model="form.gongcscs" type="textarea" :rows="4" placeholder="请填写处理意见..." @dblclick="openZoom('处理意见', form, 'gongcscs', false)" />
                 <div class="opinion-btn-col" style="display:flex; flex-direction:column; gap:6px;">
                   <TemplatePicker class="tp-btn-wrap" :lx="'处理意见'" @select="appendGongcscs" />
-                  <el-button class="morandi-btn morandi-blue" size="large" @click="openAttachDialog" :disabled="!form.id">
+                  <el-button class="morandi-btn" :class="form.id && attachFiles.length > 0 ? 'morandi-yellow' : 'morandi-muted'" size="large" @click="openAttachDialog" :disabled="!form.id">
                     <el-icon><FolderOpened /></el-icon> 附件管理
                   </el-button>
                   <el-button class="morandi-btn morandi-yellow" size="large" @click="viewImages(form)" :disabled="!hasImages">
@@ -471,7 +471,11 @@ const onAttachChange = async (file: any) => {
   fd.append('uploadUser', currentUserCode)   // 记录上传者编码（权限过滤用）
   fd.append('uploadName', currentUserName)   // 记录上传者姓名（列表显示用）
   try {
-    await axios.post('/api/feedback/upload-file', fd)
+    const res = await axios.post('/api/feedback/upload-file', fd)
+    if (res.data && res.data.success === false) {
+      ElMessage.error(`「${fileObj.name}」上传失败: ${res.data.error || '未知错误'}`)
+      return
+    }
     ElMessage.success(`「${fileObj.name}」上传成功`)
     loadAttachFiles()
   } catch (e) {
@@ -569,6 +573,8 @@ const handleRowClick = async (row: any) => {
     console.error("查询图片失败", err)
     hasImages.value = false
   }
+  // 预加载该问题附件（决定"附件管理"按钮颜色：有附件=蓝，无附件=灰）
+  loadAttachFiles()
 }
 
 const previewVisible = ref(false)

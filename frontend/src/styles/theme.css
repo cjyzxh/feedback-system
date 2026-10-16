@@ -141,6 +141,18 @@ html body .el-card__header .morandi-btn { color: #ffffff !important; }
   color: #ffffff !important;
   box-shadow: none !important;
 }
+/* ---------- 中性灰（muted：弱化状态如"无附件"，三主题通用） ---------- */
+/* 注意：morandi-gray 实为红色系（取消/重置），弱化态用本类而非 morandi-gray */
+/* 与"查看图片"禁用态完全一致（底 #dcdfe6 / 字 #909399 / 无阴影 / 不随 hover 变化） */
+html body .morandi-btn.morandi-muted,
+html body .morandi-btn.morandi-muted:hover,
+html body .morandi-btn.morandi-muted:active,
+html body .morandi-btn.morandi-muted:focus {
+  background: #dcdfe6 !important;
+  color: #909399 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
 .el-button--danger:not(.is-link), .el-button--info.is-plain {
   background: linear-gradient(135deg, #E08888 0%, #D07070 100%) !important;
   border: none;

@@ -1316,7 +1316,11 @@ const onAttachChange = async (file: any) => {
   fd.append('uploadUser', currentUserCode.value)
   fd.append('uploadName', currentUserName.value)
   try {
-    await axios.post('/api/feedback/upload-file', fd)
+    const res = await axios.post('/api/feedback/upload-file', fd)
+    if (res.data && res.data.success === false) {
+      ElMessage.error(`「${fileObj.name}」上传失败: ${res.data.error || '未知错误'}`)
+      return
+    }
     ElMessage.success(`「${fileObj.name}」上传成功`)
     loadAttachFiles()
   } catch (e) {
@@ -1474,7 +1478,10 @@ const handleSubmit = async () => {
       formData.append('uploadName', currentUserName.value)
       try {
         console.log('上传附件:', i + 1, '/', docFiles.length, '文件名:', fileObj.name)
-        await axios.post('/api/feedback/upload-file', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        const res = await axios.post('/api/feedback/upload-file', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        if (res.data && res.data.success === false) {
+          ElMessage.error(`「${fileObj.name}」上传失败: ${res.data.error || '未知错误'}`)
+        }
       } catch (err) {
         console.error('附件上传失败:', err)
         ElMessage.error('附件上传失败: ' + (err as any)?.message)

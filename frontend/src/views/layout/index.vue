@@ -715,13 +715,24 @@ const handleRemindEvent = (data: any) => {
       if (k.startsWith(`${wentiid}-`)) delete m[k]
     }
     const key = `${wentiid}-${lx}`
-    m[key] = Date.now()
+    // 业务终结（已完成）只弹一次告知，不进活跃表 → 不参与 5 分钟重弹
+    if (lx !== '已完成') {
+      m[key] = Date.now()
+    }
     saveActiveReminders(m)
     popRemindNotification(lx, wentiid, title, key)
   } catch (e) { console.error('处理实时提醒失败:', e) }
 }
 
 // 待机：每 60 秒扫描活跃表，超 5 分钟未点击的提醒重新弹一次（重要的事盯到处理为止）
+// 重弹正文按类别区分，避免"已完成/待测试"也显示"仍待您处理"
+const RESEND_TEXTS: Record<string, (nid: number) => string> = {
+  '待处理': (nid) => `（重要提醒）问题 #${nid} 仍待您处理，请及时查看`,
+  '待测试': (nid) => `（重要提醒）问题 #${nid} 待您测试，请及时处理`,
+  '已返回': (nid) => `（重要提醒）问题 #${nid} 已返回，待您重新处理`,
+  '待讨论': (nid) => `（重要提醒）问题 #${nid} 待讨论，请及时参与`,
+  '跟进':   (nid) => `（重要提醒）问题 #${nid} 需您跟进，请及时查看`,
+}
 const startRemindResend = () => {
   if (remindResendTimer.value) return
   remindResendTimer.value = setInterval(() => {
@@ -729,13 +740,16 @@ const startRemindResend = () => {
       const m = getActiveReminders()
       const now = Date.now()
       for (const [key, last] of Object.entries(m)) {
+        const idx = key.lastIndexOf('-')
+        const nid = parseInt(key.substring(0, idx))
+        const lx = key.substring(idx + 1)
+        if (!nid || !lx) continue
+        // 历史残留的"已完成"提醒：业务已终结，直接清除不再弹
+        if (lx === '已完成') { delete m[key]; continue }
         if (now - last >= REMIND_AGAIN_MS) {
-          const idx = key.lastIndexOf('-')
-          const nid = parseInt(key.substring(0, idx))
-          const lx = key.substring(idx + 1)
-          if (!nid || !lx) continue
           m[key] = now   // 先更新时间戳，防止同一扫描周期内重复弹
-          popRemindNotification(lx, nid, `（重要提醒）问题 #${nid} 仍待您处理，请及时查看`, key)
+          const text = (RESEND_TEXTS[lx] || ((id: number) => `（重要提醒）问题 #${id} 仍待您处理，请及时查看`))(nid)
+          popRemindNotification(lx, nid, text, key)
         }
       }
       saveActiveReminders(m)

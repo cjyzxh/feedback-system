@@ -111,9 +111,13 @@
           <span class="title" :style="{ left: titleOffset }">{{ route.meta?.title || '' }}</span>
         </div>
         <div class="user-info">
-          <span class="username-link" @click="openProfileDialog">
-            <template v-if="isCustomerUser">{{ userHospital }}（{{ username }}）</template>
-            <template v-else>{{ username }} ({{ roleName }})</template>
+          <span class="user-chip" @click="openProfileDialog" title="点击编辑个人信息">
+            <el-icon class="user-avatar" :style="{ color: userGender === '女' ? '#F06292' : 'var(--el-color-primary)' }"><UserFilled /></el-icon>
+            <span class="user-name">
+              <template v-if="isCustomerUser">{{ userHospital }}（{{ username }}）</template>
+              <template v-else>{{ username }}</template>
+            </span>
+            <el-tag v-if="!isCustomerUser && roleName" size="small" :type="roleTagType" class="role-tag">{{ roleName }}</el-tag>
           </span>
           <el-button type="danger" size="small" @click="logout">退出</el-button>
         </div>
@@ -443,6 +447,10 @@ const handleProfileScaleChange = async (val: string) => {
 
 const username = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.realName || u.username || localStorage.getItem('username') || '' })
 const roleName = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.roleName || u.role || localStorage.getItem('roleName') || '用户' })
+// 用户性别（决定右上角头像颜色：男=蓝 / 女=粉）
+const userGender = computed(() => { const u = JSON.parse(localStorage.getItem('user') || '{}'); return u.gender || '' })
+// 角色标签类型（对齐 DRG 系统：管理员=danger，其他=warning）
+const roleTagType = computed(() => (roleName.value === '管理员' ? 'danger' : 'warning'))
 
 // 判断当前用户是否为客户（基于userType字段）
 const isCustomerUser = computed(() => {
@@ -1272,6 +1280,40 @@ onUnmounted(() => {
 :deep(.el-sub-menu__title:hover .el-icon),
 :deep(.el-menu-item.is-active .el-icon) {
   color: var(--el-color-primary) !important;
+}
+/* 右上角用户信息（照 DRG/DIP 系统样式：人形图标+姓名+角色标签） */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1px solid var(--el-border-color, #e4e7ed);
+  background: var(--el-fill-color-blank, #fff);
+  transition: all 0.2s;
+}
+.user-chip:hover {
+  border-color: var(--el-color-primary);
+}
+.user-avatar {
+  font-size: 16px;
+}
+.user-name {
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-tag {
+  margin-left: 2px;
 }
 /* 退出按钮样式 */
 :deep(.el-button--danger) {

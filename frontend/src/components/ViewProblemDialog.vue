@@ -11,8 +11,8 @@
     <el-form :model="form" label-width="100px">
       <el-row :gutter="10">
         <el-col :span="5">
-          <el-form-item label="问题ID号">
-            <el-input :model-value="form.id" readonly />
+          <el-form-item label="问题编号">
+            <el-input :model-value="form.LSH ?? form.lsh ?? form.id" readonly />
           </el-form-item>
         </el-col>
         <el-col :span="8">

@@ -7,8 +7,8 @@
         <el-row :gutter="12" class="basic-info">
           <el-col :span="2">
             <div class="info-item small">
-              <div class="info-label">问题ID号</div>
-              <div class="info-value">{{ form.id || '-' }}</div>
+              <div class="info-label">问题编号</div>
+              <div class="info-value">{{ form.lsh || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="1">
@@ -134,7 +134,7 @@
     <el-dialog v-model="attachDialog.visible" width="720px" top="8vh" :show-close="false">
       <template #header>
         <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
-          <span>{{ '附件管理（问题ID: ' + (form.id || '-') + '）' }}</span>
+          <span>{{ '附件管理（问题编号: ' + (form.lsh || '-') + '）' }}</span>
           <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
         </div>
       </template>
@@ -196,7 +196,7 @@
         </div>
       </template>
       <el-table ref="tableRef" :data="list" @row-click="handleRowClick" @row-dblclick="handleView" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
-        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="LSH" label="编号" width="100" align="center" />
         <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
@@ -387,7 +387,7 @@ const assignLineStyle = (line: string) => {
 
 // 行颜色：选中行=淡蓝；测试打回的问题=淡红（提醒工程师重新处理）
 const getRowClass = ({ row }: { row: any }) => {
-  if (selected.value?.id === row.id) return 'selected-row'
+  if (selected.value?.LSH === row.LSH) return 'selected-row'
   // 测试后返回的问题：工程师标志被重置为 N 且有过测试时间
   if (row.gongchengsbz === 'N' && row.fanhuisj) return 'test-returned-row'
   return ''
@@ -402,7 +402,7 @@ const getJingjiType = (type: string) => {
 // ============ 上方详情表单（点击列表行后填充） ============
 // gongcscs = 工程师处理意见（处理人填写的核心字段）
 const form = reactive({
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any, shishiryBM: ''
+  id: 0, lsh: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null as any, fanhuisj: null as any, lvrusj: null as any, shishiryBM: ''
 })
 
 // ============ 文本框双击放大查看/编辑 ============
@@ -427,7 +427,7 @@ const currentUserCode = localStorage.getItem('userCode') || ''
 const currentUserName = loginUser.realName || loginUser.username || localStorage.getItem('username') || ''
 
 const openAttachDialog = (row?: any) => {
-  if (row && row.id) form.id = row.id  // 从列表行内直接打开：同步当前问题ID
+  if (row && row.id) { form.id = row.id; form.lsh = row.LSH ?? row.lsh ?? 0 }  // 从列表行内直接打开：同步问题ID（附件用）和编号（业务用）
   if (!form.id) { ElMessage.warning('请先选择问题'); return }
   attachDialog.visible = true
   loadAttachFiles()
@@ -515,7 +515,7 @@ const removeAttach = async (f: any) => {
 
 // 空表单模板：Object.assign(form, emptyForm) 一步把表单清回初始值（刷新用）
 const emptyForm = {
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null, lvrusj: null, shishiryBM: ''
+  id: 0, lsh: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', xggcs: '', shishiry: '', jingjicd: '一般', shouhoucs: '', shcsgcs: '', cssj: null, fanhuisj: null, lvrusj: null, shishiryBM: ''
 }
 
 // ============ 核心：加载待处理问题列表 ============
@@ -564,6 +564,7 @@ const handleRowClick = async (row: any) => {
   selected.value = row
   const rowCopy = JSON.parse(JSON.stringify(row))  // 深拷贝，避免改到列表行
   Object.assign(form, rowCopy)  // 整行字段复制进 form（模板上自动显示）
+  form.lsh = rowCopy.LSH ?? rowCopy.lsh ?? 0  // 后端返回大写 LSH，统一到小写 lsh（编号显示/业务操作用）
   // 查询该问题是否有图片（决定"查看图片"按钮是否可用）
   try {
     const res = await axios.get("/api/feedback/images/" + row.id)
@@ -626,7 +627,7 @@ const confirmAssign = async () => {
       const old = (form.shouzhongcs || '').replace(/\s+$/, '')
       patch.shouzhongcs = old ? `${old}\n${note}\n${opinion}` : `${note}\n${opinion}`
     }
-    await axios.put("/api/feedback/" + selected.value.id + "/assign-dev", patch)
+    await axios.put("/api/feedback/" + selected.value.LSH + "/assign-dev", patch)
     ElMessage.success('分配成功')
     showDevSelect.value = false
     loadList()
@@ -656,7 +657,7 @@ const confirmAssignFollower = async () => {
       const old = (form.shouzhongcs || '').replace(/\s+$/, '')
       patch.shouzhongcs = old ? `${old}\n${note}\n${opinion}` : `${note}\n${opinion}`
     }
-    await axios.put("/api/feedback/" + selected.value.id, patch)
+    await axios.put("/api/feedback/" + selected.value.LSH, patch)
     ElMessage.success('分配跟进人成功')
     showFollowerSelect.value = false
     loadList()
@@ -731,7 +732,7 @@ const handleSubmit = async () => {
   }
   submitting.value = true
   try {
-    await axios.put('/api/feedback/' + form.id, { gongcscs: form.gongcscs, gongchengsbz: 'Y' })
+    await axios.put('/api/feedback/' + form.lsh, { gongcscs: form.gongcscs, gongchengsbz: 'Y' })
     ElMessage.success('处理成功')
     form.gongcscs = ''
     selected.value = null
@@ -753,7 +754,7 @@ const handleDiscuss = () => {
   }).then(async () => {
     try {
       // 带上当前操作人编码：待讨论提醒广播时排除"操作人本人不提示自己"
-      await axios.put('/api/feedback/' + selected.value.id, { taolunbz: 'Y', czrbm: currentUserCode || undefined })
+      await axios.put('/api/feedback/' + selected.value.LSH, { taolunbz: 'Y', czrbm: currentUserCode || undefined })
       ElMessage.success('已放入待讨论')
       loadList()
     } catch (err) {
@@ -770,7 +771,7 @@ const handleReturnToPending = async (row: any) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await axios.put('/api/feedback/' + row.id, { gongchengsbz: 'N', taolunbz: 'N' })
+    await axios.put('/api/feedback/' + row.LSH, { gongchengsbz: 'N', taolunbz: 'N' })
     ElMessage.success('已返回待处理')
     loadList()
   } catch (e: any) {
@@ -781,12 +782,12 @@ const handleReturnToPending = async (row: any) => {
 // 删除问题
 const handleDeleteProblem = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定要删除问题 ID=${row.id} 吗？删除后不可恢复。`, '删除确认', {
+    await ElMessageBox.confirm(`确定要删除问题 编号=${row.LSH} 吗？删除后不可恢复。`, '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await axios.delete('/api/feedback/' + row.id)
+    await axios.delete('/api/feedback/' + row.LSH)
     ElMessage.success('删除成功')
     loadList()
   } catch (e: any) {

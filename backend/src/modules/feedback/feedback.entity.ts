@@ -97,6 +97,9 @@ export class Feedback {
   @Column({ name: 'shcsgcsBM', nullable: true, length: 50 })  // 测试人编码
   shcsgcsBM: string;
 
-  @Column({ name: 'LSH', nullable: true, length: 50 })  // 流水号（导入老数据用）
-  LSH: string;
+  @Column({ name: 'LSH', type: 'int', nullable: true })  // 流水号 = 业务唯一编号（老库原值保留；新增从 ok 表取号+1）
+  LSH: number;
+
+  @Column({ name: 'iFanhuicishu', type: 'int', nullable: true, default: 0 })  // 返回次数（问题每次被测试打回 +1；初始 0）
+  iFanhuicishu: number;
 }

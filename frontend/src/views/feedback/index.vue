@@ -8,8 +8,8 @@
       </template>
       
       <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="问题ID号">
-          <el-input v-model="searchForm.id" placeholder="输入ID号搜索" clearable @keyup.enter="handleSearch" style="width:120px" />
+        <el-form-item label="问题编号">
+          <el-input v-model="searchForm.lsh" placeholder="输入编号搜索" clearable @keyup.enter="handleSearch" style="width:120px" />
         </el-form-item>
         <el-form-item label="医院" v-if="!isCustomerUser">
           <el-select v-model="searchForm.yiyuanmc" placeholder="请搜索选择" filterable clearable style="width:252px" :filter-method="searchHospitals" @focus="loadHospitals" :loading="hospitalLoading" @change="handleSearch">
@@ -39,7 +39,7 @@
           <el-button class="morandi-btn morandi-gray btn-reset" @click="handleResetSearch"><el-icon><RefreshLeft /></el-icon> 重置条件</el-button>
           <el-button class="morandi-btn morandi-blue btn-add" @click="handleAdd"><el-icon><Plus /></el-icon> 新增问题</el-button>
         </div>
-        <!-- 第二行：问题说明 → 录入日期 → 查询/重置（问题说明左对齐第一行问题ID号） -->
+        <!-- 第二行：问题说明 → 录入日期 → 查询/重置（问题说明左对齐第一行问题编号） -->
         <div class="search-row-2">
           <el-form-item label="问题说明" class="wentism-item" :style="{ width: wentismWidth }">
             <el-input v-model="searchForm.wentism" placeholder="输入问题说明关键词，支持模糊检索" clearable @keyup.enter="handleSearch" style="width:100%" />
@@ -66,7 +66,7 @@
       </el-form>
       
       <el-table ref="tableRef" :data="tableData" border v-loading="loading" stripe :row-class-name="getTableRowClassName" @row-click="handleSelectRow" @row-dblclick="handleView">
-        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="LSH" label="编号" width="80" align="center" />
         <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
@@ -143,9 +143,9 @@
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-row :gutter="6">
           <el-col :span="6" v-if="isEdit">
-            <el-form-item label="问题ID号">
+            <el-form-item label="问题编号">
               <div class="lsh-box">
-                <el-input v-model="form.id" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
+                <el-input v-model="form.lsh" disabled><template #prefix><el-icon><Tickets /></el-icon></template></el-input>
               </div>
             </el-form-item>
           </el-col>
@@ -326,7 +326,7 @@
     <el-dialog v-model="attachDialog.visible" width="720px" top="8vh" :show-close="false">
       <template #header>
         <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
-          <span>{{ '附件管理（问题ID: ' + (currentAttachId || '-') + '）' }}</span>
+          <span>{{ '附件管理（问题编号: ' + (currentAttachLsh ?? currentAttachId ?? '-') + '）' }}</span>
           <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
         </div>
       </template>
@@ -615,7 +615,8 @@ const route = useRoute()
 const searchForm = reactive({ 
   yiyuanmc: '',      // 医院名称
   mokuai: '',        // 模块
-  id: '',            // 问题ID
+  id: '',            // 问题ID（物理键，保留：附件接口内部用）
+  lsh: '',           // 问题编号（业务键，搜索用）
   zhuangtai: 'weiwan',  // 问题状态（未完成/已完成/待讨论），默认未完成
   gongchengsbz: undefined,  // 工程师标志（状态跳转用：'Y'/'N'）
   shouhoubz: undefined,     // 测试标志（状态跳转用：'Y'/'N'）
@@ -658,7 +659,8 @@ const isCustomerUser = computed(() => {
 // ============ 新增/编辑问题的表单数据 ============
 // 字段与数据库 feedback 表一一对应（拼音缩写是历史遗留命名，见下）
 const formBase = {
-  id: 0,               // 问题ID（0=还没保存过）
+  id: 0,               // 问题ID（物理键，附件上传/图片用，0=还没保存过）
+  lsh: 0,              // 问题编号（业务键，编辑保存/详情用，0=还没保存过）
   banben: 'HIS问题',   // 软件版本：HIS问题/医保接口/其它问题
   yiyuanmc: '',        // 医院名称
   shishiry: '',        // 跟进人员（实施人员）
@@ -775,11 +777,11 @@ const getStatusType = (status: string) => {
   }
 }
 
-// 当前选中行ID（点击行高亮用，颜色随主题）
+// 当前选中行编号（点击行高亮用，颜色随主题；业务键 LSH）
 const selectedId = ref<number | null>(null)
-const handleSelectRow = (row: any) => { selectedId.value = row.id }
+const handleSelectRow = (row: any) => { selectedId.value = row.LSH }
 
-// 问题说明条件框总宽：动态测量第一行"问题ID号(左边缘)→医院(右边缘)"的实际宽度
+// 问题说明条件框总宽：动态测量第一行"问题编号(左边缘)→医院(右边缘)"的实际宽度
 // 保证问题说明的右边缘与医院下拉框右侧精确对齐（含ID与医院之间的间距）
 const wentismWidth = ref('440px')
 // 录入日期条件框总宽：动态测量第一行"模块(左边缘)→状态(右边缘)"，左对齐模块、右对齐状态
@@ -792,7 +794,7 @@ const measureWentismWidth = () => {
     const items = form.querySelectorAll<HTMLElement>(':scope > .el-form-item')
     if (items.length >= 2) {
       const right = items[1].offsetLeft + items[1].offsetWidth  // 医院右边缘
-      const left = items[0].offsetLeft                          // 问题ID号左边缘
+      const left = items[0].offsetLeft                          // 问题编号左边缘
       wentismWidth.value = Math.max(right - left, 300) + 'px'
     }
     if (items.length >= 4) {
@@ -815,7 +817,7 @@ onMounted(() => {
 
 // 行颜色：选中行用主题浅色；测试后"打回"的问题（工程师标志被重置为 N 且有返回时间）整行淡红色
 const getTableRowClassName = ({ row }: { row: any }) => {
-  if (selectedId.value === row.id) return 'selected-row'
+  if (selectedId.value === row.LSH) return 'selected-row'
   if (row.gongchengsbz === 'N' && row.fanhuisj) {
     return 'test-returned-row'
   }
@@ -874,7 +876,7 @@ const loadData = async () => {
     pageSize: pagination.pageSize, 
     yiyuanmc: searchForm.yiyuanmc || undefined, 
     mokuai: searchForm.mokuai || undefined, 
-    id: searchForm.id || undefined,
+    lsh: searchForm.lsh || undefined,
     startDate: searchForm.startDate || undefined,   // 录入日期起
     endDate: searchForm.endDate || undefined,       // 录入日期止
     zhuangtai: searchForm.zhuangtai || undefined,   // 问题状态
@@ -935,6 +937,7 @@ const handleResetSearch = () => {
   searchForm.yiyuanmc = ''
   searchForm.mokuai = ''
   searchForm.id = ''
+  searchForm.lsh = ''
   searchForm.zhuangtai = 'weiwan'
   searchForm.gongchengsbz = undefined
   searchForm.shouhoubz = undefined
@@ -1024,6 +1027,7 @@ const handleAdd = async () => {
   
   // 重置表单为初始值
   form.id = 0
+  form.lsh = 0
   form.banben = 'HIS问题'   // 版本默认 HIS问题
   shouhouDaoqiRi.value = ''  // 清空售后到期日
   // 客户用户：医院/跟进人/工程师 全部取用户管理里绑定的值（页面里这几个下拉是只读的）
@@ -1080,6 +1084,7 @@ const handleEdit = async (row: any) => {
   rowCopy.xggcs = rowCopy.xggcs || rowCopy.engineer
   rowCopy.wentilx = rowCopy.wentilx || '其它问题'  // 老数据没有问题类型的兜底
   Object.assign(form, rowCopy)
+  form.lsh = rowCopy.LSH ?? rowCopy.lsh ?? 0  // 行数据字段是大写 LSH，显式赋给表单的 lsh（业务编号）
   uploadFileList.value = []
   forms.value = []
   try {
@@ -1158,7 +1163,7 @@ const handleDelete = async (row: any) => {
   }
   try {
     await ElMessageBox.confirm('确定要删除该问题吗？', '提示', { type: 'warning' })
-    await axios.delete(`/api/feedback/${row.id}`)
+    await axios.delete(`/api/feedback/${row.LSH}`)
     ElMessage.success('删除成功')
     loadData()
   } catch (err: any) { if (err !== 'cancel') ElMessage.error(err.message || '删除失败') }
@@ -1271,9 +1276,11 @@ const viewImages = async (row: any) => {
 const attachDialog = reactive({ visible: false })
 const attachFiles = ref<any[]>([])
 const currentAttachId = ref<number | null>(null)
+const currentAttachLsh = ref<number | null>(null)   // 附件弹窗标题显示业务编号
 
 const viewFiles = async (row: any) => {
   currentAttachId.value = row.id
+  currentAttachLsh.value = row.LSH ?? row.lsh ?? null
   attachDialog.visible = true
   await loadAttachFiles()
 }
@@ -1394,8 +1401,8 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       // 编辑保存时补传操作人编码（czrbm）：后端"修改跟进人/工程师"的 SSE 提醒要排除操作人本人
       data.czrbm = localStorage.getItem('userCode') || ''
-      await axios.put(`/api/feedback/${form.id}`, data)
-      savedFeedback = { id: form.id }
+      await axios.put(`/api/feedback/${form.lsh}`, data)
+      savedFeedback = { id: form.id, lsh: form.lsh }  // 物理ID（附件用）+ 业务编号（后续定位用）
     } else {
       const res = await axios.post('/api/feedback', data)
       console.log('新增问题完整响应 res:', res)

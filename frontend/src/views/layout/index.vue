@@ -656,7 +656,8 @@ const handlePageFocus = () => {
 
 // ===== 活跃提醒表（localStorage） =====
 // key = `${wentiid}-${lx}`：同一问题同一类别只保留一条；问题状态变化时旧 key 会被清除
-const getActiveReminders = (): Record<string, number> => {
+// value = { t: 时间戳, lsh: 业务编号 }（兼容旧数据纯时间戳 number：t 取 number 本身，lsh 缺省）
+const getActiveReminders = (): Record<string, any> => {
   try {
     const raw = localStorage.getItem(ACTIVE_KEY)
     if (!raw) return {}
@@ -680,7 +681,8 @@ const getRemindPage = (lx: string): string => {
 
 // 弹一条提醒（页面内弹窗；最小化/无焦点时同时发系统通知 + 标题闪烁）
 // key 用于活跃表记录；点击后从活跃表移除（不再重弹）
-const popRemindNotification = (lx: string, wentiid: number, title: string, key: string) => {
+// lsh：业务编号（标题显示 #编号）；wentiid：物理ID（活跃表 key 内部用）
+const popRemindNotification = (lx: string, wentiid: number, title: string, key: string, lsh?: number | null) => {
   const cfg: Record<string, any> = { '待处理': 'warning', '待测试': 'success', '已返回': 'error', '已完成': 'success', '待讨论': 'warning', '跟进': 'info' }
   // 弹提示时同时播放提示音（待机实时提醒 / 5分钟重弹共用此函数）
   playNotificationSound()
@@ -691,8 +693,9 @@ const popRemindNotification = (lx: string, wentiid: number, title: string, key: 
     stopTitleBlink()
     router.push(getRemindPage(lx))
   }
+  const showNid = lsh ?? wentiid
   const notification = ElNotification({
-    title: `【${lx}提醒】#${wentiid}`,
+    title: `【${lx}提醒】#${showNid}`,
     message: h('div', { style: 'max-height: 240px; overflow-y: auto; line-height: 1.7;' }, title),
     type: cfg[lx] || 'info',
     duration: 15000,
@@ -702,7 +705,7 @@ const popRemindNotification = (lx: string, wentiid: number, title: string, key: 
   })
   // 浏览器最小化/无焦点：系统通知 + 标题闪烁（页面内弹窗已同时弹出）
   if (document.hidden) {
-    try { sendSystemNotification(`【${lx}提醒】#${wentiid}`, title, onClick) } catch (e) { /* 系统通知被屏蔽不影响页面内弹窗 */ }
+    try { sendSystemNotification(`【${lx}提醒】#${showNid}`, title, onClick) } catch (e) { /* 系统通知被屏蔽不影响页面内弹窗 */ }
     startTitleBlink('有新消息')
   }
 }
@@ -712,6 +715,7 @@ const popRemindNotification = (lx: string, wentiid: number, title: string, key: 
 const handleRemindEvent = (data: any) => {
   try {
     const lx = data?.lx, wentiid = data?.wentiid, title = data?.title, jsrbm = data?.jsrbm || []
+    const lsh = data?.lsh ?? null
     if (!lx || !wentiid) return
     let myCode = localStorage.getItem('userCode') || ''
     if (!myCode) { const u = JSON.parse(localStorage.getItem('user') || '{}'); myCode = u.username || '' }
@@ -725,21 +729,21 @@ const handleRemindEvent = (data: any) => {
     const key = `${wentiid}-${lx}`
     // 业务终结（已完成）只弹一次告知，不进活跃表 → 不参与 5 分钟重弹
     if (lx !== '已完成') {
-      m[key] = Date.now()
+      m[key] = { t: Date.now(), lsh }
     }
     saveActiveReminders(m)
-    popRemindNotification(lx, wentiid, title, key)
+    popRemindNotification(lx, wentiid, title, key, lsh)
   } catch (e) { console.error('处理实时提醒失败:', e) }
 }
 
 // 待机：每 60 秒扫描活跃表，超 5 分钟未点击的提醒重新弹一次（重要的事盯到处理为止）
-// 重弹正文按类别区分，避免"已完成/待测试"也显示"仍待您处理"
-const RESEND_TEXTS: Record<string, (nid: number) => string> = {
-  '待处理': (nid) => `（重要提醒）问题 #${nid} 仍待您处理，请及时查看`,
-  '待测试': (nid) => `（重要提醒）问题 #${nid} 待您测试，请及时处理`,
-  '已返回': (nid) => `（重要提醒）问题 #${nid} 已返回，待您重新处理`,
-  '待讨论': (nid) => `（重要提醒）问题 #${nid} 待讨论，请及时参与`,
-  '跟进':   (nid) => `（重要提醒）问题 #${nid} 需您跟进，请及时查看`,
+// 重弹正文按类别区分，避免"已完成/待测试"也显示"仍待您处理"；编号显示业务编号（lsh），无 lsh 的旧数据回退 wentiid
+const RESEND_TEXTS: Record<string, (nid: number, lsh?: number | null) => string> = {
+  '待处理': (nid, lsh) => `（重要提醒）问题 #${lsh ?? nid} 仍待您处理，请及时查看`,
+  '待测试': (nid, lsh) => `（重要提醒）问题 #${lsh ?? nid} 待您测试，请及时处理`,
+  '已返回': (nid, lsh) => `（重要提醒）问题 #${lsh ?? nid} 已返回，待您重新处理`,
+  '待讨论': (nid, lsh) => `（重要提醒）问题 #${lsh ?? nid} 待讨论，请及时参与`,
+  '跟进':   (nid, lsh) => `（重要提醒）问题 #${lsh ?? nid} 需您跟进，请及时查看`,
 }
 const startRemindResend = () => {
   if (remindResendTimer.value) return
@@ -747,17 +751,20 @@ const startRemindResend = () => {
     try {
       const m = getActiveReminders()
       const now = Date.now()
-      for (const [key, last] of Object.entries(m)) {
+      for (const [key, val] of Object.entries(m)) {
         const idx = key.lastIndexOf('-')
         const nid = parseInt(key.substring(0, idx))
         const lx = key.substring(idx + 1)
         if (!nid || !lx) continue
+        // 兼容旧数据：value 可能是纯时间戳 number；新版是 { t, lsh }
+        const last = (val && typeof val === 'object') ? (val.t || 0) : (val || 0)
+        const lsh = (val && typeof val === 'object') ? (val.lsh ?? null) : null
         // 历史残留的"已完成"提醒：业务已终结，直接清除不再弹
         if (lx === '已完成') { delete m[key]; continue }
         if (now - last >= REMIND_AGAIN_MS) {
-          m[key] = now   // 先更新时间戳，防止同一扫描周期内重复弹
-          const text = (RESEND_TEXTS[lx] || ((id: number) => `（重要提醒）问题 #${id} 仍待您处理，请及时查看`))(nid)
-          popRemindNotification(lx, nid, text, key)
+          m[key] = { t: now, lsh }   // 先更新时间戳，防止同一扫描周期内重复弹
+          const text = (RESEND_TEXTS[lx] || ((id: number) => `（重要提醒）问题 #${id} 仍待您处理，请及时查看`))(nid, lsh)
+          popRemindNotification(lx, nid, text, key, lsh)
         }
       }
       saveActiveReminders(m)
@@ -791,7 +798,7 @@ const loadLoginReminders = async () => {
       const showItems = cfg.items.slice(0, MAX_SHOW)
       const moreCount = cfg.items.length - showItems.length
       const lines = showItems.map((t: any) =>
-        h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, `#${t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}：${(t.wentism || '').slice(0, 40)}`)
+        h('div', { style: 'padding: 5px 0; border-bottom: 1px dashed #ebeef5;' }, `#${t.LSH ?? t.lsh ?? t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}：${(t.wentism || '').slice(0, 40)}`)
       )
       if (moreCount > 0) {
         lines.push(h('div', { style: 'color: #909399; margin-top: 4px; font-size: 12px;' }, `…等${cfg.items.length}条，点击查看全部`))
@@ -808,7 +815,7 @@ const loadLoginReminders = async () => {
       })
       // 浏览器最小化/无焦点时同时弹系统通知
       if (document.hidden) {
-        const body = showItems.map((t: any) => `#${t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}`).join('\n') + (moreCount > 0 ? `\n…等${cfg.items.length}条` : '')
+        const body = showItems.map((t: any) => `#${t.LSH ?? t.lsh ?? t.id} ${t.yiyuanmc || ''} ${t.mokuai || ''}`).join('\n') + (moreCount > 0 ? `\n…等${cfg.items.length}条` : '')
         try { sendSystemNotification(`【${cfg.label}提醒】(${cfg.items.length}条)`, body, () => router.push(cfg.page)) } catch (e) {}
         startTitleBlink('有新消息')
       }

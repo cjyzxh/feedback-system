@@ -98,9 +98,6 @@ export class CreateFeedbackDto {
 
   @IsOptional()
   shcsgcsBM?: string;
-
-  @IsOptional()
-  LSH?: string;
 }
 
 // 更新问题时的请求体（PUT /api/feedback/:id）
@@ -199,9 +196,6 @@ export class UpdateFeedbackDto {
   shcsgcsBM?: string;
 
   @IsOptional()
-  LSH?: string;
-
-  @IsOptional()
   czrbm?: string;  // 当前操作人编码（待讨论等场景用于排除"操作人本人不提醒自己"）
 }
 
@@ -216,6 +210,9 @@ export class QueryFeedbackDto {
 
   @IsOptional()
   id?: number;
+
+  @IsOptional()
+  lsh?: number;  // 按编号（LSH）精确查询
 
   @IsOptional()
   keyword?: string;

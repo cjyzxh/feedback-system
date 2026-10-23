@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Feedback } from './feedback.entity';
 import { Fjxx } from './fjxx.entity';
+import { Ok } from './ok.entity';
 import { CreateFeedbackDto, UpdateFeedbackDto, QueryFeedbackDto } from './dto/feedback.dto';
 import { DatabaseConfigService } from '../config/config.service';
 
@@ -19,6 +20,9 @@ export class FeedbackService {
     private feedbackRepository: Repository<Feedback>,
     @InjectRepository(Fjxx)
     private fjxxRepository: Repository<Fjxx>,
+    // ok 表 = 流水号取号表（lsh 业务唯一编号的取号源：每次新增取 lsh+1）
+    @InjectRepository(Ok)
+    private okRepository: Repository<Ok>,
     private configService: DatabaseConfigService,  // 读上传目录配置等
   ) {}
 
@@ -34,11 +38,12 @@ export class FeedbackService {
 
   // SSE 提醒广播：状态变化时把"该提醒谁"推给所有前端，前端按 jsrbm 是否含自己决定弹窗
   // 去重：同一接收人只保留一个编码（多角色同人只弹一次）；排除操作人本人（自己不提醒自己）
-  notifyRemind(lx: string, wentiid: number, title: string, jsrbmList: (string | null | undefined)[], excludeBm?: string | null): void {
+  // lsh：业务编号（前端通知标题显示 #编号；wentiid 保持物理 ID，活跃表 key 内部用）
+  notifyRemind(lx: string, wentiid: number, title: string, jsrbmList: (string | null | undefined)[], excludeBm?: string | null, lsh?: number | null): void {
     try {
       const jsrbm = [...new Set(jsrbmList.filter((b): b is string => !!b && b !== excludeBm))];
       if (jsrbm.length === 0) return;
-      this.statusSubject.next({ type: 'remind', data: { lx, wentiid, title, jsrbm, time: Date.now() } });
+      this.statusSubject.next({ type: 'remind', data: { lx, wentiid, lsh: lsh ?? null, title, jsrbm, time: Date.now() } });
     } catch (error) {
       console.error('SSE 提醒广播失败:', error);
     }
@@ -56,43 +61,63 @@ export class FeedbackService {
   // 创建问题反馈（POST /api/feedback）
   // create() = 在内存里组装一条新记录，save() = 真正写库
   // 注意：lvrusj（录入时间）在这里统一用 new Date() 后端生成，不让前端传
+  // lsh（业务唯一编号）：从 ok 表取号（UPDATE ok SET lsh=lsh+1 并回读新值），
+  // 取号与插入同一事务（失败一起回滚，不产生"取了号没存上"的中间状态）；
+  // ok 表行锁保证并发新增不会撞号；配合全表唯一索引 UX_wentilb_LSH 双保险
   async create(dto: CreateFeedbackDto): Promise<Feedback> {
     try {
-      const feedback = this.feedbackRepository.create({
-        banben: dto.banben,
-        yiyuanmc: dto.yiyuanmc || dto.hospital,
-        shishiry: dto.shishiry,
-        shishiryBM: dto.shishiryBM,
-        mokuai: dto.mokuai || dto.module,
-        chuangtimc: dto.chuangtimc || dto.form,
-        wentism: dto.wentism,
-        shouzhongcs: dto.shouzhongcs,
-        gongcscs: dto.gongcscs,
-        shouhoucs: dto.shouhoucs,
-        shouzhongbz: dto.shouzhongbz || 'N',
-        gongchengsbz: dto.gongchengsbz || 'N',
-        shouhoubz: dto.shouhoubz || 'N',
-        xggcs: dto.xggcs || dto.engineer,
-        jingjicd: dto.jingjicd,
-        wentilx: dto.wentilx || '其它问题',
-        lvrusj: new Date(),
-        taolunbz: dto.taolunbz || 'N',
-        szcsgcs: dto.szcsgcs,
-        szcsgcsBM: dto.szcsgcsBM,
-        FanKuiQD: dto.FanKuiQD,
-        shcsgcs: dto.shcsgcs,
-        shcsgcsBM: dto.shcsgcsBM,
-        cssj: dto.cssj,
-        xggcsBM: dto.xggcsBM,
-        LSH: dto.LSH,
+      const saved = await this.feedbackRepository.manager.transaction(async (manager) => {
+        // ===== 1. ok 表取号：行锁自增 + 回读新值 =====
+        let lsh = 0;
+        const rows: any[] = await manager.query('UPDATE ok SET lsh = lsh + 1 OUTPUT INSERTED.lsh AS lsh');
+        if (rows && rows.length && rows[0].lsh != null) {
+          lsh = Number(rows[0].lsh);
+        } else {
+          // ok 表无行（异常未初始化）→ 兜底：取当前 max(LSH)+1 并初始化 ok 表
+          const maxRow: any[] = await manager.query('SELECT MAX(LSH) AS m FROM yw_wentilb');
+          const m = (maxRow && maxRow[0] && maxRow[0].m != null) ? Number(maxRow[0].m) : 0;
+          lsh = m + 1;
+          await manager.query('INSERT INTO ok (lsh) VALUES (@0)', [lsh]);
+        }
+
+        // ===== 2. 组装并插入问题 =====
+        const feedback = manager.create(Feedback, {
+          banben: dto.banben,
+          yiyuanmc: dto.yiyuanmc || dto.hospital,
+          shishiry: dto.shishiry,
+          shishiryBM: dto.shishiryBM,
+          mokuai: dto.mokuai || dto.module,
+          chuangtimc: dto.chuangtimc || dto.form,
+          wentism: dto.wentism,
+          shouzhongcs: dto.shouzhongcs,
+          gongcscs: dto.gongcscs,
+          shouhoucs: dto.shouhoucs,
+          shouzhongbz: dto.shouzhongbz || 'N',
+          gongchengsbz: dto.gongchengsbz || 'N',
+          shouhoubz: dto.shouhoubz || 'N',
+          xggcs: dto.xggcs || dto.engineer,
+          jingjicd: dto.jingjicd,
+          wentilx: dto.wentilx || '其它问题',
+          lvrusj: new Date(),
+          taolunbz: dto.taolunbz || 'N',
+          szcsgcs: dto.szcsgcs,
+          szcsgcsBM: dto.szcsgcsBM,
+          FanKuiQD: dto.FanKuiQD,
+          shcsgcs: dto.shcsgcs,
+          shcsgcsBM: dto.shcsgcsBM,
+          cssj: dto.cssj,
+          xggcsBM: dto.xggcsBM,
+          LSH: lsh,
+          iFanhuicishu: 0,
+        });
+        return await manager.save(feedback);
       });
-      
-      const saved = await this.feedbackRepository.save(feedback);
-      console.log('创建成功 ID:', saved.id);
+
+      console.log('创建成功 ID:', saved.id, 'LSH:', saved.LSH);
 
       // ===== SSE 提醒：新增问题 → 广播"待处理"给工程师（录入人本人不提示） =====
-      const tzTitle = `【新问题#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}${saved.chuangtimc ? '-' + saved.chuangtimc : ''}：${(saved.wentism || '').slice(0, 50)}`;
-      this.notifyRemind('待处理', saved.id, tzTitle, [saved.xggcsBM], saved.szcsgcsBM);
+      const tzTitle = `【新问题#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}${saved.chuangtimc ? '-' + saved.chuangtimc : ''}：${(saved.wentism || '').slice(0, 50)}`;
+      this.notifyRemind('待处理', saved.id, tzTitle, [saved.xggcsBM], saved.szcsgcsBM, saved.LSH);
 
       this.notifyStatusChanged();
       return saved;
@@ -105,13 +130,18 @@ export class FeedbackService {
   // 分页查询问题列表
   async findAll(query: QueryFeedbackDto): Promise<{ list: Feedback[]; total: number }> {
     try {
-      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, relatedBM, hasReturn, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, dateField } = query;
+      const { page = 1, pageSize = 10, keyword, hospital, yiyuanmc, module, mokuai, shishiry, xggcs, engineer, shishiryBM, xggcsBM, relatedBM, hasReturn, gongchengsbz, shouhoubz, taolunbz, zhuangtai, startDate, endDate, id, lsh, dateField } = query;
       
       const where: any = {};
       
-      // 按ID精确查询
+      // 按ID精确查询（内部物理键，兼容）
       if (id) {
         where.id = id;
+      }
+      
+      // 按编号（LSH）精确查询（业务唯一键，前端搜索"输入编号"用它）
+      if (lsh) {
+        where.LSH = lsh;
       }
       
       if (keyword) {
@@ -292,18 +322,19 @@ export class FeedbackService {
     }
   }
 
-  // 根据ID查询问题详情（含图片）
-  async findById(id: number): Promise<any> {
+  // 根据编号（LSH）查询问题详情（含图片）
+  // 业务定位用 lsh；附件/图片内部关联仍走物理 ID（feedback.id），保证老附件、老图片可正常查看
+  async findByLsh(lsh: number): Promise<any> {
     const feedback = await this.feedbackRepository.findOne({
-      where: { id },
+      where: { LSH: lsh },
     });
     
     if (!feedback) {
-      throw new NotFoundException(`问题 ID ${id} 不存在`);
+      throw new NotFoundException(`问题编号 ${lsh} 不存在`);
     }
     
     // 从目录获取图片列表（按ID命名）
-    const images = await this.getImagesById(id);
+    const images = await this.getImagesById(feedback.id);
     
     return {
       ...feedback,
@@ -314,17 +345,17 @@ export class FeedbackService {
     };
   }
 
-  // 更新问题反馈 - 以ID为条件
-  async update(id: number, dto: UpdateFeedbackDto): Promise<Feedback> {
+  // 更新问题反馈 - 以编号（LSH）为业务条件定位
+  async updateByLsh(lsh: number, dto: UpdateFeedbackDto): Promise<Feedback> {
     try {
-      console.log('更新问题 ID:', id);
+      console.log('更新问题 LSH:', lsh);
       
       const feedback = await this.feedbackRepository.findOne({
-        where: { id },
+        where: { LSH: lsh },
       });
       
       if (!feedback) {
-        throw new NotFoundException(`问题 ID ${id} 不存在`);
+        throw new NotFoundException(`问题编号 ${lsh} 不存在`);
       }
 
       // 记录状态旧值，用于保存后判断"发生了什么操作"（决定给谁发通知）
@@ -361,7 +392,9 @@ export class FeedbackService {
       if (dto.shcsgcsBM !== undefined) feedback.shcsgcsBM = dto.shcsgcsBM;
       if (dto.cssj !== undefined) feedback.cssj = dto.cssj;
       // 问题返回时间：仅"返回测试"动作显式传 fanhuisj 时才写入/覆盖，避免其它操作误触发
-      if (dto.fanhuisj !== undefined) feedback.fanhuisj = dto.fanhuisj;
+      if (dto.fanhuisj !== undefined) {
+        feedback.fanhuisj = dto.fanhuisj;
+      }
       
       // 修改时间：仅在"工程师确认处理"(gongchengsbz -> Y) 或"待讨论"(taolunbz -> Y)
       // 这两个状态动作时写入，其它任何更新都不刷新 xgsj
@@ -369,8 +402,16 @@ export class FeedbackService {
       const isTaolunAction = dto.taolunbz === 'Y' && oldTaolunbz !== 'Y';
       if (isHandleAction || isTaolunAction) feedback.xgsj = new Date();
       
+      // 返回次数 iFanhuicishu：每次被测试打回时 +1（老数据导入时已保留原值，初始 0）
+      // 返回动作 = 处理标志 Y->N（处理页"返回测试"）或显式写入返回时间 fanhuisj（测试页"返回测试"），
+      // 同一请求两者都发生时只 +1 一次
+      const isReturnAction = (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y') || dto.fanhuisj !== undefined;
+      if (isReturnAction) {
+        feedback.iFanhuicishu = (feedback.iFanhuicishu || 0) + 1;
+      }
+      
       const saved = await this.feedbackRepository.save(feedback);
-      console.log('更新成功 ID:', saved.id);
+      console.log('更新成功 LSH:', saved.LSH);
 
       // ===== SSE 提醒：根据状态变化广播"该提醒谁"（接收人是操作人本人不提示；多角色同一人自动去重） =====
       try {
@@ -389,34 +430,34 @@ export class FeedbackService {
         }
         // 场景1：处理确认（工程师处理完成 gongchengsbz: N -> Y）→ 广播"待测试"给实施/测试人
         if (dto.gongchengsbz === 'Y' && oldGongchengsbz === 'N') {
-          const nr = `【已处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.gongcscs || saved.wentism || '').slice(0, 50)}`;
-          this.notifyRemind('待测试', saved.id, nr, [saved.shishiryBM], saved.xggcsBM);
+          const nr = `【已处理#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.gongcscs || saved.wentism || '').slice(0, 50)}`;
+          this.notifyRemind('待测试', saved.id, nr, [saved.shishiryBM], saved.xggcsBM, saved.LSH);
         }
         // 场景2：测试确认（测试通过 shouhoubz: -> Y）→ 广播"已完成"给反馈人 + 工程师 + 实施员
         else if (dto.shouhoubz === 'Y' && oldShouhoubz !== 'Y') {
-          const nr = `【测试通过#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
-          this.notifyRemind('已完成', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], saved.shcsgcsBM);
+          const nr = `【测试通过#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
+          this.notifyRemind('已完成', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], saved.shcsgcsBM, saved.LSH);
         }
         // 场景3：返回测试（测试不过退回工程师 gongchengsbz: Y -> N）→ 广播"已返回"给工程师 + 反馈人
         else if (dto.gongchengsbz === 'N' && oldGongchengsbz === 'Y') {
-          const nr = `【测试返回#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
-          this.notifyRemind('已返回', saved.id, nr, [saved.xggcsBM, saved.szcsgcsBM], saved.shcsgcsBM);
+          const nr = `【测试返回#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.shouhoucs || '').slice(0, 50)}`;
+          this.notifyRemind('已返回', saved.id, nr, [saved.xggcsBM, saved.szcsgcsBM], saved.shcsgcsBM, saved.LSH);
         }
         // 场景4：标记待讨论（taolunbz: N -> Y）→ 广播"待讨论"给反馈人 + 工程师 + 实施员（操作人本人不提示）
         else if (dto.taolunbz === 'Y' && oldTaolunbz !== 'Y') {
-          const nr = `【待讨论#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.wentism || '').slice(0, 50)}`;
-          this.notifyRemind('待讨论', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], dto.czrbm);
+          const nr = `【待讨论#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：${(saved.wentism || '').slice(0, 50)}`;
+          this.notifyRemind('待讨论', saved.id, nr, [saved.szcsgcsBM, saved.xggcsBM, saved.shishiryBM], dto.czrbm, saved.LSH);
         }
         // 场景5：编辑页修改跟进人（shishiryBM 变更）→ 广播给新跟进人（操作人本人不提示）
         // 只有人员真的变化才提醒，避免编辑其它字段保存时误打扰
         if (dto.shishiryBM !== undefined && dto.shishiryBM !== oldShishiryBM && saved.shishiryBM) {
-          const nr = `【分配跟进#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配跟进该问题，请及时关注`;
-          this.notifyRemind('跟进', saved.id, nr, [saved.shishiryBM], dto.czrbm);
+          const nr = `【分配跟进#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配跟进该问题，请及时关注`;
+          this.notifyRemind('跟进', saved.id, nr, [saved.shishiryBM], dto.czrbm, saved.LSH);
         }
         // 场景6：编辑页修改工程师（xggcsBM 变更）→ 广播给新工程师（操作人本人不提示）
         if (dto.xggcsBM !== undefined && dto.xggcsBM !== oldXggcsBM && saved.xggcsBM) {
-          const nr = `【分配处理#${saved.id}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配处理该问题，请及时处理`;
-          this.notifyRemind('待处理', saved.id, nr, [saved.xggcsBM], dto.czrbm);
+          const nr = `【分配处理#${saved.LSH}】${saved.yiyuanmc || ''} ${saved.mokuai || ''}：您被分配处理该问题，请及时处理`;
+          this.notifyRemind('待处理', saved.id, nr, [saved.xggcsBM], dto.czrbm, saved.LSH);
         }
       } catch (error) {
         console.error('SSE 提醒广播失败:', error);
@@ -430,23 +471,23 @@ export class FeedbackService {
     }
   }
 
-  // 删除问题反馈
-  async remove(id: number): Promise<void> {
-    const feedback = await this.feedbackRepository.findOne({ where: { id } });
+  // 删除问题反馈 - 以编号（LSH）定位；附件/图片按实体内部 ID 删除（兼容老附件命名）
+  async removeByLsh(lsh: number): Promise<void> {
+    const feedback = await this.feedbackRepository.findOne({ where: { LSH: lsh } });
     if (feedback) {
-      // 删除对应的图片
-      await this.deleteImagesById(id);
-      await this.feedbackRepository.delete(id);
+      // 删除对应的图片（按物理 ID：文件命名 {id}-、zd_fjxx.wentiId 关联）
+      await this.deleteImagesById(feedback.id);
+      await this.feedbackRepository.delete(feedback.id);
       this.notifyStatusChanged();
       // 删除后广播"清除提醒"：前端清掉 localStorage 活跃表中该问题的 key（防止已删问题还一直重弹）
-      this.notifyRemindClear(id);
+      this.notifyRemindClear(feedback.id);
     }
   }
 
-  // 批量删除
-  async batchRemove(ids: number[]): Promise<void> {
-    for (const id of ids) {
-      await this.remove(id);
+  // 批量删除（入参为 lsh 编号数组）
+  async batchRemove(lshs: number[]): Promise<void> {
+    for (const lsh of lshs) {
+      await this.removeByLsh(lsh);
     }
   }
 
@@ -566,7 +607,7 @@ export class FeedbackService {
     const empty = { daichuli: [], daiceshi: [], ceshifanhui: [], daitaolun: [] };
     if (!userCode) return empty;
     try {
-      const baseSelect = 'id, yiyuanmc, mokuai, chuangtimc, wentism, wentilx, jingjicd, lvrusj, gongchengsbz, shouhoubz, taolunbz, fanhuisj, xggcsBM, shishiryBM, szcsgcsBM, shcsgcsBM';
+      const baseSelect = 'id, LSH, yiyuanmc, mokuai, chuangtimc, wentism, wentilx, jingjicd, lvrusj, gongchengsbz, shouhoubz, taolunbz, fanhuisj, xggcsBM, shishiryBM, szcsgcsBM, shcsgcsBM';
       const order = "ORDER BY CASE jingjicd WHEN '紧急' THEN 0 WHEN '急' THEN 1 ELSE 2 END, lvrusj DESC";
       const run = async (whereSql: string) => {
         const rows = await this.feedbackRepository.query(

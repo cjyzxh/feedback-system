@@ -292,15 +292,16 @@ export class FeedbackController {
   }
 
   // 分配开发人员
-  // PUT /api/feedback/:id/assign-dev
+  // PUT /api/feedback/:lsh/assign-dev
   // 支持可选传 gongcscs（处理意见）和 shouzhongcs（追加到测试说明）：分配修改人时若意见框已填写则一并保存
+  // 注意：:lsh 参数是业务编号（LSH），不是物理 ID；附件接口（upload/files/images）仍用物理 ID
   @Put(':id/assign-dev')
   async assignDev(@Param('id', ParseIntPipe) id: number, @Body() body: { xggcs: string; xggcsBM?: string; gongcscs?: string; shouzhongcs?: string }) {
     const patch: any = { xggcs: body.xggcs };
     if (body.xggcsBM !== undefined) patch.xggcsBM = body.xggcsBM;
     if (body.gongcscs !== undefined) patch.gongcscs = body.gongcscs;
     if (body.shouzhongcs !== undefined) patch.shouzhongcs = body.shouzhongcs;
-    const data = await this.feedbackService.update(id, patch);
+    const data = await this.feedbackService.updateByLsh(id, patch);
     return { code: 200, message: '分配成功', data };
   }
 
@@ -335,33 +336,35 @@ export class FeedbackController {
     return this.feedbackService.statusSubject.asObservable();
   }
 
+  // 查询单个问题反馈详情
+  // GET /api/feedback/:lsh（:lsh 为业务编号 LSH）
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
-    const data = await this.feedbackService.findById(id);
+    const data = await this.feedbackService.findByLsh(id);
     return { code: 200, message: '查询成功', data };
   }
 
   // 更新问题反馈
-  // PUT /api/feedback/:id
+  // PUT /api/feedback/:lsh（:lsh 为业务编号 LSH；处理/测试/返回/待讨论/编辑均走这里）
   @Put(':id')
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateFeedbackDto: UpdateFeedbackDto) {
-    const data = await this.feedbackService.update(id, updateFeedbackDto);
+    const data = await this.feedbackService.updateByLsh(id, updateFeedbackDto);
     return { code: 200, message: '更新成功', data };
   }
 
   // 删除单个问题反馈
-  // DELETE /api/feedback/:id
+  // DELETE /api/feedback/:lsh（:lsh 为业务编号 LSH）
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.feedbackService.remove(id);
+    await this.feedbackService.removeByLsh(id);
     return { code: 200, message: '删除成功', data: null };
   }
 
   // 批量删除问题反馈
-  // POST /api/feedback/batch-delete
+  // POST /api/feedback/batch-delete，body: { lshs: number[] }（业务编号 LSH 数组）
   @Post('batch-delete')
-  async batchRemove(@Body() body: { ids: number[] }) {
-    await this.feedbackService.batchRemove(body.ids);
+  async batchRemove(@Body() body: { lshs: number[] }) {
+    await this.feedbackService.batchRemove(body.lshs || []);
     return { code: 200, message: '删除成功', data: null };
   }
 

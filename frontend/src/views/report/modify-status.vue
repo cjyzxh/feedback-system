@@ -103,8 +103,8 @@
               show-icon 
             />
           </div>
-          <el-table :data="problemList" border stripe style="width: 100%;" max-height="500">
-            <el-table-column prop="id" label="问题ID" width="80" align="center" />
+          <el-table :data="pagedProblemList" border stripe style="width: 100%;" max-height="500">
+            <el-table-column prop="LSH" label="编号" width="90" align="center" />
             <el-table-column prop="yiyuanmc" label="医院" width="300" />
             <el-table-column prop="mokuai" label="模块" width="120" />
             <el-table-column prop="wentism" label="问题说明" min-width="100" />
@@ -124,6 +124,17 @@
               </template>
             </el-table-column>
           </el-table>
+          <!-- 明细分页（数据量大时按页渲染，避免一次性加载卡顿） -->
+          <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+            <el-pagination
+              v-model:current-page="problemPage"
+              v-model:page-size="problemPageSize"
+              :total="problemList.length"
+              :page-sizes="[20, 50, 100, 200]"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+            />
+          </div>
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -132,7 +143,7 @@
     <el-dialog v-model="detailDialogVisible" title="问题详情" width="900px" top="5vh">
       <div v-if="detailData" class="detail-content">
         <el-descriptions :column="3" border>
-          <el-descriptions-item label="问题ID号" :span="1">{{ detailData.id }}</el-descriptions-item>
+          <el-descriptions-item label="问题编号" :span="1">{{ detailData.LSH ?? detailData.lsh ?? detailData.id }}</el-descriptions-item>
           <el-descriptions-item label="录入时间" :span="1">{{ formatDate(detailData.lvrusj) }}</el-descriptions-item>
           <el-descriptions-item label="紧急程度" :span="1">
             <el-tag :type="detailData.jingjicd === '紧急' ? 'danger' : detailData.jingjicd === '重要' ? 'warning' : 'info'" size="small">{{ detailData.jingjicd || '一般' }}</el-tag>
@@ -216,6 +227,14 @@ const selectedName = ref('')
 const selectedCode = ref('')       // 单击选中的人员编码（图表只显示该行）
 const selectedPerson = ref<any>(null)   // 单击/双击记录的完整人员行对象（点问题列表标签时直接加载）
 const problemList = ref<any[]>([])
+
+// 明细分页（数据量大时按页渲染）
+const problemPage = ref(1)
+const problemPageSize = ref(50)
+const pagedProblemList = computed(() => {
+  const start = (problemPage.value - 1) * problemPageSize.value
+  return problemList.value.slice(start, start + problemPageSize.value)
+})
 
 // 标签页
 const activeTab = ref('chart')
@@ -463,7 +482,7 @@ const viewPersonProblems = (row: any) => {
     .filter(item => cfg.filter ? cfg.filter(item) : true)
     .map(item => ({ ...item, statusText: getStatusText(item) }))
     .sort((a: any, b: any) => new Date(b.lvrusj).getTime() - new Date(a.lvrusj).getTime())
-  
+  problemPage.value = 1   // 重新加载明细时回到第 1 页
   activeTab.value = 'list'
   ElMessage.success(`已加载${categoryLabel.value}【${row.name}】的 ${problemList.value.length} 条问题`)
 }
@@ -471,12 +490,12 @@ const viewPersonProblems = (row: any) => {
 // 查看问题详情
 const viewProblemDetail = async (row: any) => {
   try {
-    const res = await axios.get(`/api/feedback/${row.id}`)
+    const res = await axios.get(`/api/feedback/${row.LSH}`)
     detailData.value = res.data?.data || res.data
     detailImages.value = []
     detailDialogVisible.value = true
     
-    // 加载图片
+    // 加载图片（附件接口仍用物理 ID，兼容老附件）
     try {
       const imgRes = await axios.get(`/api/feedback/images/${row.id}`)
       detailImages.value = imgRes.data || []

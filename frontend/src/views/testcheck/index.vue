@@ -7,8 +7,8 @@
         <el-row :gutter="12" class="basic-info">
           <el-col :span="2">
             <div class="info-item small">
-              <div class="info-label">问题ID号</div>
-              <div class="info-value">{{ form.id || '-' }}</div>
+              <div class="info-label">问题编号</div>
+              <div class="info-value">{{ form.lsh || '-' }}</div>
             </div>
           </el-col>
           <el-col :span="1">
@@ -165,7 +165,7 @@
         </div>
       </template>
       <el-table ref="tableRef" :data="list" @row-click="handleRowClick" @row-dblclick="handleView" highlight-current-row :row-class-name="getRowClass" stripe height="100%">
-        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column prop="LSH" label="编号" width="100" align="center" />
         <el-table-column prop="jingjicd" label="紧急度" width="75" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.jingjicd === '紧急'" type="danger" size="small">紧急</el-tag>
@@ -254,7 +254,7 @@
     <el-dialog v-model="attachDialog.visible" width="720px" top="8vh" :show-close="false">
       <template #header>
         <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-right:4px;">
-          <span>{{ '附件管理（问题ID: ' + (form.id || '-') + '）' }}</span>
+          <span>{{ '附件管理（问题编号: ' + (form.lsh || '-') + '）' }}</span>
           <el-button class="morandi-btn morandi-blue" @click="attachDialog.visible = false">返回列表</el-button>
         </div>
       </template>
@@ -313,7 +313,7 @@ const canViewOthers = computed(() => {
 })
 
 // 选中行高亮（淡蓝）
-const getRowClass = ({ row }: { row: any }) => selected.value?.id === row.id ? 'selected-row' : ''
+const getRowClass = ({ row }: { row: any }) => selected.value?.LSH === row.LSH ? 'selected-row' : ''
 
 // 紧急程度 -> 标签颜色（danger=红，warning=橙，info=灰）
 const getJingjiType = (type: string) => {
@@ -337,12 +337,12 @@ const formatDate = (date: any) => {
 // ============ 上方详情表单（点击列表行后填充） ============
 // shouhoucs = 测试结果（测试员填写：通过内容 或 返回原因）
 const form = reactive({
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any, cssj: null as any, fanhuisj: null as any, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
+  id: 0, lsh: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null as any, xgsj: null as any, cssj: null as any, fanhuisj: null as any, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
 })
 
 // 空表单模板：所有清空操作统一用同一套字段，避免遗漏导致残留
 const emptyForm = {
-  id: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null, cssj: null, fanhuisj: null, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
+  id: 0, lsh: 0, yiyuanmc: '', mokuai: '', chuangtimc: '', banben: '', wentism: '', shouzhongcs: '', gongcscs: '', shouhoucs: '', xggcs: '', shishiry: '', jingjicd: '一般', lvrusj: null, xgsj: null, cssj: null, fanhuisj: null, shcsgcs: '', shcsgcsBM: '', shishiryBM: '', xggcsBM: '', szcsgcsBM: ''
 }
 
 // ============ 文本框双击放大查看/编辑 ============
@@ -399,6 +399,7 @@ const handleRowClick = async (row: any) => {
   selected.value = row
   const rowCopy = JSON.parse(JSON.stringify(row))  // 深拷贝
   Object.assign(form, rowCopy)
+  form.lsh = rowCopy.LSH ?? rowCopy.lsh ?? 0  // 后端返回大写 LSH，统一到小写 lsh（编号显示/业务操作用）
   // 查询该问题是否有图片
   try {
     const res = await axios.get("/api/feedback/images/" + row.id)
@@ -424,7 +425,7 @@ const currentUserName = loginUser.realName || loginUser.username || localStorage
 const attachDialog = reactive({ visible: false })
 
 const openAttachDialog = (row?: any) => {
-  if (row && row.id) form.id = row.id  // 从列表行内直接打开：同步当前问题ID
+  if (row && row.id) { form.id = row.id; form.lsh = row.LSH ?? row.lsh ?? 0 }  // 同步问题ID（附件用）和编号（业务用）
   if (!form.id) { ElMessage.warning('请先选择问题'); return }
   attachDialog.visible = true
   loadAttachFiles()
@@ -594,7 +595,7 @@ const handleConfirm = async () => {
       cssj: new Date()
     }
     
-    await axios.put('/api/feedback/' + form.id, updateData)
+    await axios.put('/api/feedback/' + form.lsh, updateData)
     ElMessage.success('测试确认成功')
     // 直接清空表单（不再调用 handleReset，避免误入"返回问题"逻辑）
     selected.value = null
@@ -652,7 +653,7 @@ const handleReset = async () => {
       fanhuisj: new Date()
     }
     
-    await axios.put('/api/feedback/' + form.id, updateData)
+    await axios.put('/api/feedback/' + form.lsh, updateData)
     ElMessage.success('已退回工程师重新处理')
     selected.value = null
     Object.assign(form, emptyForm)

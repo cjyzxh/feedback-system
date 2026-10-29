@@ -625,9 +625,8 @@ export class FeedbackService {
       const daiceshi = await run(
         "(taolunbz IS NULL OR taolunbz = 'N') AND gongchengsbz = 'Y' AND shouhoubz = 'N' AND shishiryBM = @0"
       );
-      const daitaolun = await run(
-        "taolunbz = 'Y' AND (xggcsBM = @0 OR shishiryBM = @0 OR szcsgcsBM = @0 OR shcsgcsBM = @0)"
-      );
+      // 待讨论类：登录时不批量弹窗提醒（讨论事件发生时仍走 SSE 实时通知一次）
+      const daitaolun: any[] = [];
       return { daichuli, daiceshi, ceshifanhui, daitaolun };
     } catch (error) {
       console.error('获取登录提醒失败:', error);
